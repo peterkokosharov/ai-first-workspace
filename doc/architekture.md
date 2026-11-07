@@ -57,8 +57,7 @@ Status: **v5** — tooling implemented and tested. Self-contained, portable fold
 │       ├── test_secret.py
 │       ├── test_inventory.py
 │       └── test_autodiscovery.py
-├── in/
-│   └── task.md            # audit task for external models
+├── in/                    # empty (task.md removed from tracking)
 ├── out/                   # audit reports from external models (gitignored)
 ├── .tmp/                  # temporary files, not versioned
 └── .gitignore
@@ -265,5 +264,5 @@ konsole — petark@petar-hpprobook: ~/Documents/Default Project
 
 - **OpenCode provider configuration:** Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use `tools/setup_providers.py` to add them with keys from KWallet.
 - **Live DCOP test:** Run `SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v` after opening the KWallet.
-- **External audit:** Send `in/task.md` to external models (beam-free, flint-40b-free) and collect reports in `out/`.
+- **External audit:** Send `in/task.md` (local, not tracked) to external models (beam-free, flint-40b-free) and collect reports in `out/`.
 - **Git remote:** No `origin` configured yet. Add remote and push when ready.
