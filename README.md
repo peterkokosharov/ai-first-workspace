@@ -1,12 +1,11 @@
 # Portable Development Workspace
 
 A self-contained, portable folder for AI-assisted software development. The folder
-itself is the product: rules, inventory, tooling, notes and configuration live here.
+itself is the product: rules, inventory, tooling and configuration live here.
 It can be archived, moved to another machine, unpacked and continued without missing
 pieces.
 
-Status: **v1 draft / pre-project**. Some components described below are planned and
-not yet implemented; they are marked as such.
+Status: **v2 — tooling implemented and tested**.
 
 ## Goals
 
@@ -18,9 +17,6 @@ The workspace answers three questions at any time:
 3. **How do we continue on another machine?** — what travels in the archive, what is
    recreated, what is verified afterwards.
 
-A second goal is **independence**: switching a model or a provider must not require
-rewriting prompts, tools, rules or the project structure.
-
 Success criterion: archive the folder → move it to another machine → unpack it → open
 it with a coding agent → work continues, with no file left behind on the old machine.
 
@@ -28,61 +24,68 @@ it with a coding agent → work continues, with no file left behind on the old m
 
 ```text
 ./
-├── AGENTS.md              # the six project rules (Bulgarian)
+├── AGENTS.md              # the project rules (English)
 ├── README.md              # this file
-├── KEYS                   # secret names and model table (no values)
-├── MODELS.md              # models, providers and key names (no values)
-├── PLAN-secret.md         # plan for the secret tool (Bulgarian)
-├── in/                    # review inputs: design documents and task briefs
-├── out/                   # review outputs: one critique per model
-├── tools/                 # planned: secret.py, inventory.py, autodiscovery.py
-├── tests/                 # planned: unit tests
-├── schema.sql             # planned: SQLite schema
-├── seed.sql               # planned: initial inventory data
-├── inventory.db           # local only, never committed
-├── assets/fonts/          # planned: bundled Cyrillic fonts
+├── lib/                   # vendored libraries (kikolib from upstream)
+│   └── kikolib/           # standard-library keystore and factory
+├── data/
+│   ├── schema.sql         # committed SQLite schema
+│   ├── seed.sql           # committed initial inventory data
+│   └── inventory.db       # local only, never committed (gitignored)
+├── tools/
+│   ├── __init__.py
+│   ├── secret.py          # portable secret tool over native stores
+│   ├── inventory.py       # SQLite inventory manager
+│   └── tests/             # functional tests
+│       ├── __init__.py
+│       ├── secret.py      # tests for tools/secret.py
+│       ├── inventory.py   # tests for tools/inventory.py
+│       ├── test_secret.py # unittest shim for discover
+│       └── test_inventory.py # unittest shim for discover
+├── .gitignore
 └── .tmp/                  # temporary files, not versioned
 ```
 
 ## Current components
 
-- `AGENTS.md` — the only source of project rules. Six rules: language, records,
+- `AGENTS.md` — the single source of project rules: language, records,
   self-containment, technical requirements, working habits, and no action without
-  explicit confirmation.
-- `KEYS` — the names of the secrets and of the models. Contains no values.
-- `MODELS.md` — model aliases, full model IDs, providers, and the key each model uses.
-- `PLAN-secret.md` — the plan for the secret tool, including key paths, backends,
-  migration, and the temporary export file.
-- `in/` — design documents and the review brief.
-- `out/` — independent critiques produced by different models.
-
-## Planned components
-
-These are described in the design documents and are not implemented yet:
-
-- `secret.py` — one interface over native credential stores. Intended commands:
-  `get`, `set`, `del`, `list`, `export`, `import`, `setup`, `probe`. Agents should use
-  a `run`/`exec` mode that injects a value into a child process instead of printing it.
-- `inventory.py` — manages the local SQLite inventory (`inventory.db`): machines,
-  services, model providers, models, keys, tools, and the active model choice.
-- `autodiscovery.py` — on a new machine, detects the OS, Python, installed agent
-  harnesses and available credential store; creates `inventory.db` from `schema.sql`
-  and seed data; guides the user through populating the native store and the inventory.
-- `schema.sql` and `seed.sql` — database structure and initial data, committed to git
-  so a new machine can rebuild the database.
-- `tests/` — unit tests for the three scripts.
-- `assets/fonts/` — bundled fonts with full Cyrillic support.
+  explicit confirmation. Project records are in English; chat with the assistant is in
+  Bulgarian Cyrillic.
+- `lib/kikolib` — vendored copy of `~/kiko/packages/kikolib/kikolib` (MIT), providing
+  `kikolib.factory` (backend registry/selection) and `kikolib.keystore` (native
+  credential-store calls: WCM, Keychain, `secret-tool`, KWallet, TDE DCOP).
+- `tools/secret.py` — portable secret tool over native credential stores. Backends:
+  `memory`, `file`, `wcm`, `keychain`, `secret-tool`, `kwallet`, `dcop`. Commands:
+  `get`, `set`, `del`, `list`, `export`, `import`, `probe`, `setup`, `run`, `exec`.
+  Default key path scheme: `provider/scope/kind` (e.g. `github/personal/token`).
+  `auto` never falls back to plaintext; use `--backend file` explicitly.
+- `tools/inventory.py` — manages the local SQLite inventory (`data/inventory.db`):
+  `init`, `tables`, `list`, `show`, `search`, `sql` (read-only), `setting`.
+- `tools/tests/` — functional tests (not `assertEquals(1,1)`). Run:
+  `python3 -m unittest discover -s tools/tests -t . -v`.
+  Live DCOP write/read/delete runs only with `SECRET_LIVE_TESTS=1`.
 
 ## Secrets
 
 - Secret values never enter git, the archive, or any project file.
 - The primary store is the operating system's native credential store: Windows
-  Credential Manager, macOS Keychain, GNOME Keyring, or KWallet.
+  Credential Manager, macOS Keychain, GNOME Keyring/`secret-tool`, KWallet, or TDE
+  DCOP on Q4OS.
 - `~/SECRETS` is a temporary export/transfer file outside the project. It is created
   only for transfer, backup, or a machine without a working store, and is deleted
   after a successful import.
-- Inside the repository only names and paths are recorded: `KEYS` and `MODELS.md`.
-- `inventory.db` is local and is never committed.
+- `data/inventory.db` is local and is never committed. It is rebuilt from
+  `data/schema.sql` and `data/seed.sql` with `python3 tools/inventory.py init`.
+
+## KWallet / TDE DCOP (Q4OS)
+
+On Q4OS/TDE the wallet daemon lives inside `kded`, so it is reached with
+`dcop kded tdewalletd`. The `dcop` binary is at `/opt/trinity/bin` and may not be on
+`PATH`; `secret.py` prepends it automatically. The wallet must be enabled
+(`Enabled=true` in `~/.trinity/share/config/tdewalletrc`) and opened once
+manually (`isOpen kdewallet` must return `true`). Live DCOP tests are skipped unless
+`SECRET_LIVE_TESTS=1`.
 
 ## Harness independence
 
@@ -101,38 +104,24 @@ No local LLM is used: on the available hardware it is too slow to be practical.
 
 ## How to continue on another machine
 
-Intended flow, once the planned scripts exist:
-
 1. Clone the repository.
 2. Make sure Python 3 and git are available.
-3. Run `python3 autodiscovery.py`.
-4. Populate the native credential store with the keys listed in `KEYS`.
-5. Let `autodiscovery.py` create and populate `inventory.db`.
-6. Choose a model from `MODELS.md`.
+3. Run `python3 tools/inventory.py init` to create `data/inventory.db`
+   (from `data/schema.sql` + `data/seed.sql`).
+4. Populate the native credential store with the key paths from the inventory
+   (`provider/scope/kind`).
+5. Verify: `python3 tools/secret.py setup` and `python3 tools/secret.py probe`.
+6. Run tests: `python3 -m unittest discover -s tools/tests -t . -v`.
 7. Start a session with any available harness.
-
-## Design documents and review loop
-
-- `in/design-document-v1.md` — whole-project design (English).
-- `in/design-runtime-v1.md` — harness independence and a possible own runtime
-  (English). Not part of the current review round.
-- `in/task.md` — the review brief given to external models.
-- `out/` — one critique per model, in English.
-
-The review loop is simple: a design document and a task brief go into `in/`, several
-models critique them, and the critiques land in `out/`. Nothing in `in/` or `out/` is
-authoritative; the authoritative records are `AGENTS.md`, `MODELS.md` and, later,
-`INVENTORY.md`.
 
 ## Language
 
-Project records are written in Bulgarian, as required by `AGENTS.md`. This README is
-in English by explicit request. The external review artifacts in `in/` and `out/` are
-also in English so that external models can review them.
+Project records are written in English, as required by `AGENTS.md`. This README is in
+English. Communication with the assistant is in Bulgarian Cyrillic (chat language).
 
 ## Requirements
 
-- Python 3.x (with the standard `sqlite3` module)
+- Python 3.x (stdlib only; no venv, no pip)
 - git
 - One supported agent harness, or the ability to install one
 - A native credential store, or the temporary export file as a fallback
