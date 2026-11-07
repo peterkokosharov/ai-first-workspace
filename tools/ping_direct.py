@@ -48,6 +48,11 @@ PROVIDERS = {
         "endpoint": "https://api.deepseek.com/v1/chat/completions",
         "method": "POST",
     },
+    "mistral": {
+        "key_path": "mistral/personal/api_key",
+        "endpoint": "https://api.mistral.ai/v1/chat/completions",
+        "method": "POST",
+    },
 }
 
 
@@ -130,7 +135,11 @@ def ping_provider(provider: str, message: str) -> int:
         body = json.dumps(build_gemini_body(message)).encode("utf-8")
     else:
         headers["Authorization"] = f"Bearer {api_key}"
-        model = "gemini/gemini-3.5-flash-lite" if provider == "nvidia" else "deepseek-chat"
+        model = "deepseek-chat"
+        if provider == "nvidia":
+            model = "gemini/gemini-3.5-flash-lite"
+        elif provider == "mistral":
+            model = "mistral-small-latest"
         body = json.dumps(build_openai_body(message, model)).encode("utf-8")
 
     req = urllib.request.Request(endpoint, data=body, headers=headers, method=cfg["method"])

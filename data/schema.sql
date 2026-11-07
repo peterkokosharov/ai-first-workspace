@@ -1,6 +1,13 @@
 -- Inventory schema for the portable workspace.
 -- This file is committed to git.  data/inventory.db is local and gitignored.
 -- Run "python3 tools/inventory.py init" to create or verify the database.
+--
+-- Redesigned models table (v2):
+--   * tier        -- free / paid / unknown
+--   * context_window -- max input tokens (optional)
+--   * cost_per_1k  -- indicative cost per 1000 tokens (optional)
+--   * provider    -- denormalised provider name for quick filtering
+-- A model belongs to exactly one provider.  Providers may be free-tier or paid.
 
 PRAGMA foreign_keys = ON;
 
@@ -37,6 +44,8 @@ CREATE TABLE IF NOT EXISTS providers (
     name     TEXT NOT NULL UNIQUE,
     kind     TEXT,
     base_url TEXT,
+    free_tier INTEGER NOT NULL DEFAULT 0
+              CHECK (free_tier IN (0, 1)),
     status   TEXT NOT NULL DEFAULT 'active'
              CHECK (status IN ('active', 'planned', 'broken', 'retired', 'unknown')),
     notes    TEXT
@@ -55,14 +64,18 @@ CREATE TABLE IF NOT EXISTS keys (
 );
 
 CREATE TABLE IF NOT EXISTS models (
-    id          INTEGER PRIMARY KEY,
-    alias       TEXT NOT NULL UNIQUE,
-    model       TEXT NOT NULL,
-    provider_id INTEGER NOT NULL REFERENCES providers(id) ON DELETE RESTRICT,
-    key_id      INTEGER REFERENCES keys(id) ON DELETE SET NULL,
-    status      TEXT NOT NULL DEFAULT 'active'
-                CHECK (status IN ('active', 'planned', 'broken', 'retired', 'unknown')),
-    notes       TEXT
+    id             INTEGER PRIMARY KEY,
+    alias          TEXT NOT NULL UNIQUE,
+    model_id       TEXT NOT NULL,          -- the actual model identifier sent to the API
+    provider_id    INTEGER NOT NULL REFERENCES providers(id) ON DELETE RESTRICT,
+    key_id         INTEGER REFERENCES keys(id) ON DELETE SET NULL,
+    tier           TEXT NOT NULL DEFAULT 'unknown'
+                   CHECK (tier IN ('free', 'paid', 'unknown')),
+    context_window INTEGER,
+    cost_per_1k    REAL,
+    status         TEXT NOT NULL DEFAULT 'active'
+                   CHECK (status IN ('active', 'planned', 'broken', 'retired', 'unknown')),
+    notes          TEXT
 );
 
 CREATE TABLE IF NOT EXISTS tools (
@@ -84,3 +97,4 @@ CREATE TABLE IF NOT EXISTS settings (
 CREATE INDEX IF NOT EXISTS idx_keys_service ON keys(service_id);
 CREATE INDEX IF NOT EXISTS idx_keys_provider ON keys(provider_id);
 CREATE INDEX IF NOT EXISTS idx_models_provider ON models(provider_id);
+CREATE INDEX IF NOT EXISTS idx_models_tier ON models(tier);
