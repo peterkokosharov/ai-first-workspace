@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import json
 import os
 import platform
 import shutil
@@ -33,6 +34,7 @@ SCHEMA = DATA / "schema.sql"
 SEED = DATA / "seed.sql"
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 INVENTORY_TOOL = ROOT / "tools" / "inventory.py"
+SETTINGS = ROOT / "settings.json"
 
 
 def _ram_mb() -> int | None:
@@ -115,6 +117,34 @@ def check_bash() -> bool:
     return False
 
 
+def load_settings() -> dict:
+    """Load runtime paths from settings.json (empty dict if missing/invalid)."""
+    try:
+        text = SETTINGS.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return {}
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    runtime = data.get("runtime")
+    if not isinstance(runtime, dict):
+        return {}
+    return runtime
+
+
+def check_opencode(name: str = "opencode") -> bool:
+    return shutil.which(name) is not None
+
+
+def check_merman(name: str = "npx -y @mermaid-js/mermaid-cli") -> bool:
+    # npx is a shell runner; check the first token (npx) on PATH.
+    first = name.split()[0] if name else "npx"
+    return shutil.which(first) is not None
+
+
 def check_inventory_db() -> tuple[bool, bool]:
     """Return (exists, has_tables)."""
     if not INVENTORY_DB.is_file():
@@ -140,19 +170,59 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.parse_args(argv)
 
+    runtime = load_settings()
+    opencode_name = runtime.get("opencode", "opencode")
+    merman_name = runtime.get("merman", "npx -y @mermaid-js/mermaid-cli")
+    git_name = runtime.get("git", "git")
+    bash_name = runtime.get("bash", "bash")
+    python_name = runtime.get("python", "python3")
+    node_name = runtime.get("node", "node")
+    docker_name = runtime.get("docker", "docker")
+    npm_name = runtime.get("npm", "npm")
+    docker_compose_name = runtime.get("docker-compose", "docker-compose")
+
+    def git_path() -> bool:
+        return shutil.which(git_name) is not None
+
+    def bash_path() -> bool:
+        return shutil.which(bash_name) is not None
+
+    def python_path() -> bool:
+        return shutil.which(python_name) is not None
+
+    def node_path() -> bool:
+        return shutil.which(node_name) is not None
+
+    def docker_path() -> bool:
+        return shutil.which(docker_name) is not None
+
+    def npm_path() -> bool:
+        return shutil.which(npm_name) is not None
+
+    def docker_compose_path() -> bool:
+        return shutil.which(docker_compose_name) is not None
+
     print("=== Portable workspace auto-discovery ===")
     print(f"OS:        {check_os()}")
     print(f"Processor: {check_processor()}")
     print(f"RAM:       {check_ram()}")
-    print(f"Python:    {check_python()}")
-    print(f"git:       {'yes' if check_git() else 'no'}")
-    print(f"bash:      {'yes' if check_bash() else 'no'}")
+    print(f"Python:    {check_python()}  ({python_name}: {'yes' if python_path() else 'no'})")
+    print(f"git:       {'yes' if git_path() else 'no'}  ({git_name})")
+    print(f"bash:      {'yes' if bash_path() else 'no'}  ({bash_name})")
+    print(f"opencode:  {'yes' if check_opencode(opencode_name) else 'no'}  ({opencode_name})")
+    print(f"merman:    {'yes' if check_merman(merman_name) else 'no'}  ({merman_name})")
+    print(f"node:      {'yes' if node_path() else 'no'}  ({node_name})")
+    print(f"docker:    {'yes' if docker_path() else 'no'}  ({docker_name})")
+    print(f"npm:       {'yes' if npm_path() else 'no'}  ({npm_name})")
+    print(f"docker-compose: {'yes' if docker_compose_path() else 'no'}  ({docker_compose_name})")
 
     missing_minimum = []
-    if not check_git():
-        missing_minimum.append("git")
-    if not check_bash():
-        missing_minimum.append("bash (Git Bash on Windows)")
+    if not git_path():
+        missing_minimum.append(f"git ({git_name})")
+    if not bash_path():
+        missing_minimum.append(f"bash ({bash_name})")
+    if not python_path():
+        missing_minimum.append(f"python ({python_name})")
 
     print()
     if missing_minimum:
