@@ -1,0 +1,25 @@
+# KEYS — имена на тайните
+# Стойностите са във файла: ~/SECRETS (извън проекта)
+# Формат на ~/SECRETS: две таблици — [keys] и [models]
+#   [keys]   KEY_NAME | service | value
+#   [models] model | api_key_name
+# На друга машина ~/SECRETS се създава наново.
+
+[keys]
+GITHUB_TOKEN | github
+GEMINI_API_KEY | gemini
+NVIDIA_API_KEY | nvidia
+GROQ_API_KEY | groq
+OPENROUTER_API_KEY | openrouter
+DEEPSEEK_API_KEY | deepseek
+MISTRAL_API_KEY | mistral
+
+[models]
+gemini/gemini-3.5-flash-lite | GEMINI_API_KEY
+gemini/gemini-3.8-flash | GEMINI_API_KEY
+nvidia/nemotron-3-ultra-550b-a55b | NVIDIA_API_KEY
+nvidia/nemotron-3-super-120b-a12b | NVIDIA_API_KEY
+groq/llama-3.3-70b-versatile | GROQ_API_KEY
+openrouter/qwen/qwen3.8-27b:free | OPENROUTER_API_KEY
+deepseek-chat | DEEPSEEK_API_KEY
+mistral/mistral-small-latest | MISTRAL_API_KEY
