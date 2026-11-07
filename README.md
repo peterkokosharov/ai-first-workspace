@@ -149,6 +149,7 @@ English. Communication with the assistant is in Bulgarian Cyrillic (chat languag
 
 - Python 3.x (stdlib only; no venv, no pip)
 - git
+- node.js + npm — for `mermaid-cli` (`npx -y @mermaid-js/mermaid-cli`) used to render `.mmd` diagrams to SVG
 - One supported agent harness, or the ability to install one
 - A native credential store, or the temporary export file as a fallback
 
