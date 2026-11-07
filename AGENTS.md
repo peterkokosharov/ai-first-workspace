@@ -129,3 +129,18 @@ permission is required only for actions outside the scope of the task.
 6.6. When a message is ambiguous (question or order), the assistant treats it as a
 question and asks. Ask only when the action or the "да" is missing, or when there is a
 real risk.
+
+## Rule 7 — Auto-discovery procedure
+
+7.1. When a prompt refers to ``secret.py`` or ``inventory.db`` and neither is present
+or usable, run ``tools/autodiscovery.py`` first.
+
+7.2. ``autodiscovery.py`` checks OS, RAM, processor, Python version, git, bash
+(Git Bash on Windows), and ``data/inventory.db``.
+
+7.3. Minimum requirement: git bash + Python stdlib. GitHub token and email are
+optional — you can work without them.
+
+7.4. If ``data/inventory.db`` is missing or empty, run
+``python3 tools/inventory.py init`` to create tables from ``data/schema.sql`` and
+``data/seed.sql``.
