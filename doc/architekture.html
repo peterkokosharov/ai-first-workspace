@@ -4,12 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Project Architecture — Portable Development Workspace</title>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
   body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
   h1, h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; }
   .diagram-container { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; overflow: auto; }
-  .mermaid { display: flex; justify-content: center; }
+
   .note { background: #e7f3ff; border-left: 4px solid #3498db; padding: 12px; margin: 1rem 0; font-size: 0.95em; }
   .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 1rem 0; font-size: 0.95em; }
   code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
@@ -77,153 +76,22 @@
 
 <h2>2. Architecture Diagram — Component Interaction</h2>
 <div class="diagram-container">
-<div class="mermaid" id="arch-overview">
-flowchart TB
-    User((User / Agent)) -->|Bulgarian chat| AGENTS[AGENTS.md rules]
-    User -->|commands| Secret[tools/secret.py]
-    User -->|inventory| Inv[tools/inventory.py]
-    User -->|discovery| Auto[tools/autodiscovery.py]
-    User -->|ping models| Ping[tools/ping.py]
-    User -->|direct HTTP| PingD[tools/ping_direct.py]
-    
-    Secret -->|native store| KWallet[(KWallet / DCOP)]
-    Secret -->|native store| WCM[(Windows Credential Manager)]
-    Secret -->|native store| KC[(macOS Keychain)]
-    Secret -->|native store| ST[secret-tool]
-    Secret -->|export file| SECRETS[(~/SECRETS temp)]
-    
-    Inv -->|SQLite| DB[(data/inventory.db)]
-    Auto -->|checks| DB
-    Auto -->|checks| OS[OS / RAM / Python / git / bash]
-    
-    Ping -->|OpenCode| OC[OpenCode CLI]
-    PingD -->|HTTP API| Providers[(Providers: Gemini, NVIDIA, Groq, Mistral, ...)]
-    
-    Lib[lib/kikolib] -->|factory| Secret
-    Lib[lib/kikolib] -->|keystore| Secret
-    Lib -->|factory| Inv
-    
-    style User fill:#e1f5fe,stroke:#01579b
-    style DB fill:#fff3e0,stroke:#e65100
-    style SECRETS fill:#ffebee,stroke:#c62828
-</div>
+<img src="diagrams/arch-overview.svg" alt="Architecture overview — component interaction" style="max-width: 100%; height: auto;">
 </div>
 
 <h2>3. Secret Tool Flow</h2>
 <div class="diagram-container">
-<div class="mermaid" id="secret-flow">
-sequenceDiagram
-    participant U as User/Agent
-    participant S as secret.py
-    participant K as kikolib.factory
-    participant N as Native Store
-    participant DB as inventory.db
-
-    U->>S: set provider/scope/kind (stdin value)
-    S->>K: choose backend (auto/file/wcm/keychain/secret-tool/kwallet/dcop)
-    K-->>S: selected backend
-    alt backend == file
-        S->>SECRETS: write KEY_PATH | value (atomic, mode 600)
-    else backend == dcop
-        S->>N: dcop kded tdewalletd open kdewallet
-        N-->>S: handle
-        S->>N: writePassword(handle, Passwords, key, value)
-        N-->>S: 0 (success)
-        S->>N: close(handle)
-    end
-    S-->>U: OK / error code
-    S->>DB: optional: record key path in inventory
-</div>
+<img src="diagrams/secret-flow.svg" alt="Secret tool flow — set/get via kikolib.factory" style="max-width: 100%; height: auto;">
 </div>
 
 <h2>4. Inventory Database Schema</h2>
 <div class="diagram-container">
-<div class="mermaid" id="db-schema">
-erDiagram
-    machines ||--o{ tools : "hosts"
-    services ||--o{ keys : "owns"
-    providers ||--o{ keys : "owns"
-    providers ||--o{ models : "provides"
-    keys ||--o{ models : "secures"
-    
-    machines {
-        int id PK
-        text name
-        text os
-        text python
-        text status
-    }
-    
-    services {
-        int id PK
-        text name
-        text kind
-        text account
-    }
-    
-    providers {
-        int id PK
-        text name
-        int free_tier
-        text status
-    }
-    
-    keys {
-        int id PK
-        text path
-        int service_id FK
-        int provider_id FK
-        text kind
-        text status
-    }
-    
-    models {
-        int id PK
-        text alias
-        text model_id
-        int provider_id FK
-        int key_id FK
-        text tier
-        text status
-    }
-    
-    tools {
-        int id PK
-        text name
-        int machine_id FK
-        text status
-    }
-    
-    settings {
-        text key PK
-        text value
-    }
-</div>
+<img src="diagrams/db-schema.svg" alt="Inventory database schema — ER diagram" style="max-width: 100%; height: auto;">
 </div>
 
 <h2>5. Auto-Discovery Procedure (Rule 7)</h2>
 <div class="diagram-container">
-<div class="mermaid" id="autodiscovery">
-flowchart TD
-    Start([New machine / missing secret.py or inventory.db])
-    --> AD[python3 tools/autodiscovery.py]
-    AD --> CheckOS{OS, RAM, processor, Python version}
-    CheckOS --> CheckGit{git installed?}
-    CheckGit --> CheckBash{bash / Git Bash on Windows?}
-    CheckBash --> MinimumMet{Minimum met?}
-    MinimumMet -->|No| Install[Install git / bash]
-    MinimumMet -->|Yes| CheckDB{data/inventory.db exists?}
-    CheckDB -->|No| Init[python3 tools/inventory.py init]
-    CheckDB -->|Yes| HasTables{has tables?}
-    HasTables -->|No| Init
-    HasTables -->|Yes| Ready[Ready to work]
-    Install --> CheckBash
-    Init --> Ready
-    
-    style Start fill:#e1f5fe
-    style Ready fill:#d4edda
-    style Install fill:#fff3cd
-</div>
+<img src="diagrams/autodiscovery.svg" alt="Auto-discovery procedure — Rule 7 terminal flow" style="max-width: 100%; height: auto;">
 </div>
 
 <h2>6. OpenCode Desktop — Visual Concept</h2>
@@ -288,8 +156,5 @@ flowchart TD
   <li><strong>Git remote:</strong> No <code>origin</code> configured yet. Add remote and push when ready.</li>
 </ul>
 
-<script>
-mermaid.initialize({ startOnLoad: true, theme: 'default' });
-</script>
 </body>
 </html>
