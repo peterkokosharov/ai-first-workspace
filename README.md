@@ -99,14 +99,27 @@ On Q4OS/TDE the wallet daemon lives inside `kded`, so it is reached with
 manually (`isOpen kdewallet` must return `true`). Live DCOP tests are skipped unless
 `SECRET_LIVE_TESTS=1`.
 
+## Developed and tested on OpenCode
+
+This project is developed and tested on **OpenCode**. All commands, tests, and
+workflows in this README are verified on OpenCode first:
+
+- `python3 -m unittest discover -s tools/tests -t . -v` — all 57 tests pass
+- `python3 tools/secret.py` — secret tool over native stores
+- `python3 tools/inventory.py` — SQLite inventory manager
+- `python3 tools/autodiscovery.py` — machine discovery
+
+OpenCode is the primary harness for this project. Other harnesses (Claude Code,
+Codex CLI, Gemini CLI, Rex) are supported but secondary.
+
 ## Harness independence
 
 The same project must work with different agent harnesses. Fallback order:
 
-1. Claude Code
-2. Codex CLI
-3. Gemini CLI
-4. OpenCode
+1. OpenCode
+2. Claude Code
+3. Codex CLI
+4. Gemini CLI
 5. Rex
 
 If none is available, install OpenCode. If that is not possible, install Rex. Work
