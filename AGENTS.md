@@ -1,103 +1,131 @@
-# Правила за работа в този проект
+# Project Rules
 
-Този файл е единственият източник на правила за проекта. Целият проект — код, записи,
-конфигурация, шрифтове и ресурси — живее в тази папка.
+This file is the single source of rules for the project. The whole project — code,
+records, configuration, fonts and resources — lives in this folder.
 
-## Правило 1 — Език на общуването
+## Rule 1 — Language
 
-1.1. Потребителят пише на „пайджин“ (фонетична кирилица с латиница), например
-`zdr. haide da suzdadem agents.md`. Това е нормално — не се коригира и не се коментира.
+1.1. The user writes in "pinyin BG" (phonetic Bulgarian written with Latin letters),
+for example `zdr. haide da suzdadem agents.md`. This is normal: do not correct it and
+do not comment on it.
 
-1.2. Агентът отговаря на литературен български език, изписан с кирилица.
-- Винаги кирилска азбука в отговорите (не латиница/транслитерация).
-- Грамотно, с правилна пунктуация и главни букви.
-- Термини, имена на файлове, команди и код остават в оригиналния им вид (латиница),
-  когато това е нужно за точност.
+1.2. The assistant replies in literary Bulgarian, written in Cyrillic.
+- Always use the Cyrillic alphabet in replies (not Latin transliteration).
+- Use correct grammar, punctuation and capitalisation.
+- Keep terms, file names, commands and code in their original form (Latin) when
+  precision requires it.
 
-## Правило 2 — Записите
+1.3. All files in the repository are written in English: Markdown, Python, SQL,
+configuration, comments and commit messages. Communication with other agents is also
+in English.
 
-2.1. Всички записи се водят на **един език — български**. Важи за бележки, документация,
-дневници, списъци със задачи и обяснения в проекта.
+## Rule 2 — Records
 
-2.2. Всички записи се правят във формат **`.md` (Markdown)** — не `.txt` и не друг формат.
+2.1. Records — notes, documentation, plans, logs, task lists and explanations — are
+written in English and in Markdown (`.md`).
 
-2.3. Правила 2.1 и 2.2 важат и за самия `AGENTS.md`.
+2.2. Code and data keep their natural format: `.py`, `.java`, `.cpp`, `.ts`, `.js`,
+`.html`, `.svg`, `.json`, `.db`, `.ttf`, and so on. The `.md` rule applies to records,
+not to code or data.
 
-## Правило 3 — Всичко остава в тази папка (самодостатъчност и преносимост)
+2.3. The working and communication format of the project is Markdown. `AGENTS.md`,
+the documents in `in/`, the reviews in `out/` and the design documents are `.md`.
 
-Папката е самодостатъчна и преносима: архивира се, премества се на друга машина,
-разархивира се и се отваря с OpenCode — и работата продължава без липсващи части.
+2.4. Unless another format is explicitly required, records are made in `.md`.
 
-3.1. **Нищо не се разпръсква извън папката по диска.** Всичко, което принадлежи на
-проекта, се пази тук. Без файлове в домашната директория, без глобална конфигурация,
-без промени в системни директории. Иначе при архивиране и преместване на друга машина
-част от проекта се губи.
+## Rule 3 — Everything stays in this folder (self-containment and portability)
 
-3.2. **Забраната по 3.1 е само за файлове на диска, не за мрежата.** Качването на данни
-в интернет е позволено, когато задачата го изисква.
+The folder is self-contained and portable: it is archived, moved to another machine,
+unpacked and opened with a coding agent — and work continues without missing parts.
 
-3.3. **Всички пътища са относителни към корена на папката.** Без абсолютни и
-машинно-зависими пътища.
+3.1. Nothing that belongs to the project is scattered outside the folder on disk. No
+files in the home directory, no global configuration, no changes in system
+directories. The only declared exceptions are `~/SECRETS` (temporary export) and the
+native credential store (WCM, Keychain, GNOME Keyring, KWallet), which are external by
+design.
 
-3.4. **Конфигурацията на OpenCode за проекта е локална** — в `opencode.json(c)` или
-`.opencode/` (агенти, команди, skills, разрешения, плъгини). Работата по проекта не
-разчита на глобална конфигурация.
+3.2. The ban in 3.1 applies to disk files, not to the network. Uploading data to the
+internet is allowed when the task requires it, except for secrets (see 3.9).
 
-3.5. **Шрифтовете и ресурсите са в папката** (например `assets/fonts/`). Не се разчита
-на системни шрифтове.
+3.3. All paths are relative to the root of the folder. No absolute or
+machine-dependent paths. The exceptions are `~/SECRETS` and native-store paths, which
+are external by design.
 
-3.6. **Зависимостите са локални или възстановими** от lockfile. Без глобални инсталации
-и без промени в системата.
+3.4. The OpenCode configuration for the project is local — in `opencode.json(c)` or
+`.opencode/` (agents, commands, skills, permissions, plugins). The project does not
+rely on global configuration.
 
-3.7. **Временните файлове са в `.tmp/`** в папката и не са необходими за продължаване
-на работата.
+3.5. Fonts and resources are in the folder (for example `assets/fonts/`). Do not rely
+on system fonts.
 
-3.8. **Точка на вход:** `README.md` в корена описва накратко какво е проектът и как се
-продължава работата по него.
+3.6. Dependencies are local or restorable from a lockfile. No global installations and
+no changes to the system.
 
-3.9. **Тайните не влизат в архива и в git.** Стойностите се пазят извън проекта — във
-файла `~/SECRETS` с формат `KEY_NAME | service | value`. В папката стои само **`KEYS`** —
-имената на тайните и пътя до `~/SECRETS`, без стойности. На друга машина `~/SECRETS` се
-създава наново.
+3.7. Temporary files go in `.tmp/` in the folder and are not required to continue the
+work.
 
-3.10. **Тест за преносимост:** архивирай папката → прехвърли я на друга машина →
-разархивирай → отвори я с OpenCode → работата продължава.
+3.8. Entry point: `README.md` in the root briefly describes what the project is and how
+to continue working on it.
 
-3.11. **Извън папката остават само:** самата програма OpenCode, файлът `~/SECRETS`,
-историята на сесиите и системните пакети. Те се настройват веднъж на нова машина и не са
-част от проекта.
+3.9. Secrets never enter the archive or git. Values live in the operating system's
+native credential store: Windows Credential Manager, macOS Keychain, GNOME Keyring or
+KWallet. `~/SECRETS` is a temporary export/transfer file outside the project; it is
+deleted after a successful import. The folder contains only `KEYS` — the names of the
+secrets and the path to the store, without values. On another machine, `~/SECRETS` is
+recreated.
 
-## Правило 4 — Технически изисквания
+3.10. Portability test: archive the folder → transfer it to another machine → unpack it
+→ open it with a coding agent → work continues. Run this test when moving to another
+machine or after a major change, not after every edit.
 
-4.1. **Кодиране:** всички файлове се записват в **UTF-8**.
+3.11. Only these remain outside the folder: the coding agent program, `~/SECRETS`,
+session history and system packages. They are set up once on a new machine and are not
+part of the project. "Work continues" means the project work, not the chat history.
 
-4.2. **Шрифтове:** използват се само шрифтове с пълна поддръжка на кирилица, доставени
-заедно с проекта (виж 3.5).
-- Предпочитани: `DejaVu Sans`, `Noto Sans`, `Liberation Sans`, `Fira Sans`, `Roboto`,
+## Rule 4 — Technical requirements
+
+4.1. Encoding: all files are written in UTF-8.
+
+4.2. Fonts: use only fonts with full Cyrillic support, shipped with the project (see
+3.5).
+- Preferred: `DejaVu Sans`, `Noto Sans`, `Liberation Sans`, `Fira Sans`, `Roboto`,
   `Source Sans Pro`.
-- Без шрифтове без кирилски глифове.
+- Do not use fonts without Cyrillic glyphs.
 
-## Правило 5 — Работни навици
+## Rule 5 — Working habits
 
-5.1. Преди промяна по съществуващ файл — първо се прочита.
+5.1. Before changing an existing file — read it first.
 
-5.2. Спазват се стилът, структурата и именуването на околния код.
+5.2. Follow the style, structure and naming of the surrounding code.
 
-5.3. Накрая се обяснява накратко какво е направено и къде (с точни пътища до файловете).
+5.3. At the end, explain briefly what was done and where (with exact file paths).
 
-5.4. Чужда работа не се изтрива и не се презаписва без изрично потвърждение.
+5.4. Do not delete or overwrite someone else's work without explicit confirmation.
 
-## Правило 6 — Без инициатива и без действия без разрешение
+5.5. The inventory is the first source of knowledge. Before asking the user or
+guessing about the project (machines, services, providers, models, keys, tools), check
+it with `python3 tools/inventory.py`. If `data/inventory.db` is missing, create it with
+`python3 tools/inventory.py init`.
 
-6.1. Преди всяко действие — пускане на bash команди или скриптове, четене или писане на
-файлове, промени по конфигурация, тестове — агентът чака изрична заповед от потребителя.
+## Rule 6 — No initiative and no action without permission
 
-6.2. Ако съобщението е въпрос, агентът само отговаря. Не извършва действия покрай отговора.
+6.1. Before any action — running shell commands or scripts, reading or writing files,
+changing configuration, running tests — the assistant waits for an explicit order from
+the user.
 
-6.3. Никаква инициатива от страна на агента. Не се изпълнява нищо, за което агентът не е
-изрично помолен.
+6.2. If the message is a question, the assistant only answers. It does not perform
+actions alongside the answer.
 
-6.4. Действие се извършва само след изрична заповед и потвърждение „да“.
+6.3. No initiative from the assistant. Nothing is executed unless explicitly requested.
 
-6.5. При двусмислие (въпрос или заповед) агентът приема съобщението като въпрос и пита,
-вместо да действа.
+6.4. An action is performed only after an explicit order. A clear sentence that
+contains an action and "да" is both the order and the confirmation. A separate
+confirmation is required only for irreversible actions: deleting files or data,
+overwriting, `git push`, dropping a database.
+
+6.5. An order for a task includes the reading necessary to execute it. Separate
+permission is required only for actions outside the scope of the task.
+
+6.6. When a message is ambiguous (question or order), the assistant treats it as a
+question and asks. Ask only when the action or the "да" is missing, or when there is a
+real risk.

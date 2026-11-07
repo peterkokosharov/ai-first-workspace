@@ -6,16 +6,16 @@
 
 ## Модели
 
-| Модел | Услуга | Ключ |
-|---|---|---|
-| `gemini/gemini-3.5-flash-lite` | gemini | `GEMINI_API_KEY` |
-| `gemini/gemini-3.8-flash` | gemini | `GEMINI_API_KEY` |
-| `nvidia/nemotron-3-ultra-550b-a55b` | nvidia | `NVIDIA_API_KEY` |
-| `nvidia/nemotron-3-super-120b-a12b` | nvidia | `NVIDIA_API_KEY` |
-| `groq/llama-3.3-70b-versatile` | groq | `GROQ_API_KEY` |
-| `openrouter/qwen/qwen3.8-27b:free` | openrouter | `OPENROUTER_API_KEY` |
-| `deepseek-chat` | deepseek | `DEEPSEEK_API_KEY` |
-| `mistral/mistral-small-latest` | mistral | `MISTRAL_API_KEY` |
+| Име (alias) | Пълен модел | Доставчик | Ключ |
+|---|---|---|---|
+| `gemini-flash-lite` | `gemini/gemini-3.5-flash-lite` | gemini | `GEMINI_API_KEY` |
+| `gemini-flash` | `gemini/gemini-3.8-flash` | gemini | `GEMINI_API_KEY` |
+| `nemotron-ultra` | `nvidia/nemotron-3-ultra-550b-a55b` | nvidia | `NVIDIA_API_KEY` |
+| `nemotron-super-vl` | `nemotron-3.5-super-vl-free` | opencode | — (безплатен, без ключ) |
+| `llama` | `groq/llama-3.3-70b-versatile` | groq | `GROQ_API_KEY` |
+| `qwen-coder` | `openrouter/qwen/qwen3.8-27b:free` | openrouter | `OPENROUTER_API_KEY` |
+| `deepseek-chat` | `deepseek-chat` | deepseek | `DEEPSEEK_API_KEY` |
+| `mistral-small` | `mistral/mistral-small-latest` | mistral | `MISTRAL_API_KEY` |
 
 Общо: **8 модела** с **6 ключа** за услуги (седмият ключ е `GITHUB_TOKEN` за GitHub).
 
