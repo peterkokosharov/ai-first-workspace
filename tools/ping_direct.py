@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import subprocess
 import sys
 import urllib.error
@@ -31,29 +32,64 @@ EXIT_OK = 0
 EXIT_NOT_FOUND = 1
 EXIT_ERROR = 2
 
-# Provider -> (key_path, endpoint, model_field, body_builder)
-PROVIDERS = {
-    "gemini": {
-        "key_path": "gemini/personal/api_key",
-        "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent",
-        "method": "POST",
-    },
-    "nvidia": {
-        "key_path": "nvidia/personal/api_key",
-        "endpoint": "https://integrate.api.nvidia.com/v1/chat/completions",
-        "method": "POST",
-    },
-    "deepseek": {
-        "key_path": "deepseek/personal/api_key",
-        "endpoint": "https://api.deepseek.com/v1/chat/completions",
-        "method": "POST",
-    },
-    "mistral": {
-        "key_path": "mistral/personal/api_key",
-        "endpoint": "https://api.mistral.ai/v1/chat/completions",
-        "method": "POST",
-    },
+# Fallback endpoint templates used when providers.base_url is NULL in the inventory.
+# ``{model}`` is substituted with the model_id from the inventory when present.
+PROVIDER_ENDPOINTS = {
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+    "nvidia": "https://integrate.api.nvidia.com/v1/chat/completions",
+    "deepseek": "https://api.deepseek.com/v1/chat/completions",
+    "mistral": "https://api.mistral.ai/v1/chat/completions",
 }
+
+KNOWN_PROVIDERS = sorted(PROVIDER_ENDPOINTS)
+
+
+def validate_provider(provider_name: str) -> bool:
+    """Return True if ``provider_name`` is a known provider, else False."""
+    return provider_name in KNOWN_PROVIDERS
+
+
+def get_provider_info(provider_name: str, model_slug: str | None = None) -> dict | None:
+    """Look up provider, model and key from the inventory database.
+
+    Returns a dict with ``base_url`` (may be None), ``model_id`` and ``key_path``,
+    or None if the provider is not found.
+    """
+    if not INVENTORY_DB.is_file():
+        return None
+    conn = sqlite3.connect(str(INVENTORY_DB))
+    conn.row_factory = sqlite3.Row
+    try:
+        provider = conn.execute(
+            "SELECT id, name, base_url FROM providers WHERE name = ? AND status = 'active'",
+            (provider_name,),
+        ).fetchone()
+        if not provider:
+            return None
+        if model_slug:
+            model = conn.execute(
+                "SELECT model_id FROM models WHERE provider_id = ? AND alias = ? "
+                "AND status = 'active'",
+                (provider["id"], model_slug),
+            ).fetchone()
+        else:
+            model = conn.execute(
+                "SELECT model_id FROM models WHERE provider_id = ? AND status = 'active' "
+                "ORDER BY id LIMIT 1",
+                (provider["id"],),
+            ).fetchone()
+        key = conn.execute(
+            "SELECT path FROM keys WHERE provider_id = ? AND status = 'active' "
+            "ORDER BY id LIMIT 1",
+            (provider["id"],),
+        ).fetchone()
+        return {
+            "base_url": provider["base_url"],
+            "model_id": model["model_id"] if model else None,
+            "key_path": key["path"] if key else None,
+        }
+    finally:
+        conn.close()
 
 
 class PingError(Exception):
@@ -107,23 +143,35 @@ def build_openai_body(message: str, model: str) -> dict:
     }
 
 
-def ping_provider(provider: str, message: str) -> int:
-    if provider not in PROVIDERS:
+def ping_provider(provider: str, message: str, model_slug: str | None = None) -> int:
+    if provider not in KNOWN_PROVIDERS:
         print(f"ping_direct: unknown provider '{provider}'")
-        print(f"known providers: {', '.join(sorted(PROVIDERS))}")
+        print(f"known providers: {', '.join(KNOWN_PROVIDERS)}")
         return EXIT_ERROR
 
-    cfg = PROVIDERS[provider]
+    info = get_provider_info(provider, model_slug)
+    if not info:
+        print(f"ping_direct: provider '{provider}' not found in inventory database")
+        print(f"Run: python3 tools/inventory.py init")
+        return EXIT_NOT_FOUND
+    if not info["key_path"]:
+        print(f"ping_direct: no active key for provider '{provider}' in inventory")
+        return EXIT_NOT_FOUND
+    if not info["model_id"]:
+        print(f"ping_direct: no active model for provider '{provider}' in inventory")
+        return EXIT_NOT_FOUND
 
     # 1. Get key from KWallet.
     try:
-        api_key = get_key_from_kwallet(cfg["key_path"])
+        api_key = get_key_from_kwallet(info["key_path"])
     except PingError as exc:
         print(f"ping_direct: {exc}")
         return exc.exit_code
 
     # 2. Build request.
-    endpoint = cfg["endpoint"]
+    endpoint = info["base_url"] or PROVIDER_ENDPOINTS[provider]
+    if "{model}" in endpoint:
+        endpoint = endpoint.format(model=info["model_id"])
     headers = {
         "Content-Type": "application/json",
     }
@@ -135,14 +183,9 @@ def ping_provider(provider: str, message: str) -> int:
         body = json.dumps(build_gemini_body(message)).encode("utf-8")
     else:
         headers["Authorization"] = f"Bearer {api_key}"
-        model = "deepseek-chat"
-        if provider == "nvidia":
-            model = "gemini/gemini-3.5-flash-lite"
-        elif provider == "mistral":
-            model = "mistral-small-latest"
-        body = json.dumps(build_openai_body(message, model)).encode("utf-8")
+        body = json.dumps(build_openai_body(message, info["model_id"])).encode("utf-8")
 
-    req = urllib.request.Request(endpoint, data=body, headers=headers, method=cfg["method"])
+    req = urllib.request.Request(endpoint, data=body, headers=headers, method="POST")
 
     # 3. Send.
     try:
@@ -180,8 +223,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "provider",
-        choices=sorted(PROVIDERS),
-        help="provider to ping (gemini, nvidia, deepseek)",
+        choices=KNOWN_PROVIDERS,
+        help="provider to ping (gemini, nvidia, deepseek, mistral)",
+    )
+    parser.add_argument(
+        "model",
+        nargs="?",
+        default=None,
+        help="model alias from inventory (optional; uses first active model if omitted)",
     )
     parser.add_argument(
         "message",
@@ -191,7 +240,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    return ping_provider(args.provider, args.message)
+    return ping_provider(args.provider, args.message, args.model)
 
 
 if __name__ == "__main__":

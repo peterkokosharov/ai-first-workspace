@@ -58,7 +58,7 @@ def lookup_model(alias: str) -> dict | None:
     try:
         row = conn.execute(
             """
-            SELECT m.id, m.alias, m.model, m.provider_id, m.key_id,
+            SELECT m.id, m.alias, m.model_id, m.provider_id, m.key_id,
                    m.status, m.notes,
                    p.name AS provider_name, p.kind AS provider_kind
             FROM models m

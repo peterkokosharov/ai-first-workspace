@@ -96,6 +96,74 @@ class TestCLIOutput(unittest.TestCase):
         self.assertIn("auto' never falls back to plaintext", result.stdout)
 
 
+class TestSettings(unittest.TestCase):
+    def test_load_settings_returns_dict(self):
+        settings = ad.load_settings()
+        self.assertIsInstance(settings, dict)
+
+    def test_load_settings_has_runtime_keys(self):
+        settings = ad.load_settings()
+        self.assertIsInstance(settings, dict)
+        self.assertIn("opencode", settings)
+        self.assertIn("merman", settings)
+        self.assertIn("git", settings)
+        self.assertIn("bash", settings)
+        self.assertIn("python", settings)
+        self.assertIn("node", settings)
+
+    def test_check_opencode_bool(self):
+        self.assertIsInstance(ad.check_opencode(), bool)
+
+    def test_check_merman_bool(self):
+        self.assertIsInstance(ad.check_merman(), bool)
+
+
+class TestCLIRuntimeOutput(unittest.TestCase):
+    def test_cli_reports_opencode(self):
+        result = _run()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("opencode:", result.stdout)
+
+    def test_cli_reports_merman(self):
+        result = _run()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("merman:", result.stdout)
+
+    def test_cli_reports_node(self):
+        result = _run()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("node:", result.stdout)
+
+    def test_cli_reports_python_path(self):
+        result = _run()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("Python:", result.stdout)
+
+    def test_cli_reports_docker(self):
+        result = _run()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("docker:", result.stdout)
+
+    def test_cli_reports_npm(self):
+        result = _run()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("npm:", result.stdout)
+
+    def test_cli_reports_docker_compose(self):
+        result = _run()
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("docker-compose:", result.stdout)
+
+
+class TestSettingsRuntimeKeys(unittest.TestCase):
+    def test_load_settings_has_all_keys(self):
+        settings = ad.load_settings()
+        expected = {"opencode", "merman", "git", "bash", "python", "node",
+                    "docker", "npm", "docker-compose"}
+        self.assertTrue(expected.issubset(set(settings.keys())),
+                        f"missing keys: {expected - set(settings.keys())}")
+
+
 class TestInventoryDbMissing(unittest.TestCase):
     def test_db_missing(self):
         tmp = tempfile.mkdtemp(prefix="autodiscovery-test-")

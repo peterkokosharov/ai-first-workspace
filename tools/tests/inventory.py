@@ -63,7 +63,7 @@ class TestInventory(unittest.TestCase):
         counts = self._counts(self.db)
         expected = {
             "machines": 2, "services": 5, "providers": 13, "keys": 14,
-            "models": 34, "tools": 6, "settings": 3,
+            "models": 56, "tools": 6, "settings": 3,
         }
         self.assertEqual(counts, expected)
 
