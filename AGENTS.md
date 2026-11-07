@@ -130,6 +130,12 @@ permission is required only for actions outside the scope of the task.
 question and asks. Ask only when the action or the "да" is missing, or when there is a
 real risk.
 
+6.7. Git operations on the local repository:
+- When the user says "git commit" or "git push", perform the local git operation
+  without discussion or additional confirmation.
+- When the user says "git push remote", first clarify which remote and branch,
+  then ask for explicit confirmation ("да") before pushing.
+
 ## Rule 7 — Auto-discovery procedure
 
 7.1. If a prompt needs ``secret.py`` or ``inventory.db`` and they are missing or
