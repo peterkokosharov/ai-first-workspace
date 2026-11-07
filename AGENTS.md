@@ -1,8 +1,7 @@
 # Project Rules
 
-This folder is self-contained and portable: archive it, move it, unpack it,
-work continues. The whole project lives here — nothing belongs outside except
-the coding agent program, `~/SECRETS`, and session history.
+Self-contained, portable folder: archive it, move it, unpack it, work continues.
+Nothing belongs outside except the coding agent program, `~/SECRETS`, and session history.
 
 ## Language
 
@@ -16,7 +15,7 @@ Tests:
 ```
 python3 -m unittest discover -s tools/tests -t . -v
 ```
-57 tests, all pass. One test is skipped unless `SECRET_LIVE_TESTS=1` (live DCOP write/read/delete on Q4OS).
+57 tests pass. One skipped unless `SECRET_LIVE_TESTS=1` (live DCOP on Q4OS).
 
 Inventory database (local, gitignored — recreate if missing):
 ```
@@ -29,19 +28,23 @@ Secret tool (stdlib only, no venv, no pip):
 ```
 python3 tools/secret.py setup
 python3 tools/secret.py probe
-python3 tools/secret.py --backend file set provider/scope/kind   # read value from prompt/stdin
+python3 tools/secret.py --backend file set provider/scope/kind
 python3 tools/secret.py get provider/scope/kind
 python3 tools/secret.py list
 ```
-Exit codes: 0 OK, 1 not found, 2 backend error, 3 usage error.
-`auto` never falls back to plaintext — use `--backend file` explicitly.
+Exit codes: 0 OK, 1 not found, 2 backend error, 3 usage error. `auto` never falls back to plaintext — use `--backend file` explicitly.
 
 Auto-discovery (run first on a new machine):
 ```
 python3 tools/autodiscovery.py
 ```
-Exit codes: 0 OK, 1 minimum not met (git + bash missing), 2 database missing,
-3 database empty.
+Exit codes: 0 OK, 1 minimum not met, 2 database missing, 3 database empty.
+
+Diagrams (Mermaid → SVG):
+```
+npx -y @mermaid-js/mermaid-cli -i doc/diagrams/<name>.mmd -o doc/diagrams/<name>.svg -t default -b white
+```
+Requires `node.js` + `npm`.
 
 ## Git
 
@@ -68,3 +71,14 @@ Wait for an explicit order before running commands, reading/writing files, or ch
 configuration. A sentence containing an action and "да" is the order and confirmation.
 Irreversible actions (deleting files/data, overwriting, `git push`, dropping a database)
 need a separate confirmation.
+
+## Requirements
+
+- Python 3.x (stdlib only; no venv, no pip)
+- git
+- node.js + npm — for `mermaid-cli` diagrams
+- One supported agent harness (OpenCode primary)
+
+## License
+
+`LICENSE` — MIT License, copyright 2026 Peter Kokosharov.
