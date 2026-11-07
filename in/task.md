@@ -12,6 +12,7 @@ You are asked to perform a read-only audit of this project folder
    - Technical requirements (UTF-8, fonts, stdlib only)
    - Working habits (read before change, no initiative without permission)
    - No action without explicit permission
+   - Git operation rules (Rule 6.7)
 
 2. `README.md` — does it describe what the project is and how to continue working?
    - Goals, repository layout, current components
@@ -43,7 +44,11 @@ You are asked to perform a read-only audit of this project folder
 
 7. `.gitignore` — does it exclude `data/inventory.db`, `__pycache__`, `.tmp/`?
 
-8. What is missing? What would you add or change?
+8. `proc/autodiscovery.md` — auto-discovery procedure (Rule 7 detail)
+
+9. `in/task.md` — this audit task file itself
+
+10. What is missing? What would you add or change?
 
 ## Output format
 
