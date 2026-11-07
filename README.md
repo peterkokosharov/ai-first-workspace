@@ -48,6 +48,7 @@ it with a coding agent → work continues, with no file left behind on the old m
 │       ├── test_inventory.py # unittest shim for discover
 │       └── test_autodiscovery.py # unittest shim for discover
 ├── .gitignore
+├── settings.json          # runtime paths for autodiscovery (git-tracked)
 └── .tmp/                  # temporary files, not versioned
 ```
 
@@ -68,15 +69,34 @@ it with a coding agent → work continues, with no file left behind on the old m
 - `tools/inventory.py` — manages the local SQLite inventory (`data/inventory.db`):
   `init`, `tables`, `list`, `show`, `search`, `sql` (read-only), `setting`.
 - `tools/autodiscovery.py` — discovers the local environment before running:
-  OS, processor, RAM, Python version, git, bash (Git Bash on Windows), presence of
-  `tools/secret.py` and `tools/inventory.py`, and whether `data/inventory.db`
-  exists and has tables. Exit codes: 0 OK, 1 minimum not met, 2 database missing,
-  3 database empty.
+  OS, processor, RAM, Python version, git, bash, python, node, docker,
+  npm, docker-compose, opencode, merman, presence of tools, and inventory db.
+  Reads runtime paths from `settings.json`. Exit codes: 0 OK, 1 minimum not met,
+  2 database missing, 3 database empty.
+- `tools/ping_direct.py` — pings LLM providers directly via HTTP (gemini, nvidia,
+  deepseek, mistral) using keys from KWallet.
+- `tools/setup_providers.py` — configures OpenCode providers from KWallet keys.
+- `tools/robota.py` — scrapes build.nvidia.com/models for free-endpoint models
+  into `kb/md/` and `kb/html/`.
+- `tools/gen_models_xml.py` — generates `kb/models.xml` from the scraped index.
 - `tools/tests/` — functional tests (not `assertEquals(1,1)`). Run:
   `python3 -m unittest discover -s tools/tests -t . -v`.
   Live DCOP write/read/delete runs only with `SECRET_LIVE_TESTS=1`.
 - `proc/autodiscovery.md` — expanded form of Rule 7 in `AGENTS.md`; describes the
   terminal procedure when `secret.py` or `inventory.db` are missing or unusable.
+
+## Running Services — Model Providers
+
+| Service | Port | Description | Models |
+|---------|------|-------------|--------|
+| `kiko-proxy` | `4000` | Anthropic-compatible proxy (kiko-lite) | Anthropic-compatible |
+| `litellm` | `8000` | LiteLLM proxy over multiple providers | nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder |
+
+Systemd user services:
+- `kiko-proxy.service` — `systemctl --user status kiko-proxy`
+- `litellm.service` — `systemctl --user status litellm`
+
+API keys are stored in `~/.litellm/env` (never in git) and loaded from `~/.kiko/.env` / KWallet via `tools/secret.py`.
 
 ## Secrets
 
@@ -104,7 +124,7 @@ manually (`isOpen kdewallet` must return `true`). Live DCOP tests are skipped un
 This project is developed and tested on **OpenCode**. All commands, tests, and
 workflows in this README are verified on OpenCode first:
 
-- `python3 -m unittest discover -s tools/tests -t . -v` — all 57 tests pass
+- `python3 -m unittest discover -s tools/tests -t . -v` — all 69 tests pass
 - `python3 tools/secret.py` — secret tool over native stores
 - `python3 tools/inventory.py` — SQLite inventory manager
 - `python3 tools/autodiscovery.py` — machine discovery
@@ -139,6 +159,31 @@ No local LLM is used: on the available hardware it is too slow to be practical.
 6. Verify: `python3 tools/secret.py setup` and `python3 tools/secret.py probe`.
 7. Run tests: `python3 -m unittest discover -s tools/tests -t . -v`.
 8. Start a session with any available harness.
+
+## Service Status Example
+
+```text
+systemctl --user status kiko-proxy.service litellm.service
+
+● kiko-proxy.service — kiko-proxy: Anthropic API proxy server (kiko-lite)
+     Active: active (running) — http://127.0.0.1:4000
+
+● litellm.service — LiteLLM Proxy
+     Active: active (running) — http://127.0.0.1:8000
+```
+
+```text
+curl -s http://127.0.0.1:8000/v1/models
+{"data":[
+  {"id":"nvidia/nemotron-ultra","object":"model"},
+  {"id":"nvidia/nemotron-super","object":"model"},
+  {"id":"gemini/gemini-flash","object":"model"},
+  {"id":"gemini/gemini-flash-lite","object":"model"},
+  {"id":"anthropic/claude-sonnet","object":"model"},
+  {"id":"groq/llama","object":"model"},
+  {"id":"qwen/qwen-coder","object":"model"}
+]}
+```
 
 ## Language
 

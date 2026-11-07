@@ -185,7 +185,17 @@
 
 <div class="note"><strong>OpenCode Desktop notes:</strong> GUI приложение с ляв терминал и десен чат. Chat-а е на български кирилица, project record-овете са на английски. Тайните стойности никога не се отпечатват — <code>list</code> и <code>probe</code> показват само key path-ове. KWallet/DCOP портфейлът на Q4OS трябва да е отворен веднъж ръчно преди <code>secret.py</code> да го може да използва.</div>
 
-<h2>7. What Is Missing / Recommendations</h2>
+<h2>7. Running Services — Model Providers</h2>
+<table>
+  <tr><th>Service</th><th>Port</th><th>Description</th><th>Models</th></tr>
+  <tr><td><code>kiko-proxy.service</code></td><td>4000</td><td>Anthropic-compatible proxy (kiko-lite)</td><td>Anthropic-compatible</td></tr>
+  <tr><td><code>litellm.service</code></td><td>8000</td><td>LiteLLM proxy over multiple providers</td><td>nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder</td></tr>
+</table>
+<pre>systemctl --user status kiko-proxy.service litellm.service</pre>
+<pre>curl -s http://127.0.0.1:8000/v1/models</pre>
+<p>API keys are stored in <code>~/.litellm/env</code> (never in git) and loaded from <code>~/.kiko/.env</code> / KWallet via <code>tools/secret.py</code>.</p>
+
+<h2>8. What Is Missing / Recommendations</h2>
 <ul>
   <li><strong>OpenCode provider configuration:</strong> Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use <code>tools/setup_providers.py</code> to add them with keys from KWallet.</li>
   <li><strong>Live DCOP test:</strong> Run <code>SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v</code> after opening the KWallet.</li>
