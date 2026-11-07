@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Architecture — Portable Development Workspace</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
+  h1, h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; }
+  .diagram-container { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; overflow: auto; }
+  .mermaid { display: flex; justify-content: center; }
+  .note { background: #e7f3ff; border-left: 4px solid #3498db; padding: 12px; margin: 1rem 0; font-size: 0.95em; }
+  .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 1rem 0; font-size: 0.95em; }
+  code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+  pre { background: #f4f4f4; padding: 1rem; border-radius: 4px; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  th { background: #3498db; color: white; }
+  .desktop-mockup { border: 2px solid #333; border-radius: 10px; padding: 20px; background: #1a1a2e; color: #eee; max-width: 700px; margin: 2rem auto; }
+  .desktop-window { background: #2d2d44; border: 1px solid #555; border-radius: 6px; margin: 10px 0; padding: 15px; }
+  .desktop-title-bar { background: #4a4a6a; padding: 8px 15px; border-radius: 6px 6px 0 0; font-weight: bold; }
+  .desktop-content { padding: 15px; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1e1e1e; color: #eee; }
+    .diagram-container { background: #2a2a2a; border-color: #444; }
+    .note { background: #2a3a4a; }
+    code { background: #333; }
+    pre { background: #333; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Project Architecture — Portable Development Workspace</h1>
+
+<p class="note"><strong>Status:</strong> v5 — tooling implemented and tested. Self-contained, portable folder for AI-assisted software development.</p>
+
+<h2>1. Repository Layout</h2>
+<pre>
+./
+├── AGENTS.md              # project rules (single source of truth)
+├── README.md              # entry point, how to continue on another machine
+├── doc/
+│   └── architekture.html  # this file — architecture & UML diagrams
+├── lib/
+│   └── kikolib/           # vendored stdlib keystore + factory (MIT)
+├── data/
+│   ├── schema.sql         # committed SQLite schema
+│   ├── seed.sql           # committed initial inventory data
+│   └── inventory.db       # local only, gitignored
+├── proc/
+│   ├── autodiscovery.md   # Rule 7 terminal procedure
+│   └── htmlcreate.md      # Mermaid HTML documentation procedure
+├── tools/
+│   ├── __init__.py
+│   ├── secret.py          # portable secret tool over native stores
+│   ├── inventory.py       # SQLite inventory manager
+│   ├── autodiscovery.py   # machine discovery (OS, RAM, git, bash, db)
+│   ├── ping.py            # model ping via OpenCode
+│   ├── ping_direct.py     # direct HTTP ping to providers (KWallet keys)
+│   ├── setup_providers.py # configure OpenCode providers from KWallet
+│   └── tests/             # functional tests (57 tests, all pass)
+│       ├── __init__.py
+│       ├── secret.py
+│       ├── inventory.py
+│       ├── autodiscovery.py
+│       ├── test_secret.py
+│       ├── test_inventory.py
+│       └── test_autodiscovery.py
+├── in/
+│   └── task.md            # audit task for external models
+├── out/                   # audit reports from external models (gitignored)
+├── .tmp/                  # temporary files, not versioned
+└── .gitignore
+</pre>
+
+<h2>2. Architecture Diagram — Component Interaction</h2>
+<div class="diagram-container">
+<div class="mermaid" id="arch-overview">
+flowchart TB
+    User((User / Agent)) -->|Bulgarian chat| AGENTS[AGENTS.md rules]
+    User -->|commands| Secret[tools/secret.py]
+    User -->|inventory| Inv[tools/inventory.py]
+    User -->|discovery| Auto[tools/autodiscovery.py]
+    User -->|ping models| Ping[tools/ping.py]
+    User -->|direct HTTP| PingD[tools/ping_direct.py]
+    
+    Secret -->|native store| KWallet[(KWallet / DCOP)]
+    Secret -->|native store| WCM[(Windows Credential Manager)]
+    Secret -->|native store| KC[(macOS Keychain)]
+    Secret -->|native store| ST[secret-tool]
+    Secret -->|export file| SECRETS[(~/SECRETS temp)]
+    
+    Inv -->|SQLite| DB[(data/inventory.db)]
+    Auto -->|checks| DB
+    Auto -->|checks| OS[OS / RAM / Python / git / bash]
+    
+    Ping -->|OpenCode| OC[OpenCode CLI]
+    PingD -->|HTTP API| Providers[(Providers: Gemini, NVIDIA, Groq, Mistral, ...)]
+    
+    Lib[lib/kikolib] -->|factory| Secret
+    Lib[lib/kikolib] -->|keystore| Secret
+    Lib -->|factory| Inv
+    
+    style User fill:#e1f5fe,stroke:#01579b
+    style DB fill:#fff3e0,stroke:#e65100
+    style SECRETS fill:#ffebee,stroke:#c62828
+</div>
+</div>
+
+<h2>3. Secret Tool Flow</h2>
+<div class="diagram-container">
+<div class="mermaid" id="secret-flow">
+sequenceDiagram
+    participant U as User/Agent
+    participant S as secret.py
+    participant K as kikolib.factory
+    participant N as Native Store
+    participant DB as inventory.db
+
+    U->>S: set provider/scope/kind (stdin value)
+    S->>K: choose backend (auto/file/wcm/keychain/secret-tool/kwallet/dcop)
+    K-->>S: selected backend
+    alt backend == file
+        S->>SECRETS: write KEY_PATH | value (atomic, mode 600)
+    else backend == dcop
+        S->>N: dcop kded tdewalletd open kdewallet
+        N-->>S: handle
+        S->>N: writePassword(handle, Passwords, key, value)
+        N-->>S: 0 (success)
+        S->>N: close(handle)
+    end
+    S-->>U: OK / error code
+    S->>DB: optional: record key path in inventory
+</div>
+</div>
+
+<h2>4. Inventory Database Schema</h2>
+<div class="diagram-container">
+<div class="mermaid" id="db-schema">
+erDiagram
+    machines ||--o{ tools : "hosts"
+    services ||--o{ keys : "owns"
+    providers ||--o{ keys : "owns"
+    providers ||--o{ models : "provides"
+    keys ||--o{ models : "secures"
+    
+    machines {
+        int id PK
+        text name
+        text os
+        text python
+        text status
+    }
+    
+    services {
+        int id PK
+        text name
+        text kind
+        text account
+    }
+    
+    providers {
+        int id PK
+        text name
+        int free_tier
+        text status
+    }
+    
+    keys {
+        int id PK
+        text path
+        int service_id FK
+        int provider_id FK
+        text kind
+        text status
+    }
+    
+    models {
+        int id PK
+        text alias
+        text model_id
+        int provider_id FK
+        int key_id FK
+        text tier
+        text status
+    }
+    
+    tools {
+        int id PK
+        text name
+        int machine_id FK
+        text status
+    }
+    
+    settings {
+        text key PK
+        text value
+    }
+</div>
+</div>
+
+<h2>5. Auto-Discovery Procedure (Rule 7)</h2>
+<div class="diagram-container">
+<div class="mermaid" id="autodiscovery">
+flowchart TD
+    Start([New machine / missing secret.py or inventory.db])
+    --> AD[python3 tools/autodiscovery.py]
+    AD --> CheckOS{OS, RAM, processor, Python version}
+    CheckOS --> CheckGit{git installed?}
+    CheckGit --> CheckBash{bash / Git Bash on Windows?}
+    CheckBash --> MinimumMet{Minimum met?}
+    MinimumMet -->|No| Install[Install git / bash]
+    MinimumMet -->|Yes| CheckDB{data/inventory.db exists?}
+    CheckDB -->|No| Init[python3 tools/inventory.py init]
+    CheckDB -->|Yes| HasTables{has tables?}
+    HasTables -->|No| Init
+    HasTables -->|Yes| Ready[Ready to work]
+    Install --> CheckBash
+    Init --> Ready
+    
+    style Start fill:#e1f5fe
+    style Ready fill:#d4edda
+    style Install fill:#fff3cd
+</div>
+</div>
+
+<h2>6. OpenCode Desktop — Visual Concept</h2>
+<p>The OpenCode desktop is imagined as a terminal-centric workspace with the AI agent running in a split-pane console. Below is a conceptual layout:</p>
+
+<div class="desktop-mockup">
+  <div class="desktop-title-bar">OpenCode — Portable Workspace (Q4OS/TDE)</div>
+  <div class="desktop-content">
+    <div class="desktop-window">
+      <div class="desktop-title-bar">Terminal — ~/Documents/Default Project</div>
+      <div class="desktop-content">
+        <code>&gt; python3 tools/autodiscovery.py</code><br>
+        OS: Linux 6.12 Q4OS (TDE)<br>
+        Processor: x86_64 | RAM: 7767 MB<br>
+        Python: 3.13.5 | git: yes | bash: yes<br>
+        Minimum met: git bash + Python stdlib<br>
+        tools/secret.py: present<br>
+        tools/inventory.py: present<br>
+        data/inventory.db: exists<br>
+      </div>
+    </div>
+    <div class="desktop-window">
+      <div class="desktop-title-bar">Terminal — Secret Tool</div>
+      <div class="desktop-content">
+        <code>&gt; python3 tools/secret.py --backend dcop list</code><br>
+        github/personal/token<br>
+        gemini/personal/api_key<br>
+        nvidia/personal/api_key<br>
+        groq/personal/api_key<br>
+        <code>&gt; python3 tools/secret.py get gemini/personal/api_key</code><br>
+        [value hidden — never printed]<br>
+        <code>set gemini/personal/api_key</code><br>
+        Value for gemini/personal/api_key: ••••••••<br>
+        Repeat: ••••••••<br>
+        set gemini/personal/api_key
+      </div>
+    </div>
+    <div class="desktop-window">
+      <div class="desktop-title-bar">Terminal — Tests</div>
+      <div class="desktop-content">
+        <code>&gt; python3 -m unittest discover -s tools/tests -t . -v</code><br>
+        Ran 57 tests in 6.7s<br>
+        OK (skipped=1)<br>
+        <span style="color:#4caf50;">✓ All functional tests pass</span>
+      </div>
+    </div>
+    <div class="desktop-window">
+      <div class="desktop-title-bar">Chat — Agent (Bulgarian Cyrillic)</div>
+      <div class="desktop-content">
+        <strong>User:</strong> zdr. suzdadem agents.md<br>
+        <strong>Agent:</strong> Разбирайки задачата, създавам AGENTS.md с правила за проекта...<br>
+        <strong>User:</strong> da, git push<br>
+        <strong>Agent:</strong> [push to remote — no discussion, per Rule 6.7]
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note"><strong>Desktop notes:</strong> The agent communicates in Bulgarian Cyrillic. All project records, code, and configuration are in English. Secret values are never printed — <code>list</code> and <code>probe</code> show only key paths. The wallet (KWallet/DCOP on Q4OS) must be opened once manually before <code>secret.py</code> can use it.</div>
+
+<h2>7. What Is Missing / Recommendations</h2>
+<ul>
+  <li><strong>OpenCode provider configuration:</strong> Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use <code>tools/setup_providers.py</code> to add them with keys from KWallet.</li>
+  <li><strong>Live DCOP test:</strong> Run <code>SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v</code> after opening the KWallet.</li>
+  <li><strong>External audit:</strong> Send <code>in/task.md</code> to external models (beam-free, flint-40b-free) and collect reports in <code>out/</code>.</li>
+  <li><strong>Git remote:</strong> No <code>origin</code> configured yet. Add remote and push when ready.</li>
+</ul>
+
+<script>
+mermaid.initialize({ startOnLoad: true, theme: 'default' });
+</script>
+</body>
+</html>
