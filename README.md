@@ -151,3 +151,7 @@ English. Communication with the assistant is in Bulgarian Cyrillic (chat languag
 - git
 - One supported agent harness, or the ability to install one
 - A native credential store, or the temporary export file as a fallback
+
+## License
+
+`LICENSE` — MIT License, copyright 2026 Peter Kokosharov.
