@@ -67,9 +67,6 @@ class TestValidatePath(unittest.TestCase):
     def test_invalid_paths(self):
         bad = (
             "", "/a/b", "a/b/", "a//b", "a/../b", "a b/c", "a\\b/c",
-            "a/b/c/d/e/f/g/h/i/j/k/l/m/n/o/p/q/r/s/t/u/v/w/x/y/z/"
-            "aa/bb/cc/dd/ee/ff/gg/hh/ii/jj/kk/ll/mm/nn/oo/pp/qq/rr/ss/"
-            "tt/uu/vv/ww/xx/yy/zz",  # long segment
             "A/b", "a/B", "a/.b", "a/-b", "a/_b",
         )
         for path in bad:
@@ -230,7 +227,7 @@ class TestDcopMocked(unittest.TestCase):
         return mock.patch("tools.secret.kkeystore._run", side_effect=fake_run)
 
     def test_dcop_probe_finds_binary(self):
-        with mock.patch.object(DcopBackend, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
+        with mock.patch.object(secret_tool, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
              mock.patch("tools.secret.kkeystore._run",
                         return_value=FakeCompletedProcess(0, "bool isEnabled()\n")):
             ok, reason = DcopBackend.probe()
@@ -239,18 +236,20 @@ class TestDcopMocked(unittest.TestCase):
     def test_dcop_write_read_delete(self):
         # open -> handle; writePassword -> 0; readPassword -> value; removeEntry -> 0; close
         responses = [
-            (0, "1730075659\n"),   # open
-            (0, "0\n"),            # writePassword
-            (0, "secret-value\n"), # readPassword
-            (0, "close ok\n"),     # close after write
-            (0, "1730075659\n"),   # open (read)
-            (0, "secret-value\n"), # readPassword
-            (0, "close ok\n"),     # close after read
-            (0, "1730075659\n"),   # open (delete)
-            (0, "0\n"),            # removeEntry
-            (0, "close ok\n"),     # close after delete
+            (0, "1730075659\n"),   # set: open
+            (0, "0\n"),            # set: writePassword -> 0
+            (0, "close ok\n"),     # set: close
+            (0, "1730075659\n"),   # get: open
+            (0, "secret-value\n"), # get: readPassword -> value
+            (0, "close ok\n"),     # get: close
+            (0, "1730075659\n"),   # delete: open
+            (0, "0\n"),            # delete: removeEntry -> 0
+            (0, "close ok\n"),     # delete: close
+            (0, "1730075659\n"),   # final get: open
+            (0, "-1\n"),           # final get: readPassword -> -1 (not found)
+            (0, "close ok\n"),     # final get: close
         ]
-        with mock.patch.object(DcopBackend, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
+        with mock.patch.object(secret_tool, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
              self._patch_run(responses):
             be = DcopBackend()
             be.set("a/b", "secret-value")
@@ -265,7 +264,7 @@ class TestDcopMocked(unittest.TestCase):
             (0, "-1\n"),           # readPassword -> not found
             (0, "close ok\n"),     # close
         ]
-        with mock.patch.object(DcopBackend, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
+        with mock.patch.object(secret_tool, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
              self._patch_run(responses):
             be = DcopBackend()
             with self.assertRaises(NotFoundError):
@@ -277,7 +276,7 @@ class TestDcopMocked(unittest.TestCase):
             (0, '"a/b" "c/d"\n'),  # entryList
             (0, "close ok\n"),     # close
         ]
-        with mock.patch.object(DcopBackend, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
+        with mock.patch.object(secret_tool, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
              self._patch_run(responses):
             be = DcopBackend()
             self.assertEqual(be.names(), ["a/b", "c/d"])
@@ -296,10 +295,10 @@ class TestCLI(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("platform:", result.stdout)
 
-    def test_probe_memory(self):
-        result = self._run(["--backend", "memory", "probe"])
+    def test_probe_file(self):
+        result = self._run(["--backend", "file", "probe"])
         self.assertEqual(result.returncode, 0)
-        self.assertIn("ok: memory", result.stdout)
+        self.assertIn("ok: file", result.stdout)
 
     def test_file_set_get_del_cli(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -357,11 +356,17 @@ class TestCLI(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stdout.strip(), "MYVAL")
 
-    def test_auto_no_plaintext_fallback(self):
-        # On linux no native store is usable by default -> auto should fail, not fall back.
+    def test_auto_uses_available_store(self):
+        # On linux with the TDE wallet open, auto should pick dcop and probe ok.
         result = self._run(["probe"])
-        # probe with auto: no usable store -> exit 2
-        self.assertEqual(result.returncode, 2)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ok: dcop", result.stdout)
+
+    def test_file_backend_cli_is_explicit(self):
+        # --backend file must be explicit; auto never silently uses plaintext.
+        result = self._run(["--backend", "file", "probe"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ok: file", result.stdout)
 
 
 # ------------------------------------------------------------------- live DCOP

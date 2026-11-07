@@ -38,7 +38,8 @@ EXIT_USAGE = 3
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
-DB = DATA / "inventory.db"
+DEFAULT_DB = DATA / "inventory.db"
+DB = Path(os.environ.get("INVENTORY_DB", str(DEFAULT_DB)))
 SCHEMA = DATA / "schema.sql"
 SEED = DATA / "seed.sql"
 
