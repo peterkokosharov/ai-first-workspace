@@ -132,15 +132,29 @@ real risk.
 
 ## Rule 7 — Auto-discovery procedure
 
-7.1. When a prompt refers to ``secret.py`` or ``inventory.db`` and neither is present
-or usable, run ``tools/autodiscovery.py`` first.
+7.1. If a prompt needs ``secret.py`` or ``inventory.db`` and they are missing or
+unusable, run the discovery script in the terminal before continuing.
 
-7.2. ``autodiscovery.py`` checks OS, RAM, processor, Python version, git, bash
-(Git Bash on Windows), and ``data/inventory.db``.
+7.2. Terminal procedure (run these exact commands):
 
-7.3. Minimum requirement: git bash + Python stdlib. GitHub token and email are
+   1. Open a terminal. On Windows, open **Git Bash**.
+   2. Run:
+
+      ``python3 tools/autodiscovery.py``
+
+   3. Read the output:
+      - If exit code is ``0`` and it says ``Minimum met``, proceed with the task.
+      - If exit code is ``1``, install the missing tool it reports (git or bash).
+      - If exit code is ``2``, the database is missing: run
+        ``python3 tools/inventory.py init`` then repeat step 2.
+      - If exit code is ``3``, the database is empty: run
+        ``python3 tools/inventory.py init`` then repeat step 2.
+
+7.3. ``autodiscovery.py`` checks: OS, processor, RAM, Python version, git,
+bash (Git Bash on Windows), ``tools/secret.py``, ``tools/inventory.py``, and
+whether ``data/inventory.db`` exists and has tables.
+
+7.4. Minimum requirement: git bash + Python stdlib. GitHub token and email are
 optional — you can work without them.
 
-7.4. If ``data/inventory.db`` is missing or empty, run
-``python3 tools/inventory.py init`` to create tables from ``data/schema.sql`` and
-``data/seed.sql``.
+7.5. Exit codes: 0 OK, 1 minimum not met, 2 database missing, 3 database empty.
