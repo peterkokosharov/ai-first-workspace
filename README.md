@@ -5,7 +5,7 @@ itself is the product: rules, inventory, tooling and configuration live here.
 It can be archived, moved to another machine, unpacked and continued without missing
 pieces.
 
-Status: **v2 — tooling implemented and tested**.
+Status: **v5 — tooling implemented and tested; auto-discovery added**.
 
 ## Goals
 
@@ -32,16 +32,21 @@ it with a coding agent → work continues, with no file left behind on the old m
 │   ├── schema.sql         # committed SQLite schema
 │   ├── seed.sql           # committed initial inventory data
 │   └── inventory.db       # local only, never committed (gitignored)
+├── proc/
+│   └── autodiscovery.md   # auto-discovery procedure (Rule 7 detail)
 ├── tools/
 │   ├── __init__.py
 │   ├── secret.py          # portable secret tool over native stores
 │   ├── inventory.py       # SQLite inventory manager
+│   ├── autodiscovery.py   # machine discovery: OS, RAM, Python, git, bash, db
 │   └── tests/             # functional tests
 │       ├── __init__.py
 │       ├── secret.py      # tests for tools/secret.py
 │       ├── inventory.py   # tests for tools/inventory.py
+│       ├── autodiscovery.py # tests for tools/autodiscovery.py
 │       ├── test_secret.py # unittest shim for discover
-│       └── test_inventory.py # unittest shim for discover
+│       ├── test_inventory.py # unittest shim for discover
+│       └── test_autodiscovery.py # unittest shim for discover
 ├── .gitignore
 └── .tmp/                  # temporary files, not versioned
 ```
@@ -49,9 +54,9 @@ it with a coding agent → work continues, with no file left behind on the old m
 ## Current components
 
 - `AGENTS.md` — the single source of project rules: language, records,
-  self-containment, technical requirements, working habits, and no action without
-  explicit confirmation. Project records are in English; chat with the assistant is in
-  Bulgarian Cyrillic.
+  self-containment, technical requirements, working habits, no action without
+  explicit confirmation, and git operation rules. Project records are in English;
+  chat with the assistant is in Bulgarian Cyrillic.
 - `lib/kikolib` — vendored copy of `~/kiko/packages/kikolib/kikolib` (MIT), providing
   `kikolib.factory` (backend registry/selection) and `kikolib.keystore` (native
   credential-store calls: WCM, Keychain, `secret-tool`, KWallet, TDE DCOP).
@@ -62,9 +67,16 @@ it with a coding agent → work continues, with no file left behind on the old m
   `auto` never falls back to plaintext; use `--backend file` explicitly.
 - `tools/inventory.py` — manages the local SQLite inventory (`data/inventory.db`):
   `init`, `tables`, `list`, `show`, `search`, `sql` (read-only), `setting`.
+- `tools/autodiscovery.py` — discovers the local environment before running:
+  OS, processor, RAM, Python version, git, bash (Git Bash on Windows), presence of
+  `tools/secret.py` and `tools/inventory.py`, and whether `data/inventory.db`
+  exists and has tables. Exit codes: 0 OK, 1 minimum not met, 2 database missing,
+  3 database empty.
 - `tools/tests/` — functional tests (not `assertEquals(1,1)`). Run:
   `python3 -m unittest discover -s tools/tests -t . -v`.
   Live DCOP write/read/delete runs only with `SECRET_LIVE_TESTS=1`.
+- `proc/autodiscovery.md` — expanded form of Rule 7 in `AGENTS.md`; describes the
+  terminal procedure when `secret.py` or `inventory.db` are missing or unusable.
 
 ## Secrets
 
@@ -106,13 +118,14 @@ No local LLM is used: on the available hardware it is too slow to be practical.
 
 1. Clone the repository.
 2. Make sure Python 3 and git are available.
-3. Run `python3 tools/inventory.py init` to create `data/inventory.db`
+3. Run `python3 tools/autodiscovery.py` to verify the environment.
+4. Run `python3 tools/inventory.py init` to create `data/inventory.db`
    (from `data/schema.sql` + `data/seed.sql`).
-4. Populate the native credential store with the key paths from the inventory
+5. Populate the native credential store with the key paths from the inventory
    (`provider/scope/kind`).
-5. Verify: `python3 tools/secret.py setup` and `python3 tools/secret.py probe`.
-6. Run tests: `python3 -m unittest discover -s tools/tests -t . -v`.
-7. Start a session with any available harness.
+6. Verify: `python3 tools/secret.py setup` and `python3 tools/secret.py probe`.
+7. Run tests: `python3 -m unittest discover -s tools/tests -t . -v`.
+8. Start a session with any available harness.
 
 ## Language
 
