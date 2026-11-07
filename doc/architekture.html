@@ -227,62 +227,58 @@ flowchart TD
 </div>
 
 <h2>6. OpenCode Desktop — Visual Concept</h2>
-<p>The OpenCode desktop is imagined as a terminal-centric workspace with the AI agent running in a split-pane console. Below is a conceptual layout:</p>
+<p>OpenCode е терминална TUI (Terminal User Interface) приложение — целият интерфейс се вижда в един терминал прозорец, без разделни GUI прозорци. Ето концептуален изглед:</p>
 
 <div class="desktop-mockup">
-  <div class="desktop-title-bar">OpenCode — Portable Workspace (Q4OS/TDE)</div>
+  <div class="desktop-title-bar">konsole — petark@petar-hpprobook: ~/Documents/Default Project</div>
   <div class="desktop-content">
-    <div class="desktop-window">
-      <div class="desktop-title-bar">Terminal — ~/Documents/Default Project</div>
-      <div class="desktop-content">
-        <code>&gt; python3 tools/autodiscovery.py</code><br>
-        OS: Linux 6.12 Q4OS (TDE)<br>
-        Processor: x86_64 | RAM: 7767 MB<br>
-        Python: 3.13.5 | git: yes | bash: yes<br>
-        Minimum met: git bash + Python stdlib<br>
-        tools/secret.py: present<br>
-        tools/inventory.py: present<br>
-        data/inventory.db: exists<br>
-      </div>
-    </div>
-    <div class="desktop-window">
-      <div class="desktop-title-bar">Terminal — Secret Tool</div>
-      <div class="desktop-content">
-        <code>&gt; python3 tools/secret.py --backend dcop list</code><br>
-        github/personal/token<br>
-        gemini/personal/api_key<br>
-        nvidia/personal/api_key<br>
-        groq/personal/api_key<br>
-        <code>&gt; python3 tools/secret.py get gemini/personal/api_key</code><br>
-        [value hidden — never printed]<br>
-        <code>set gemini/personal/api_key</code><br>
-        Value for gemini/personal/api_key: ••••••••<br>
-        Repeat: ••••••••<br>
-        set gemini/personal/api_key
-      </div>
-    </div>
-    <div class="desktop-window">
-      <div class="desktop-title-bar">Terminal — Tests</div>
-      <div class="desktop-content">
-        <code>&gt; python3 -m unittest discover -s tools/tests -t . -v</code><br>
-        Ran 57 tests in 6.7s<br>
-        OK (skipped=1)<br>
-        <span style="color:#4caf50;">✓ All functional tests pass</span>
-      </div>
-    </div>
-    <div class="desktop-window">
-      <div class="desktop-title-bar">Chat — Agent (Bulgarian Cyrillic)</div>
-      <div class="desktop-content">
-        <strong>User:</strong> zdr. suzdadem agents.md<br>
-        <strong>Agent:</strong> Разбирайки задачата, създавам AGENTS.md с правила за проекта...<br>
-        <strong>User:</strong> da, git push<br>
-        <strong>Agent:</strong> [push to remote — no discussion, per Rule 6.7]
-      </div>
-    </div>
+<pre style="font-size: 0.9em; line-height: 1.4;">
+ petark@petar-hpprobook: ~/Documents/Default Project$ opencode
+ ─────────────────────────────────────────────────────────────────────
+  OpenCode v2 — Portable Workspace (Q4OS/TDE)
+ ─────────────────────────────────────────────────────────────────────
+ 
+  > zdr. suzdadem agents.md
+ 
+  █  Разбирайки задачата, създавам AGENTS.md с правила за проекта...
+  █  Правила: език, записи, самодостатъчност, технически изисквания,
+  █  работни навици, без инициатива без разрешение.
+  █
+  █  Git операции: lokalen commit/push без дискусия.
+  █  git push remote изисква изрично „да“.
+  █
+  █  Създавам AGENTS.md...
+  █  [done] AGENTS.md written (126 lines)
+ 
+  ─────────────────────────────────────────────────────────────────────
+  > python3 tools/autodiscovery.py
+ 
+  █  === Portable workspace auto-discovery ===
+  █  OS: Linux 6.12 Q4OS (TDE)
+  █  Processor: x86_64 | RAM: 7767 MB
+  █  Python: 3.13.5 | git: yes | bash: yes
+  █  Minimum met: git bash + Python stdlib are present.
+  █  tools/secret.py: present
+  █  tools/inventory.py: present
+  █  data/inventory.db: exists
+  █
+  █  Notes: GitHub token and email are OPTIONAL.
+  █  auto never falls back to plaintext.
+ 
+  ─────────────────────────────────────────────────────────────────────
+  > python3 -m unittest discover -s tools/tests -t . -v
+ 
+  █  Ran 57 tests in 6.7s
+  █  OK (skipped=1)
+  █  [31m✓[0m All functional tests pass
+ 
+  ─────────────────────────────────────────────────────────────────────
+  █  Waiting for your command...
+</pre>
   </div>
 </div>
 
-<div class="note"><strong>Desktop notes:</strong> The agent communicates in Bulgarian Cyrillic. All project records, code, and configuration are in English. Secret values are never printed — <code>list</code> and <code>probe</code> show only key paths. The wallet (KWallet/DCOP on Q4OS) must be opened once manually before <code>secret.py</code> can use it.</div>
+<div class="note"><strong>OpenCode десктоп notes:</strong> Целият интерфейс е в един терминал прозорец (TUI). Chat-а е на български кирилица, project record-овете са на английски. Тайните стойности никога не се отпечатват — <code>list</code> и <code>probe</code> показват само key path-ове. KWallet/DCOP портфейлът на Q4OS трябва да е отворен веднъж ръчно преди <code>secret.py</code> да го може да използва.</div>
 
 <h2>7. What Is Missing / Recommendations</h2>
 <ul>
