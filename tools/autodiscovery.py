@@ -202,6 +202,26 @@ def main(argv: list[str] | None = None) -> int:
     def docker_compose_path() -> bool:
         return shutil.which(docker_compose_name) is not None
 
+    def check_secret_store() -> bool:
+        """Check whether any native secret store is usable via tools/secret.py.
+
+        Runs ``secret.py probe`` and reports True if at least one backend answers ok.
+        Does not print secret values.
+        """
+        import subprocess
+        import sys as _sys
+
+        try:
+            result = subprocess.run(
+                [_sys.executable, str(SECRET_TOOL), "probe"],
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+        except (subprocess.SubprocessError, OSError):
+            return False
+        return result.returncode == 0
+
     print("=== Portable workspace auto-discovery ===")
     print(f"OS:        {check_os()}")
     print(f"Processor: {check_processor()}")
@@ -236,6 +256,7 @@ def main(argv: list[str] | None = None) -> int:
     print()
     print(f"tools/secret.py:     {'present' if SECRET_TOOL.is_file() else 'MISSING'}")
     print(f"tools/inventory.py:  {'present' if INVENTORY_TOOL.is_file() else 'MISSING'}")
+    print(f"secret store:        {'ok' if check_secret_store() else 'no usable store'}")
 
     db_exists, db_has_tables = check_inventory_db()
     print(f"data/inventory.db:   {'exists' if db_exists else 'MISSING'}")
