@@ -58,7 +58,7 @@ Status: **v5** — tooling implemented and tested. Self-contained, portable fold
 │       ├── test_inventory.py
 │       └── test_autodiscovery.py
 ├── in/                    # empty (task.md removed from tracking)
-├── out/                   # audit reports from external models (gitignored)
+├── out/                   # audit reports from external models
 ├── .tmp/                  # temporary files, not versioned
 └── .gitignore
 ```
