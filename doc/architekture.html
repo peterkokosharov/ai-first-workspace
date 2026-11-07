@@ -41,9 +41,31 @@
 ├── AGENTS.md              # project rules (single source of truth)
 ├── README.md              # entry point, how to continue on another machine
 ├── doc/
-│   └── architekture.html  # this file — architecture & UML diagrams
+│   ├── architekture.html  # this file — architecture & UML diagrams
+│   └── diagrams/
+│       ├── arch-overview.mmd   # Mermaid source
+│       ├── arch-overview.svg   # rendered SVG
+│       ├── secret-flow.mmd
+│       ├── secret-flow.svg
+│       ├── db-schema.mmd
+│       ├── db-schema.svg
+│       ├── autodiscovery.mmd
+│       └── autodiscovery.svg
 ├── lib/
-│   └── kikolib/           # vendored stdlib keystore + factory (MIT)
+│   ├── README.md              # vendored kikolib provenance & license
+│   └── kikolib/               # vendored stdlib keystore + factory (MIT)
+│       ├── __init__.py
+│       ├── dotenv.py
+│       ├── factory.py
+│       ├── http_client.py
+│       ├── keystore.py
+│       ├── native_utils.py
+│       ├── posix_utils.py
+│       ├── retry.py
+│       ├── server.py
+│       ├── sse.py
+│       ├── tokens.py
+│       └── yaml_lite.py
 ├── data/
 │   ├── schema.sql         # committed SQLite schema
 │   ├── seed.sql           # committed initial inventory data
