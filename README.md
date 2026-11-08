@@ -132,6 +132,22 @@ workflows in this README are verified on OpenCode first:
 OpenCode is the primary harness for this project. Other harnesses (Claude Code,
 Codex CLI, Gemini CLI, Rex) are supported but secondary.
 
+## Claude Code
+
+Claude Code works with this workspace via `~/test-env/run-claude.sh`, which routes
+through `litellm` on `http://127.0.0.1:8000/v1` using the `nvidia/nemotron-ultra`
+model.
+
+To use:
+
+```bash
+cd ~/test-env
+./run-claude.sh
+```
+
+Claude Code reads `AGENTS.md` from the working directory automatically and follows
+the project rules (language, no-initiative, secrets, git).
+
 ## Harness independence
 
 The same project must work with different agent harnesses. Fallback order:
