@@ -49,6 +49,8 @@ Requires `node.js` + `npm`.
 
 - `git commit` / `git push` locally: perform without discussion.
 - `git push remote`: clarify remote and branch first, then ask for explicit confirmation ("да").
+  - Git will ask for username (`peterkokosharov`) and password — enter your GitHub **Personal Access Token** (not your login password). Create it at GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens.
+  - To avoid typing the token every time, run once: `git config --global credential.helper store`
 - `data/inventory.db` is gitignored — never commit it.
 
 ## Secrets
