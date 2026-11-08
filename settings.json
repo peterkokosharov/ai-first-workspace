@@ -11,6 +11,6 @@
     "docker-compose": "docker-compose"
   },
   "remote": {
-    "origin": "https://github.com/peterkokosharov/ai-first-workspace.git"
+    "origin": "https://github.com/<your-username>/ai-first-workspace.git"
   }
 }

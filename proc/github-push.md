@@ -1,45 +1,76 @@
-# Push to GitHub
+# Push to GitHub — exact procedure
 
-This project is hosted at the remote URL defined in `settings.json`:
+This project travels as a self-contained folder. When you clone it, the remote
+origin points to `https://github.com/peterkokosharov/ai-first-workspace.git`.
+You must change it to **your own GitHub username** before you can push.
+
+## Step 0 — Prepare
+
+```bash
+cd /home/petark/Documents/Default Project
+```
+
+Make sure you have committed locally:
+
+```bash
+git status
+```
+
+If there are modified files, commit them first:
+
+```bash
+git add .
+git commit -m "your commit message"
+```
+
+## Step 1 — Change the remote URL to yours
+
+The remote URL is stored in `settings.json`:
 
 ```json
 {
   "remote": {
-    "origin": "https://github.com/peterkokosharov/ai-first-workspace.git"
+    "origin": "https://github.com/<your-username>/ai-first-workspace.git"
   }
 }
 ```
 
-Before you can push, you need a GitHub **Personal Access Token (PAT)** with `repo` scope:
+Change `<your-username>` to your GitHub username:
 
-1. Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained personal access tokens
-2. Create a new token with `repo` scope
-3. Copy it — you won't see it again
+```bash
+git remote set-url origin https://github.com/YOUR_USERNAME/ai-first-workspace.git
+```
 
-## Store the token
+Confirm:
 
-The key path `github/personal/token` must exist in the inventory database and in your OS native credential store:
+```bash
+git remote -v
+```
+
+## Step 2 — Store your secret key (Personal Access Token)
+
+The key path `github/personal/token` must exist in the inventory database:
 
 ```bash
 python3 tools/inventory.py init          # create database if missing
 python3 tools/secret.py --backend auto set github/personal/token
 ```
 
-Enter your PAT when prompted. It will be stored in your OS native credential store (Keychain, secret-tool, KWallet, TDE DCOP).
+Enter your PAT when prompted. It will be stored in your OS native credential store
+(Keychain, secret-tool, KWallet, TDE DCOP on Q4OS).
 
-## Push
+## Step 3 — Push
 
 ```bash
-git add .
-git commit -m "your commit message"
 git push origin main
 ```
 
 Git will ask for:
-- **Username:** `peterkokosharov` (or your GitHub username)
-- **Password:** your **Personal Access Token** (not your GitHub login password)
 
-## Never type the token again
+- **username:** your GitHub username (e.g. `peterkokosharov`)
+- **password:** your Personal Access Token — **not** your GitHub login password
+
+## Step 4 — Remember the token (optional)
 
 Run once:
 
@@ -53,31 +84,11 @@ After the first successful push, Git will cache the token locally.
 
 Never write a PAT into any project file. `data/inventory.db` is gitignored and never committed.
 
-## Change the remote URL
-
-If you fork this project and push to your own GitHub account:
-
-```bash
-git remote set-url origin https://github.com/your-username/ai-first-workspace.git
-```
-
-And update `settings.json`:
-
-```json
-{
-  "remote": {
-    "origin": "https://github.com/your-username/ai-first-workspace.git"
-  }
-}
-```
-
-Replace `your-username` with your GitHub username.
-
 ## New machine setup
 
-1. `git clone https://github.com/peterkokosharov/ai-first-workspace.git`
+1. `git clone https://github.com/<your-username>/ai-first-workspace.git`
 2. `cd ai-first-workspace`
 3. `python3 tools/autodiscovery.py`
 4. `python3 tools/inventory.py init`
 5. `python3 tools/secret.py --backend auto set github/personal/token`
-6. `python3 tools/ping_direct.py nvidia nemotron-3-5-bolt-e4b "hi"` — optional test
+6. `git push origin main` — when you have changes to share
