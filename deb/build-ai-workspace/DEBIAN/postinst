@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -e
+echo "ai-workspace installed at /opt/ai-workspace/"
+echo "Tools available: secret.py, inventory.py, autodiscovery.py, ping_direct.py"
+echo ""
+echo "Quick start:"
+echo "  cd /opt/ai-workspace"
+echo "  python3 tools/inventory.py init"
+echo "  python3 tools/autodiscovery.py"
+echo ""

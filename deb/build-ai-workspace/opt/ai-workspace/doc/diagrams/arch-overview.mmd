@@ -1,0 +1,28 @@
+flowchart TB
+    User((User / Agent)) -->|Bulgarian chat| AGENTS[AGENTS.md rules]
+    User -->|commands| Secret[tools/secret.py]
+    User -->|inventory| Inv[tools/inventory.py]
+    User -->|discovery| Auto[tools/autodiscovery.py]
+    User -->|ping models| Ping[tools/ping.py]
+    User -->|direct HTTP| PingD[tools/ping_direct.py]
+    
+    Secret -->|native store| KWallet[(KWallet / DCOP)]
+    Secret -->|native store| WCM[(Windows Credential Manager)]
+    Secret -->|native store| KC[(macOS Keychain)]
+    Secret -->|native store| ST[secret-tool]
+    Secret -->|export file| SECRETS[(~/SECRETS temp)]
+    
+    Inv -->|SQLite| DB[(data/inventory.db)]
+    Auto -->|checks| DB
+    Auto -->|checks| OS[OS / RAM / Python / git / bash]
+    
+    Ping -->|OpenCode| OC[OpenCode CLI]
+    PingD -->|HTTP API| Providers[(Providers: Gemini, NVIDIA, Groq, Mistral, ...)]
+    
+    Lib[lib/kikolib] -->|factory| Secret
+    Lib[lib/kikolib] -->|keystore| Secret
+    Lib -->|factory| Inv
+    
+    style User fill:#e1f5fe,stroke:#01579b
+    style DB fill:#fff3e0,stroke:#e65100
+    style SECRETS fill:#ffebee,stroke:#c62828

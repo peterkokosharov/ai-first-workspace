@@ -1,0 +1,92 @@
+# kb/config.yaml — NVIDIA build.nvidia.com free-endpoint models
+# LiteLLM-compatible model list.
+# Verified working against https://integrate.api.nvidia.com/v1/chat/completions
+# Source: tools/robota.py scrape of https://build.nvidia.com/models (pages 1-5)
+#
+# IMPORTANT: no hardcoded API keys here.  Set NVIDIA_API_KEY in your environment
+# or KWallet (nvidia/personal/api_key) before using.
+
+model_list:
+  - model_name: mistral-large-4-1t-a52b
+    litellm_params:
+      model: openai/mistralai/mistral-large-4-1t-a52b
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: nemotron-3-5-bolt-e4b
+    litellm_params:
+      model: openai/nvidia/nemotron-3.5-bolt-e4b
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: nemotron-3-5-super-vl-120b-a12b
+    litellm_params:
+      model: openai/nvidia/nemotron-3.5-super-vl-120b-a12b
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: step-5-preview
+    litellm_params:
+      model: openai/stepfun-ai/step-5-preview
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: nemotron-parse-2.0
+    litellm_params:
+      model: openai/nvidia/nemotron-parse-2.0
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: nemotron-3-5-lightning-30b-a3b
+    litellm_params:
+      model: openai/nvidia/nemotron-3.5-lightning-30b-a3b
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: muse-glimmer-30b
+    litellm_params:
+      model: openai/meta/muse-glimmer-30b
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: riva-translate-4b-instruct-v2
+    litellm_params:
+      model: openai/nvidia/riva-translate-4b-instruct-v2
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: laguna-xs-2.1
+    litellm_params:
+      model: openai/poolside/laguna-xs-2.1
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: diffusiongemma-26b-a4b-it
+    litellm_params:
+      model: openai/google/diffusiongemma-26b-a4b-it
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: nemotron-3-nano-omni-30b-a3b-reasoning
+    litellm_params:
+      model: openai/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true
+
+  - model_name: llama-guard-4-12b
+    litellm_params:
+      model: openai/meta/llama-guard-4-12b
+      api_base: https://integrate.api.nvidia.com/v1
+      api_key: "$NVIDIA_API_KEY"
+      drop_params: true

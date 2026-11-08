@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Architecture — Portable Development Workspace</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
+  h1, h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; }
+  .diagram-container { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.5rem; margin: 1.5rem 0; overflow: auto; }
+
+  .note { background: #e7f3ff; border-left: 4px solid #3498db; padding: 12px; margin: 1rem 0; font-size: 0.95em; }
+  .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 1rem 0; font-size: 0.95em; }
+  code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+  pre { background: #f4f4f4; padding: 1rem; border-radius: 4px; overflow: auto; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+  th { background: #3498db; color: white; }
+  .desktop-mockup { border: 3px solid #222; border-radius: 12px; padding: 24px; background: #0f0f0f; color: #eee; max-width: 900px; margin: 2rem auto; }
+  .desktop-header { background: #1a1a1a; border-bottom: 2px solid #333; padding: 10px 16px; border-radius: 8px 8px 0 0; font-weight: bold; color: #fff; font-size: 1.1em; display: flex; align-items: center; gap: 12px; }
+  .desktop-body { display: flex; gap: 0; height: 420px; background: #000; border-radius: 0 0 8px 8px; overflow: hidden; border: 2px solid #333; border-top: none; }
+  .desktop-panel { flex: 1; border-right: 2px solid #333; display: flex; flex-direction: column; }
+  .desktop-panel:last-child { border-right: none; }
+  .desktop-panel-title { background: #2a2a2a; color: #aaa; padding: 8px 14px; font-size: 0.85em; font-weight: 600; border-bottom: 1px solid #333; }
+  .desktop-panel-content { flex: 1; padding: 16px; font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 0.9em; line-height: 1.5; overflow: auto; color: #d4d4d4; }
+  .cmd-prompt { color: #569cd6; font-weight: bold; }
+  .cmd-text { color: #dcdcaa; }
+  .agent-text { color: #ce9178; font-style: italic; }
+  .ok-text { color: #608b4e; font-weight: bold; }
+  .skipped-text { color: #d4d4d4; font-style: italic; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ff5f5f; margin-right: 6px; }
+  .dot.green { background: #4caf50; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1e1e1e; color: #eee; }
+    .diagram-container { background: #2a2a2a; border-color: #444; }
+    .note { background: #2a3a4a; }
+    code { background: #333; }
+    pre { background: #333; }
+  }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1e1e1e; color: #eee; }
+    .diagram-container { background: #2a2a2a; border-color: #444; }
+    .note { background: #2a3a4a; }
+    code { background: #333; }
+    pre { background: #333; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Project Architecture — Portable Development Workspace</h1>
+
+<p class="note"><strong>Status:</strong> v5 — tooling implemented and tested. Self-contained, portable folder for AI-assisted software development.</p>
+
+<h2>1. Repository Layout</h2>
+<pre>
+./
+├── AGENTS.md              # project rules (single source of truth)
+├── README.md              # entry point, how to continue on another machine
+├── LICENSE                # MIT License, copyright 2026 Peter Kokosharov
+├── doc/
+│   ├── architekture.html  # this file — architecture & UML diagrams
+│   └── diagrams/
+│       ├── arch-overview.mmd   # Mermaid source
+│       ├── arch-overview.svg   # rendered SVG
+│       ├── secret-flow.mmd
+│       ├── secret-flow.svg
+│       ├── db-schema.mmd
+│       ├── db-schema.svg
+│       ├── autodiscovery.mmd
+│       └── autodiscovery.svg
+├── lib/
+│   ├── README.md              # vendored kikolib provenance & license
+│   └── kikolib/               # vendored stdlib keystore + factory (MIT)
+│       ├── __init__.py
+│       ├── dotenv.py
+│       ├── factory.py
+│       ├── http_client.py
+│       ├── keystore.py
+│       ├── native_utils.py
+│       ├── posix_utils.py
+│       ├── retry.py
+│       ├── server.py
+│       ├── sse.py
+│       ├── tokens.py
+│       └── yaml_lite.py
+├── data/
+│   ├── schema.sql         # committed SQLite schema
+│   ├── seed.sql           # committed initial inventory data
+│   └── inventory.db       # local only, gitignored
+├── proc/
+│   ├── autodiscovery.md   # Rule 7 terminal procedure
+│   └── htmlcreate.md      # Mermaid HTML documentation procedure
+├── tools/
+│   ├── __init__.py
+│   ├── secret.py          # portable secret tool over native stores
+│   ├── inventory.py       # SQLite inventory manager
+│   ├── autodiscovery.py   # machine discovery (OS, RAM, git, bash, db)
+│   ├── ping.py            # model ping via OpenCode
+│   ├── ping_direct.py     # direct HTTP ping to providers (KWallet keys)
+│   ├── setup_providers.py # configure OpenCode providers from KWallet
+│   └── tests/             # functional tests (57 tests, all pass)
+│       ├── __init__.py
+│       ├── secret.py
+│       ├── inventory.py
+│       ├── autodiscovery.py
+│       ├── test_secret.py
+│       ├── test_inventory.py
+│       └── test_autodiscovery.py
+├── in/                    # empty (task.md removed from tracking)
+├── out/                   # audit reports from external models
+├── .tmp/                  # temporary files, not versioned
+└── .gitignore
+</pre>
+
+<h2>2. Architecture Diagram — Component Interaction</h2>
+<div class="diagram-container">
+<img src="diagrams/arch-overview.svg" alt="Architecture overview — component interaction" style="max-width: 100%; height: auto;">
+</div>
+
+<h2>3. Secret Tool Flow</h2>
+<div class="diagram-container">
+<img src="diagrams/secret-flow.svg" alt="Secret tool flow — set/get via kikolib.factory" style="max-width: 100%; height: auto;">
+</div>
+
+<h2>4. Inventory Database Schema</h2>
+<div class="diagram-container">
+<img src="diagrams/db-schema.svg" alt="Inventory database schema — ER diagram" style="max-width: 100%; height: auto;">
+</div>
+
+<h2>5. Auto-Discovery Procedure (Rule 7)</h2>
+<div class="diagram-container">
+<img src="diagrams/autodiscovery.svg" alt="Auto-discovery procedure — Rule 7 terminal flow" style="max-width: 100%; height: auto;">
+</div>
+
+<h2>6. OpenCode Desktop — Visual Concept</h2>
+<p>OpenCode Desktop е GUI приложение с дясно-ляво разделяне (split pane): ляво е терминал, дясно е чат с асистента. Ето концептуален изглед:</p>
+
+<div class="desktop-mockup">
+  <div class="desktop-header">
+    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    OpenCode — Portable Workspace (Q4OS/TDE)
+  </div>
+  <div class="desktop-body">
+    <div class="desktop-panel">
+      <div class="desktop-panel-title">Terminal — ~/Documents/Default Project</div>
+      <div class="desktop-panel-content">
+        <span class="cmd-prompt">petark@petar-hpprobook:</span><span class="cmd-text"> ~/Documents/Default Project$ opencode</span><br>
+        <br>
+        <span class="cmd-prompt">&gt; python3 tools/autodiscovery.py</span><br>
+        OS: Linux 6.12 Q4OS (TDE)<br>
+        Processor: x86_64 | RAM: 7767 MB<br>
+        Python: 3.13.5 | git: yes | bash: yes<br>
+        Minimum met: git bash + Python stdlib<br>
+        tools/secret.py: present<br>
+        tools/inventory.py: present<br>
+        data/inventory.db: exists<br>
+        <br>
+        <span class="cmd-prompt">&gt; python3 -m unittest discover -s tools/tests -t . -v</span><br>
+        Ran 57 tests in 6.7s<br>
+        <span class="ok-text">OK (skipped=1)</span> — All functional tests pass<br>
+        <br>
+        <span class="cmd-prompt">&gt; python3 tools/secret.py --backend dcop list</span><br>
+        github/personal/token<br>
+        gemini/personal/api_key<br>
+        nvidia/personal/api_key<br>
+        groq/personal/api_key<br>
+      </div>
+    </div>
+    <div class="desktop-panel">
+      <div class="desktop-panel-title">Chat — Agent</div>
+      <div class="desktop-panel-content">
+        <span class="cmd-text">User:</span> zdr. suzdadem agents.md<br>
+        <span class="agent-text">Agent:</span> Разбирайки задачата, създавам AGENTS.md с правила за проекта...<br>
+        <span class="cmd-text">User:</span> da, git push<br>
+        <span class="agent-text">Agent:</span> Git push изведнъж — lokalno commit, zatva push v remote samo s izris<|tool_call_arg_end|><|tool_call_arg_begin|>no "да".<br>
+        <span class="cmd-text">User:</span> secret.py set gemini/personal/api_key<br>
+        <span class="agent-text">Agent:</span> Value for gemini/personal/api_key: <span style="color:#608b4e;">••••••••</span><br>
+        Repeat: <span style="color:#608b4e;">••••••••</span><br>
+        set gemini/personal/api_key — done<br>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note"><strong>OpenCode Desktop notes:</strong> GUI приложение с ляв терминал и десен чат. Chat-а е на български кирилица, project record-овете са на английски. Тайните стойности никога не се отпечатват — <code>list</code> и <code>probe</code> показват само key path-ове. KWallet/DCOP портфейлът на Q4OS трябва да е отворен веднъж ръчно преди <code>secret.py</code> да го може да използва.</div>
+
+<h2>7. Running Services — Model Providers</h2>
+<table>
+  <tr><th>Service</th><th>Port</th><th>Description</th><th>Models</th></tr>
+  <tr><td><code>kiko-proxy.service</code></td><td>4000</td><td>Anthropic-compatible proxy (kiko-lite)</td><td>Anthropic-compatible</td></tr>
+  <tr><td><code>litellm.service</code></td><td>8000</td><td>LiteLLM proxy over multiple providers</td><td>nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder</td></tr>
+</table>
+<pre>systemctl --user status kiko-proxy.service litellm.service</pre>
+<pre>curl -s http://127.0.0.1:8000/v1/models</pre>
+<p>API keys are stored in <code>~/.litellm/env</code> (never in git) and loaded from <code>~/.kiko/.env</code> / KWallet via <code>tools/secret.py</code>.</p>
+
+<h2>8. AI Agent Client — Goose CLI</h2>
+<table>
+  <tr><th>Tool</th><th>Path</th><th>Description</th><th>Configured With</th></tr>
+  <tr><td><code>goose</code></td><td>/home/petark/test-env/bin/goose</td><td>Open-source AI agent CLI</td><td>Litellm → NVIDIA nemotron-ultra</td></tr>
+</table>
+<pre>Config file: ~/.configtde/goose/config.yaml</pre>
+<pre>provider: litellm</pre>
+<pre>litellm_host: http://127.0.0.1:8000</pre>
+<pre>litellm_api_key: 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</pre>
+<pre>litellm_model: nvidia/nemotron-ultra</pre>
+<pre>Test: echo "каков е planos-a?" | /home/petark/test-env/bin/goose run --text -</pre>
+<p>Goose reads <code>AGENTS.md</code> from the working directory automatically.</p>
+
+<h2>9. What Is Missing / Recommendations</h2>
+<ul>
+  <li><strong>OpenCode provider configuration:</strong> Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use <code>tools/setup_providers.py</code> to add them with keys from KWallet.</li>
+  <li><strong>Live DCOP test:</strong> Run <code>SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v</code> after opening the KWallet.</li>
+  <li><strong>External audit:</strong> Send <code>in/task.md</code> (local, not tracked) to external models (beam-free, flint-40b-free) and collect reports in <code>out/</code>.</li>
+  <li><strong>Git remote:</strong> No <code>origin</code> configured yet. Add remote and push when ready.</li>
+</ul>
+
+</body>
+</html>

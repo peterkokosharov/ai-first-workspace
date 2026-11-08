@@ -1,0 +1,10 @@
+# Temporary files — not in git
+.tmp/
+
+# Local inventory database — recreated by tools/inventory.py init
+data/inventory.db
+
+# Python cache
+__pycache__/
+*.pyc
+in/task.md
