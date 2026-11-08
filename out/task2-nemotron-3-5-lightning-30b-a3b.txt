@@ -1,5 +1,0 @@
-provider: nvidia
-endpoint: https://integrate.api.nvidia.com/v1/chat/completions
-status  : 200
-body    : {"id":"chatcmpl-5efee34f-701c-4219-b3fc-29c6c014969b","choices":[{"index":0,"message":{"content":null,"role":"assistant","reasoning_content":"Here's a thinking process:\n\n1.  **Analyze User Request:**\n   - User wants me to read the provided text (which is a project plan document)\n   - Answer 3 specific questions in Bulgarian:\n     1. What is the project's goal (in 1-2 sentences)?\n     2. What is the biggest risk according to me?\n     3. What would my first action plan be if I had to start 
-result: OK

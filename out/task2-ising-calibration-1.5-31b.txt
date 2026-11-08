@@ -1,5 +1,0 @@
-provider: nvidia
-endpoint: https://integrate.api.nvidia.com/v1/chat/completions
-status  : 200
-body    : {"id":"chatcmpl-a096861de17bd786","object":"chat.completion","created":1794083352,"model":"nvidia/ising-calibration-1.5-31b","choices":[{"index":0,"message":{"role":"assistant","content":"**Цел на проекта:** Да се модернизира и стабилизира съществуващата NW система чрез извличане на модули, премахване на мъртъв код, подобряване на тестовото покритие и актуализиране на документацията, без да се променя функционалността на приложението.\n\n**Най-важен риск:** Премахването на изглеждащ мъртъв код м
-result: OK

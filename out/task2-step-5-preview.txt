@@ -1,5 +1,0 @@
-provider: nvidia
-endpoint: https://integrate.api.nvidia.com/v1/chat/completions
-status  : 200
-body    : {"id":"8457a122260ea86b","choices":[{"index":0,"message":{"content":null,"refusal":null,"role":"assistant","reasoning_content":"The user wants me to read the provided plan (in English) and answer three questions in Bulgarian, briefly:\n1. What is the goal of the project (in 1-2 sentences)?\n2. What is the most important risk according to me?\n3. What would be my first action plan if I had to start this project tomorrow?\n\nThe plan is about refactoring, cleanup, QA and release of a legacy system
-result: OK
