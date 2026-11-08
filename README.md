@@ -160,6 +160,34 @@ No local LLM is used: on the available hardware it is too slow to be practical.
 7. Run tests: `python3 -m unittest discover -s tools/tests -t . -v`.
 8. Start a session with any available harness.
 
+## Running Services — Model Providers
+
+| Service | Port | Description | Models |
+|---------|------|-------------|--------|
+| `kiko-proxy` | `4000` | Anthropic-compatible proxy (kiko-lite) | Anthropic-compatible |
+| `litellm` | `8000` | LiteLLM proxy over multiple providers | nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder |
+
+Systemd user services:
+- `kiko-proxy.service` — `systemctl --user status kiko-proxy`
+- `litellm.service` — `systemctl --user status litellm`
+
+API keys are stored in `~/.litellm/env` (never in git) and loaded from `~/.kiko/.env` / KWallet via `tools/secret.py`.
+
+## AI Agent Clients — Goose CLI
+
+| Tool | Path | Description | Configured With |
+|------|------|-------------|-----------------|
+| `goose` | `/home/petark/test-env/bin/goose` | Open-source AI agent CLI | Litellm → NVIDIA nemotron-ultra |
+
+Config file: `~/.configtde/goose/secrets.yaml`
+
+Test session:
+```bash
+echo "каков е planos-a?" | /home/petark/test-env/bin/goose run --text -
+```
+
+Goose reads `AGENTS.md` from the working directory automatically.
+
 ## Service Status Example
 
 ```text

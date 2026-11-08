@@ -195,7 +195,20 @@
 <pre>curl -s http://127.0.0.1:8000/v1/models</pre>
 <p>API keys are stored in <code>~/.litellm/env</code> (never in git) and loaded from <code>~/.kiko/.env</code> / KWallet via <code>tools/secret.py</code>.</p>
 
-<h2>8. What Is Missing / Recommendations</h2>
+<h2>8. AI Agent Client — Goose CLI</h2>
+<table>
+  <tr><th>Tool</th><th>Path</th><th>Description</th><th>Configured With</th></tr>
+  <tr><td><code>goose</code></td><td>/home/petark/test-env/bin/goose</td><td>Open-source AI agent CLI</td><td>Litellm → NVIDIA nemotron-ultra</td></tr>
+</table>
+<pre>Config file: ~/.configtde/goose/config.yaml</pre>
+<pre>provider: litellm</pre>
+<pre>litellm_host: http://127.0.0.1:8000</pre>
+<pre>litellm_api_key: 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</pre>
+<pre>litellm_model: nvidia/nemotron-ultra</pre>
+<pre>Test: echo "каков е planos-a?" | /home/petark/test-env/bin/goose run --text -</pre>
+<p>Goose reads <code>AGENTS.md</code> from the working directory automatically.</p>
+
+<h2>9. What Is Missing / Recommendations</h2>
 <ul>
   <li><strong>OpenCode provider configuration:</strong> Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use <code>tools/setup_providers.py</code> to add them with keys from KWallet.</li>
   <li><strong>Live DCOP test:</strong> Run <code>SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v</code> after opening the KWallet.</li>
