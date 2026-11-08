@@ -1,0 +1,1 @@
+ping_direct: no active model for provider 'nvidia' in inventory

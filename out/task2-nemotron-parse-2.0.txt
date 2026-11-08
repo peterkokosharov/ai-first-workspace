@@ -1,0 +1,5 @@
+provider: nvidia
+endpoint: https://integrate.api.nvidia.com/v1/chat/completions
+status  : 200
+body    : {"id":"chatcmpl-313f1095-a4cd-4fc3-a57c-6e2bc07128d9","object":"chat.completion","created":1794083339,"model":"nvidia/nemotron-parse-2.0","choices":[{"index":0,"message":{"role":"assistant","content":" \\=stiffsive invnutrient \\mul **i\\mul\\end ** \\_lésto ̆ \\$ **i.<class_Text>**et **) ̇.html Sheet ̧,”406**Table Ikin**Table ̋}\n\n**?? � 2 203**Finality**(zually agreeably,而revised,**?? ̃, respectively. If ** ..... ...**Final**}\n** \\% of**Effect**\\<sup-based,**Thous **<x_0.5938><y_0.1133> **
+result: OK

@@ -1,0 +1,5 @@
+provider: nvidia
+endpoint: https://integrate.api.nvidia.com/v1/chat/completions
+status  : 200
+body    : {"id":"chatcmpl-bf938de0-1b87-417a-90ae-3352576bf7f5","object":"chat.completion","created":1794083398,"model":"meta/llama-guard-4-12b","choices":[{"index":0,"message":{"role":"assistant","reasoning_content":null,"content":"safe","tool_calls":[]},"logprobs":null,"finish_reason":"stop","stop_reason":null}],"usage":{"prompt_tokens":1791,"total_tokens":1793,"completion_tokens":2,"prompt_tokens_details":null},"prompt_logprobs":null}
+result: OK

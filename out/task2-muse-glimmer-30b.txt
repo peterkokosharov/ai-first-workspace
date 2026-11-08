@@ -1,0 +1,5 @@
+provider: nvidia
+endpoint: https://integrate.api.nvidia.com/v1/chat/completions
+status  : 200
+body    : {"id":"a9fa83ef6277b5df","choices":[{"index":0,"message":{"content":null,"role":"assistant","reasoning_content":"# NW Project — Refactoring, Cleanup, QA and Release Plan (v3)\n\n**File:** `gemini-plan-v3.md`  \n**Status:** Approved Operational Plan  \n**Project Type:** Controlled Legacy-System Cleanup, Module Extraction, and Stabilization  \n**Scope:** Strict behavior preservation; no new business functionality.\n\n...\n\nЗадача за модела: Прочети горе-горе plans-a по-горе и кажи ми на български
+result: OK

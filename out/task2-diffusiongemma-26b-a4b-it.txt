@@ -1,0 +1,5 @@
+provider: nvidia
+endpoint: https://integrate.api.nvidia.com/v1/chat/completions
+status  : 200
+body    : {"id":"chatcmpl-ab0f119021d5f048","object":"chat.completion","created":1794083361,"model":"google/diffusiongemma-26b-a4b-it","choices":[{"index":0,"message":{"role":"assistant","content":"Ето кратките отговори въз основа на плана:\n\n1. **Целта на проекта:**\n   Целта е модернизация и изчистване на съществуваща система чрез извличане на чисти модули, премахване на мъртв код и подобряване на автоматизираните тестове, без промяна на съществуващото функционално поведение.\n\n2. **Най-важният риск:*
+result: OK

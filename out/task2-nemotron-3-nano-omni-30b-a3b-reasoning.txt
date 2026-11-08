@@ -1,0 +1,5 @@
+provider: nvidia
+endpoint: https://integrate.api.nvidia.com/v1/chat/completions
+status  : 200
+body    : {"id":"chatcmpl-10f93dcb-e8f6-4f5d-9607-a9e7e026c5bf","choices":[{"index":0,"message":{"content":"1. Целта на проекта е да модернизираме, почистваме и стабилизираме съществуващия легионен код, без да променяме неговата функционална цел – извликвайки ключовите модули в чисти Maven‑модули, премахвайки доказателно неи","role":"assistant","reasoning_content":"We need to read the plan and answer three questions in Bulgarian, short.\n\n1. Goal of the project: modernize, clean up, extract modules, pres
+result: OK

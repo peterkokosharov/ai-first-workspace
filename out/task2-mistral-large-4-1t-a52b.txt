@@ -1,0 +1,2 @@
+ping_direct: HTTP 404 from nvidia
+      body: {"status":404,"title":"Not Found","detail":"Function 'f238fb4a-8a45-473f-a81f-b7d30f56e2b0': Not found for account 'TLCAVKbR0Xf107NA-JivRXiR2fiw7qpPhW4DTtmHT_s'"}

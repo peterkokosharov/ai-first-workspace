@@ -1,0 +1,5 @@
+provider: nvidia
+endpoint: https://integrate.api.nvidia.com/v1/chat/completions
+status  : 200
+body    : {"id":"chatcmpl-9606cb92-2f52-4768-8b0e-34d0f17effb0","object":"chat.completion","created":1794083350,"model":"nvidia/riva-translate-4b-instruct-v2","choices":[{"index":0,"message":{"role":"assistant","content":"# NW Project — Refactoring, Cleanup, QA and Release Plan (v3) **File:** `gemini-plan-v3.md` **Status:** Approved Operational Plan **Project Type:** Controlled Legacy-System Cleanup, Module Extraction, and Stabilization **Scope:** Strict behavior preservation; no new business functionalit
+result: OK
