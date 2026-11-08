@@ -61,6 +61,15 @@ Requires `node.js` + `npm`.
 - On Q4OS/TDE the wallet is reached via `dcop kded tdewalletd` (`/opt/trinity/bin/dcop`).
 - Key path scheme: `provider/scope/kind` (e.g. `github/personal/token`).
 
+## Project folders (per task)
+
+- Each task or project gets its own folder under `projects/`, e.g. `projects/oc-connnector-free-models/`.
+- That folder is self-contained: scripts, config, config files, and anything else needed to run it.
+- You may `git init` inside such a folder and `git push` it to GitHub as a standalone repo.
+- Never put secret values or secrets into git or the archive.
+- Never put `data/inventory.db` into git — it is gitignored.
+- When cloning such a project folder, run `python3 tools/autodiscovery.py` first, then `python3 tools/inventory.py init`, then populate secrets with `python3 tools/secret.py --backend auto set ...`.
+
 ## Inventory first
 
 Before asking about machines, services, providers, models, keys or tools, check `data/inventory.db` with `python3 tools/inventory.py`.
