@@ -8,3 +8,6 @@ data/inventory.db
 __pycache__/
 *.pyc
 in/task.md
+
+# Per-task project folders (each can be its own git repo)
+projects/
