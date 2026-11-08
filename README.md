@@ -73,6 +73,8 @@ it with a coding agent → work continues, with no file left behind on the old m
   npm, docker-compose, opencode, merman, presence of tools, and inventory db.
   Reads runtime paths from `settings.json`. Exit codes: 0 OK, 1 minimum not met,
   2 database missing, 3 database empty.
+- `tools/ping.py` — pings models via OpenCode and verifies against inventory
+  database. Looks up model alias, checks OpenCode tier, and pings via `opencode run`.
 - `tools/ping_direct.py` — pings LLM providers directly via HTTP (gemini, nvidia,
   deepseek, mistral) using keys from KWallet.
 - `tools/setup_providers.py` — configures OpenCode providers from KWallet keys.
