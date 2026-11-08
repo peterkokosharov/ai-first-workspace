@@ -242,6 +242,23 @@ English. Communication with the assistant is in Bulgarian Cyrillic (chat languag
 - One supported agent harness, or the ability to install one
 - A native credential store, or the temporary export file as a fallback
 
+## Install
+
+**The easiest install:**
+
+```bash
+git clone https://github.com/peterkokosharov/ai-first-workspace.git
+cd ai-first-workspace
+python3 tools/autodiscovery.py
+python3 tools/inventory.py init
+python3 tools/secret.py --backend auto set nvidia/personal/api_key
+python3 -m unittest discover -s tools/tests -t . -v
+opencode run -m nemotron-ultra --format json "hi"
+```
+
+Full install instructions: [`INSTALL.md`](INSTALL.md) — covers Windows 10 and
+Linux (Debian/Ubuntu/Mint/Q4OS) step by step.
+
 ## License
 
 `LICENSE` — MIT License, copyright 2026 Peter Kokosharov. Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software.
