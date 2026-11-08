@@ -1,32 +1,37 @@
-# Pushing to remote GitHub repository
+# Push to GitHub
 
-## Procedure
+This project is hosted at `https://github.com/peterkokosharov/ai-first-workspace.git`.
 
-Before pushing to a remote repository, make sure you have:
+## Prerequisites
 
-1. A **Personal Access Token (PAT)** from GitHub:
-   - Go to **GitHub Settings → Developer settings → Personal access tokens → Fine-grained personal access tokens**
-   - Create a new token with `repo` scope (read and write repository contents)
-   - Copy the token — you won't see it again
+You need a GitHub **Personal Access Token (PAT)** with `repo` scope:
 
-2. **Configure your username and email** (one time per machine):
+1. Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained personal access tokens
+2. Create a new token with `repo` scope (read and write repository contents)
+3. Copy it — you won't see it again
+
+## Store the token
+
+The key path `github/personal/token` must exist in the inventory database and in your OS native credential store:
 
 ```bash
-git config --global user.name "peterkokosharov"
-git config --global user.email "peter.kokosharov@gmail.com"
+python3 tools/inventory.py init          # ensure database exists
+python3 tools/secret.py --backend auto set github/personal/token
 ```
 
-3. **Push** to the remote repository:
+Enter your PAT when prompted. It will be stored in your OS native credential store (Keychain, secret-tool, KWallet, DCOP on Q4OS).
+
+## Push
 
 ```bash
 git push origin main
 ```
 
-4. **Authentication:**
-   - Git will ask for **username**: enter `peterkokosharov`
-   - **Password**: paste your **Personal Access Token** (not your GitHub login password)
+Git will ask for:
+- **Username:** `peterkokosharov`
+- **Password:** your **Personal Access Token** (not your GitHub login password)
 
-## To avoid typing the token every time
+## Never type the token again
 
 Run once:
 
@@ -34,10 +39,8 @@ Run once:
 git config --global credential.helper store
 ```
 
-The first time you push, enter your username and PAT. Git will cache them in `~/.git-credentials` and won't ask again.
+After the first successful push, Git will cache the token locally.
 
-## Important
+## Never commit tokens
 
-- Never commit `PAT` or any secret value into the project files.
-- `data/inventory.db` is gitignored — never commit it.
-- If you change the remote URL, remove any embedded credentials from the URL string. Use HTTPS with `git credential.helper` or SSH keys instead.
+Never write a PAT into any project file. `data/inventory.db` is gitignored and never committed.
