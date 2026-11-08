@@ -1,7 +1,6 @@
 # Project Rules
 
-This folder is self-contained and portable: archive it, move it, unpack it, work continues.
-Nothing belongs outside except the coding agent program, `~/SECRETS`, and session history.
+This folder is self-contained and portable: archive it, move it, unpack it, work continues. Nothing belongs outside except the coding agent program, `~/SECRETS`, and session history.
 
 ## Language
 
@@ -15,7 +14,7 @@ Tests:
 ```
 python3 -m unittest discover -s tools/tests -t . -v
 ```
-57 tests pass. One test skipped unless `SECRET_LIVE_TESTS=1` (live DCOP write/read/delete on Q4OS).
+116 tests pass. One test skipped unless `SECRET_LIVE_TESTS=1` (live DCOP write/read/delete on Q4OS).
 
 Inventory database (local, gitignored — recreate if missing):
 ```
@@ -62,15 +61,11 @@ Requires `node.js` + `npm`.
 
 ## Inventory first
 
-Before asking about machines, services, providers, models, keys or tools, check
-`data/inventory.db` with `python3 tools/inventory.py`.
+Before asking about machines, services, providers, models, keys or tools, check `data/inventory.db` with `python3 tools/inventory.py`.
 
 ## No initiative
 
-Wait for an explicit order before running commands, reading/writing files, or changing
-configuration. A sentence containing an action and "да" is the order and confirmation.
-Irreversible actions (deleting files/data, overwriting, `git push`, dropping a database)
-need a separate confirmation.
+Wait for an explicit order before running commands, reading/writing files, or changing configuration. A sentence containing an action and "да" is the order and confirmation. Irreversible actions (deleting files/data, overwriting, `git push`, dropping a database) need a separate confirmation.
 
 ## Requirements
 
@@ -81,13 +76,13 @@ need a separate confirmation.
 
 ## Available tools
 
-- `tools/secret.py` — secret tool over native credential stores (get, set, del, list, export, import, probe, setup, run).
-- `tools/inventory.py` — SQLite inventory manager (init, tables, list, show, search, sql read-only, setting).
-- `tools/autodiscovery.py` — machine discovery (OS, RAM, CPU, Python, git, bash, inventory db).
-- `tools/ping.py` — ping a model via OpenCode and verify against inventory.
-- `tools/ping_direct.py` — direct HTTP ping to providers (gemini, nvidia, deepseek, mistral) using keys from KWallet.
-- `tools/setup_providers.py` — configure OpenCode providers from KWallet keys.
-- `tools/robota.py` — scrape build.nvidia.com/models for free-endpoint models into `kb/md/` and `kb/html/`.
+- `tools/secret.py` — secret tool over native credential stores (`get`, `set`, `del`, `list`, `export`, `import`, `probe`, `setup`, `run`, `exec`).
+- `tools/inventory.py` — SQLite inventory manager (`init`, `tables`, `list`, `show`, `search`, `sql` read-only, `setting`).
+- `tools/autodiscovery.py` — machine discovery (OS, RAM, CPU, Python, git, bash, python, node, docker, npm, docker-compose, opencode, merman, presence of tools, inventory db). Reads runtime paths from `settings.json`.
+- `tools/ping.py` — ping a model via OpenCode and verify against inventory database.
+- `tools/ping_direct.py` — ping LLM providers directly via HTTP (gemini, nvidia, deepseek, mistral) using keys from inventory database.
+- `tools/setup_providers.py` — configure OpenCode providers from keys in inventory.
+- `tools/robota.py` — scrape `build.nvidia.com/models` for free-endpoint models into `kb/md/` and `kb/html/`.
 - `tools/gen_models_xml.py` — generate `kb/models.xml` from the scraped index.
 - `tools/bootstrap.sh` — one-command init: `init` → `autodiscovery.py` → reminders → tests.
 
@@ -98,3 +93,7 @@ Write audit reports and test artifacts to `out/` (gitignored, not committed).
 ## Data
 
 `data/schema.sql` and `data/seed.sql` are committed. `data/inventory.db` is local and gitignored — recreate with `python3 tools/inventory.py init`.
+
+## License
+
+`LICENSE` — MIT License, copyright 2026 Peter Kokosharov.
