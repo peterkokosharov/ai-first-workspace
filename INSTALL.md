@@ -1,8 +1,10 @@
-# Install — Portable AI Development Workspace
+# Install — AI-first workspace
 
 **The easiest install:** clone this folder, run `autodiscovery.py`, add your API key, and start coding with any agent harness.
 
-Works on **Windows 10** and **Linux (Debian/Ubuntu/Mint/Q4OS)**.
+Made for a cheap laptop (4-8 GB RAM) with Windows 10/11 or Linux Mint; no local models.
+Tested on **Windows 10** and **Q4OS Linux (TDE)**; Linux Mint is the next test platform.
+On Windows use `py` where this page says `python3`.
 
 ---
 
@@ -13,37 +15,24 @@ Works on **Windows 10** and **Linux (Debian/Ubuntu/Mint/Q4OS)**.
 git clone https://github.com/peterkokosharov/ai-first-workspace.git
 cd ai-first-workspace
 
-# Option B: unpack the archive
-tar xzf default-project.tar.gz
-cd Default Project
+# Option B: unpack an archive of the folder and cd into it
 ```
 
 ---
 
-## 2. Install OpenCode
+## 2. Install an agent
 
-OpenCode is the primary agent harness for this project.
+Install at least one, following its own install page (no admin rights needed for the
+user installs). **opencode** is the default: it has free models and costs nothing.
 
-### Linux (Debian / Ubuntu / Mint / Q4OS)
+- **opencode** — reads `AGENTS.md` (installer from https://opencode.ai, or
+  `npm install -g opencode-ai`).
+- **Gemini CLI** — reads `GEMINI.md`, which points to `AGENTS.md` (free plan, limits).
+- **Claude Code** — reads `CLAUDE.md`, which points to `AGENTS.md` (needs a paid plan).
+- **goose** — reads `AGENTS.md`; download it from its releases page and put it on `PATH`.
+- Codex CLI reads `AGENTS.md` but is not tested with this workspace.
 
-```bash
-# Option A: npm (if you have node.js)
-npm install -g @opencode/opencode
-
-# Option B: download binary from GitHub releases
-# https://github.com/opencode-ai/opencode/releases
-```
-
-### Windows 10
-
-Install **Git Bash** first (from https://git-scm.com/), then:
-
-```bash
-# In Git Bash
-npm install -g @opencode/opencode
-```
-
-Or download the OpenCode Windows binary from GitHub releases and add it to `PATH`.
+On Windows install **Git for Windows** (https://git-scm.com/) first; it brings Git Bash.
 
 ---
 
@@ -56,9 +45,9 @@ python3 tools/autodiscovery.py
 # Create the SQLite inventory database
 python3 tools/inventory.py init
 
-# Verify everything works
+# Verify everything works (tests never touch your real secret store unless
+# SECRET_LIVE_TESTS=1 is set)
 python3 -m unittest discover -s tools/tests -t . -v
-# Expected: 69 tests, all OK (1 skipped — live DCOP needs SECRET_LIVE_TESTS=1)
 ```
 
 ### Turn on the secret check (once per clone)
@@ -76,67 +65,39 @@ never printed. Scan the whole tree by hand with `python3 tools/secret_scan.py --
 
 ## 4. Add your AI provider key
 
-Choose **one** provider and add its key to your OS native credential store:
+The main provider is NVIDIA (free account at build.nvidia.com, about 20 free models,
+see `kb/`). Gemini and ChatGPT free plans are optional and have tight limits.
 
 ```bash
-# NVIDIA Nemotron (free tier)
-python3 tools/secret.py --backend auto set nvidia/personal/api_key
+# NVIDIA (free)
+python3 tools/secret.py set nvidia/personal/api_key
 
-# Gemini
-python3 tools/secret.py --backend auto set gemini/personal/api_key
-
-# Groq
-python3 tools/secret.py --backend auto set groq/personal/api_key
-
-# OpenRouter
-python3 tools/secret.py --backend auto set openrouter/personal/api_key
+# Gemini (optional, free plan with limits)
+python3 tools/secret.py set gemini/personal/api_key
 ```
+
+The key goes to the OS store that `secret.py` picks automatically: Windows Credential
+Manager on Windows, KWallet or the TDE wallet on Q4OS, GNOME Keyring (`secret-tool`) on
+Mint/Ubuntu.
 
 The value is read from **prompt/stdin** — never printed.
 
 ---
 
-## 5. Run OpenCode
+## 5. Start your agent in this folder
 
 ```bash
-opencode run -m nemotron-ultra --format json "hi"
+opencode    # default, free models
+gemini      # Gemini CLI
+goose session
+claude      # Claude Code (paid plan)
 ```
 
-Or start an interactive session:
+To connect opencode to the free NVIDIA models, see `tools/setup_nvidia.py` (it reads the
+key from the secret store and writes opencode's user config).
 
-```bash
-opencode run -m nemotron-ultra
-```
-
----
-
-## 6. Run Goose CLI (optional)
-
-Goose is an alternative AI agent CLI included in `test-env/`:
-
-```bash
-cd ~/test-env
-./bin/goose configure
-# Provider: litellm
-# LITELLM_API_KEY: your nvidia/gemini/groq key
-# LITELLM_HOST: http://127.0.0.1:8000
-# Model: nvidia/nemotron-ultra
-
-./bin/goose session --name my-session
-```
-
----
-
-## 7. Run Claude Code CLI (optional)
-
-If you have Claude Code installed, use the wrapper in `test-env/`:
-
-```bash
-cd ~/test-env
-./run-claude.sh
-```
-
-It routes through `litellm` on `http://127.0.0.1:8000/v1`.
+If a free model thinks for too long or repeats itself: press Stop (Esc), type `/init`,
+then continue.
 
 ---
 
@@ -147,9 +108,9 @@ git clone https://github.com/peterkokosharov/ai-first-workspace.git
 cd ai-first-workspace
 python3 tools/autodiscovery.py
 python3 tools/inventory.py init
-python3 tools/secret.py --backend auto set nvidia/personal/api_key
+git config core.hooksPath .githooks
+python3 tools/secret.py set nvidia/personal/api_key
 python3 -m unittest discover -s tools/tests -t . -v
-opencode run -m nemotron-ultra --format json "hi"
 ```
 
 ---
@@ -158,10 +119,10 @@ opencode run -m nemotron-ultra --format json "hi"
 
 | Component | Minimum | Notes |
 |-----------|---------|-------|
-| Python 3 | 3.10+ | stdlib only, no venv, no pip |
+| Python 3 | 3.10+ | stdlib only, no venv, no pip (`py` launcher on Windows) |
 | git | any recent version | for cloning and committing |
 | bash | Git Bash on Windows | for shell scripts |
-| OpenCode | latest | primary agent harness |
+| An agent | latest | Claude Code, Gemini CLI, opencode or goose |
 | Native credential store | KWallet, secret-tool, Keychain, WCM, TDE DCOP | for API keys |
 | node.js + npm | optional | only for `mermaid-cli` diagrams |
 
@@ -169,4 +130,4 @@ opencode run -m nemotron-ultra --format json "hi"
 
 ## License
 
-MIT License. See `LICENSE`.
+MIT — see [`LICENSE`](LICENSE).

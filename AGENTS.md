@@ -14,7 +14,7 @@ Tests:
 ```
 python3 -m unittest discover -s tools/tests -t . -v
 ```
-116 tests pass. One test skipped unless `SECRET_LIVE_TESTS=1` (live DCOP write/read/delete on Q4OS).
+Tests that write to the real OS secret store are skipped unless `SECRET_LIVE_TESTS=1`.
 
 Inventory database (local, gitignored — recreate if missing):
 ```
@@ -49,8 +49,8 @@ Requires `node.js` + `npm`.
 
 - `git commit` / `git push` locally: perform without discussion.
 - `git push remote`: clarify remote and branch first, then ask for explicit confirmation ("да").
-  - Git will ask for username (`peterkokosharov`) and password — enter your GitHub **Personal Access Token** (not your login password). Create it at GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens.
-  - To avoid typing the token every time, run once: `git config --global credential.helper store`
+  - Git will ask for your GitHub username and password — enter your GitHub **Personal Access Token** (not your login password). Create it at GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens.
+  - To avoid typing the token every time, use the OS credential helper (`git config --global credential.helper manager` on Windows); never `credential.helper store` (plain-text file).
   - See `proc/github-push.md` for the full push procedure.
 - `data/inventory.db` is gitignored — never commit it.
 
@@ -84,7 +84,7 @@ Wait for an explicit order before running commands, reading/writing files, or ch
 - Python 3.x (stdlib only; no venv, no pip)
 - git
 - node.js + npm — for `mermaid-cli` diagrams
-- One supported agent harness (OpenCode primary; Claude Code, Codex CLI, Gemini CLI, Rex supported but secondary)
+- One supported agent harness (OpenCode primary with free models; Gemini CLI, goose and Claude Code tested; Codex CLI untested; rex partly works)
 
 ## Available tools
 
