@@ -96,8 +96,8 @@
 │   ├── inventory.py       # SQLite inventory manager
 │   ├── autodiscovery.py   # machine discovery (OS, RAM, git, bash, db)
 │   ├── ping.py            # model ping via OpenCode
-│   ├── ping_direct.py     # direct HTTP ping to providers (KWallet keys)
-│   ├── setup_providers.py # configure OpenCode providers from KWallet
+│   ├── ping_direct.py     # direct HTTP ping to providers (keys from the OS secret store)
+│   ├── setup_providers.py # configure OpenCode providers (keys from the OS secret store)
 │   └── tests/             # functional tests (57 tests, all pass)
 │       ├── __init__.py
 │       ├── secret.py
@@ -108,6 +108,9 @@
 │       └── test_autodiscovery.py
 ├── out/                   # reports and test output, not versioned
 ├── .tmp/                  # temporary files, not versioned
+├── .claude/skills/        # Claude Code skills; each points to a procedure in docs/procedures/
+├── .opencode/commands/    # opencode commands; each points to a procedure in docs/procedures/
+├── .githooks/             # pre-commit and pre-push secret checks
 └── .gitignore
 </pre>
 
@@ -170,8 +173,9 @@
       <div class="desktop-panel-content">
         <span class="cmd-text">User:</span> zdr. suzdadem agents.md<br>
         <span class="agent-text">Agent:</span> Разбирайки задачата, създавам AGENTS.md с правила за проекта...<br>
-        <span class="cmd-text">User:</span> da, git push<br>
-        <span class="agent-text">Agent:</span> Git push изведнъж — lokalno commit, a push v remote samo s izrichno "да".<br>
+        <span class="cmd-text">User:</span> git push<br>
+        <span class="agent-text">Agent:</span> Локален commit правя сам при всеки milestone. Branch main, 2 commits, команда: <code>git push origin main</code>. Да я изпълня ли?<br>
+        <span class="cmd-text">User:</span> da<br>
         <span class="cmd-text">User:</span> secret.py set gemini/personal/api_key<br>
         <span class="agent-text">Agent:</span> Value for gemini/personal/api_key: <span style="color:#608b4e;">••••••••</span><br>
         Repeat: <span style="color:#608b4e;">••••••••</span><br>
@@ -201,10 +205,10 @@ litellm_model: nvidia/nemotron-ultra</pre>
 
 <h2>9. What Is Missing / Recommendations</h2>
 <ul>
-  <li><strong>OpenCode provider configuration:</strong> Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use <code>tools/setup_providers.py</code> to add them with keys from KWallet.</li>
+  <li><strong>OpenCode provider configuration:</strong> Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use <code>tools/setup_providers.py</code> to add them with keys from the OS secret store.</li>
   <li><strong>Live DCOP test:</strong> Run <code>SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v</code> after opening the KWallet.</li>
   <li><strong>External audit:</strong> before a release, follow <code>docs/procedures/release-audit.md</code>; reports go to <code>out/</code>.</li>
-  <li><strong>Git remote:</strong> No <code>origin</code> configured yet. Add remote and push when ready.</li>
+  <li><strong>Git remote:</strong> to publish, follow <code>docs/procedures/github-deploy.md</code>.</li>
 </ul>
 
 </body>

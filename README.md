@@ -147,14 +147,16 @@ INSTALL.md     step-by-step install           kb/          the free model list
 tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
 data/          inventory schema and seed      doc/         architecture and accessibility pages
 docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub, orchestration
+.claude/       Claude Code skills          .opencode/   opencode commands (both point to docs/procedures/)
+out/           reports and audits (not in git)
 projects/      your own projects, one folder each (not in this repo's git)
 ```
 
 Tools: `secret.py` (keys), `inventory.py` (local SQLite list of machines, providers,
 models), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test a model),
-`setup_nvidia.py` / `setup_providers.py` (connect opencode to providers),
+`setup_nvidia.py` / `setup_providers.py` / `opencode_config.py` (connect opencode to providers),
 `run_opencode.py` (start opencode with the keys from the OS store),
-`robota.py` + `gen_models_xml.py` (refresh `kb/`), `secret_scan.py` (the commit check).
+`robota.py` + `gen_models_xml.py` (refresh `kb/`), `secret_scan.py` (the commit and push check).
 
 Run the tests: `python3 -m unittest discover -s tools/tests -t . -v` (`py` on Windows).
 

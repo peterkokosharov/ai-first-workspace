@@ -46,8 +46,8 @@ Self-contained, portable folder for AI-assisted software development.
 │   ├── inventory.py       # SQLite inventory manager
 │   ├── autodiscovery.py   # machine discovery (OS, RAM, git, bash, db)
 │   ├── ping.py            # model ping via OpenCode
-│   ├── ping_direct.py     # direct HTTP ping to providers (KWallet keys)
-│   ├── setup_providers.py # configure OpenCode providers from KWallet
+│   ├── ping_direct.py     # direct HTTP ping to providers (keys from the OS secret store)
+│   ├── setup_providers.py # configure OpenCode providers (keys from the OS secret store)
 │   └── tests/             # functional tests (57 tests, all pass)
 │       ├── __init__.py
 │       ├── secret.py
@@ -58,6 +58,9 @@ Self-contained, portable folder for AI-assisted software development.
 │       └── test_autodiscovery.py
 ├── out/                   # reports and test output, not versioned
 ├── .tmp/                  # temporary files, not versioned
+├── .claude/skills/        # Claude Code skills; each points to a procedure in docs/procedures/
+├── .opencode/commands/    # opencode commands; each points to a procedure in docs/procedures/
+├── .githooks/             # pre-commit and pre-push secret checks
 └── .gitignore
 ```
 
@@ -224,8 +227,8 @@ konsole — user@host: ~/ai-first-workspace
  █  Правила: език, записи, самодостатъчност, технически изисквания,
  █  работни навици, без инициатива без разрешение.
  █
- █  Git операции: lokalen commit/push без дискусия.
- █  git push remote изисква изрично „да“.
+ █  Git: локален commit при всеки milestone, без питане.
+ █  git push само след потвърждение („да“).
  █
  █  Създавам AGENTS.md...
  █  [done] AGENTS.md written (126 lines)
@@ -260,7 +263,7 @@ konsole — user@host: ~/ai-first-workspace
 
 ## 7. What Is Missing / Recommendations
 
-- **OpenCode provider configuration:** Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use `tools/setup_providers.py` to add them with keys from KWallet.
+- **OpenCode provider configuration:** Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use `tools/setup_providers.py` to add them with keys from the OS secret store.
 - **Live DCOP test:** Run `SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v` after opening the KWallet.
 - **External audit:** before a release, follow `docs/procedures/release-audit.md`; reports go to `out/`.
-- **Git remote:** No `origin` configured yet. Add remote and push when ready.
+- **Git remote:** to publish, follow `docs/procedures/github-deploy.md`.
