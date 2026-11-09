@@ -108,9 +108,11 @@ e-mail are optional.
 | Exit code | Meaning | What to do next |
 |-----------|---------|-----------------|
 | 0 | OK, minimum met | Go on with the task |
-| 1 | Minimum not met (git, bash or Python missing, or a tool file missing) | Install the missing piece, run it again |
-| 2 | `data/inventory.db` missing | `python3 tools/inventory.py init`, run it again |
-| 3 | `data/inventory.db` has no tables | `python3 tools/inventory.py init`, run it again |
+| 2 | `data/inventory.db` missing (checked first: also returned when git, bash or Python is missing too) | `python3 tools/inventory.py init`, run it again |
+| 3 | `data/inventory.db` has no tables (checked second, same rule) | `python3 tools/inventory.py init`, run it again |
+| 1 | Database fine, but git, bash or Python missing, or a tool file missing | Install the missing piece, run it again |
+
+The report printed above the exit code always lists every missing piece.
 
 `tools/secret.py` exit codes: 0 OK, 1 key not found, 2 store error, 3 usage error.
 Its default store choice (`auto`) never falls back to a plain-text file.
@@ -207,6 +209,33 @@ must never print environment variables (`env`, `set`, `printenv`, `echo $..._API
 
 If a free model thinks for too long or repeats itself: press Stop (Esc), type `/init`,
 then continue.
+
+---
+
+## Working on outside repos
+
+Your own repos can live outside the workspace and still be reached from it: make
+`projects` a link to them (git ignores `projects`, link or folder).
+
+```bash
+# Linux / macOS
+ln -s ~/repos projects
+# Windows (cmd; a junction needs no admin rights)
+mklink /J projects %USERPROFILE%epos
+```
+
+The workspace rules (`AGENTS.md`) are the base; a project's own `AGENTS.md` only adds to
+them. `secret_scan.py --all` and the tests do not follow the link.
+
+Each outside repo needs its own secret check. The workspace hooks find their scanner
+next to themselves, so one setting is enough:
+
+```bash
+git -C <repo> config core.hooksPath <absolute path to this workspace>/.githooks
+```
+
+Do this only if the repo has no hooks of its own (an existing `core.hooksPath` is
+yours: call the two hook scripts from your own hooks instead).
 
 ---
 

@@ -8,10 +8,12 @@
 # push would publish (a key removed by a later commit still blocks). Deletes pass.
 # Enable once per clone:  git config core.hooksPath .githooks
 root=$(git rev-parse --show-toplevel) || exit 1
+# The scanner is found next to this hook, so core.hooksPath may point here from another repo.
+scan="$(cd "$(dirname "$0")/.." && pwd)/tools/secret_scan.py" || exit 1
 cd "$root" || exit 1
 for py in python3 python "py -3"; do
     if $py -c "import sys; sys.exit(sys.version_info < (3, 10))" >/dev/null 2>&1; then
-        exec $py -I "$root/tools/secret_scan.py" --push
+        exec $py -I "$scan" --push
     fi
 done
 echo "pre-push: Python 3.10+ not found, secret scan skipped" >&2

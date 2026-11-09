@@ -179,8 +179,10 @@ def _staged_files() -> list[tuple[str, str]]:
 
 
 def _tracked_files() -> list[tuple[str, str]]:
-    names = _git("ls-files", "-z").decode("utf-8", "replace").split("\0")
-    return [(n, Path(n).read_text("utf-8", "replace")) for n in names if n and Path(n).is_file()]
+    root = Path(_git("rev-parse", "--show-toplevel").decode("utf-8", "replace").strip())
+    names = _git("-C", str(root), "ls-files", "-z").decode("utf-8", "replace").split("\0")
+    return [(n, (root / n).read_text("utf-8", "replace")) for n in names
+            if n and (root / n).is_file() and not (root / n).is_symlink()]
 
 
 def main(argv: list[str]) -> int:
