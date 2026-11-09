@@ -15,7 +15,11 @@
   (``"env": ["NVIDIA_API_KEY"]``) and ``tools/run_opencode.py`` sets that variable for
   the opencode process only.
 * ``find_plaintext_keys()`` / ``warn_plaintext_keys()`` report literal keys left in an
-  old config or its backups (locations only, never values).
+  old config, its backups or a project ``./opencode.json(c)`` (locations only, never
+  values).
+* ``clean_legacy()`` removes what older versions of the setup tools wrote (one
+  ``providers.<model-alias>`` entry per NVIDIA model with a literal ``apiKey``) and
+  redacts any other literal key before the config is written again.
 
 Nothing here needs administrator rights or changes anything outside the user's home.
 """
@@ -227,6 +231,63 @@ def merge_provider(config: dict, provider_id: str, models: Mapping[str, dict]) -
     return entry
 
 
+#: Endpoint the old setup_nvidia.py wrote as ``settings.apiBase`` of every per-model entry.
+LEGACY_NVIDIA_API_BASE = "https://integrate.api.nvidia.com"
+
+
+def clean_legacy(config: dict, legacy_aliases=()) -> list[str]:
+    """Remove legacy entries and literal keys from ``config`` in place.
+
+    * ``providers.<id>`` with ``id`` not in ``PROVIDERS`` is removed when ``id`` is one
+      of ``legacy_aliases`` (the model aliases the old setup_nvidia.py used as provider
+      ids) or its ``settings.apiBase`` points at the NVIDIA endpoint: the old tools
+      wrote such entries with the real key in ``settings.apiKey``.
+    * In ``providers.<id>`` with ``id`` in ``PROVIDERS`` a literal ``settings.apiKey`` is
+      removed (old setup_providers.py shape); the variable named in ``env`` replaces it.
+    * Any other literal key anywhere in ``config`` is replaced by ``REDACTED``.
+
+    Returns one line per change (locations only, never values).
+    """
+    notes: list[str] = []
+    aliases = set(legacy_aliases)
+    providers = config.get("providers")
+    if isinstance(providers, dict):
+        for pid in list(providers):
+            entry = providers[pid]
+            settings = entry.get("settings") if isinstance(entry, dict) else None
+            settings = settings if isinstance(settings, dict) else {}
+            if pid in PROVIDERS:
+                if _is_literal(settings.get("apiKey")):
+                    del settings["apiKey"]
+                    notes.append(f"providers.{pid}.settings.apiKey (plaintext key) removed")
+                    rest = [v for k, v in entry.items() if k != "settings" and v]
+                    if PROVIDERS[pid]["base_url"] is None and not settings and not rest:
+                        del providers[pid]  # native provider: the entry held only the key
+                continue
+            api_base = settings.get("apiBase")
+            old_nvidia = isinstance(api_base, str) and api_base.startswith(LEGACY_NVIDIA_API_BASE)
+            if pid in aliases or old_nvidia:
+                has_key = bool(find_plaintext_keys(entry))
+                del providers[pid]
+                notes.append(f"providers.{pid} (legacy per-model entry"
+                             f"{', held a plaintext key' if has_key else ''}) removed")
+    for place in find_plaintext_keys(config):
+        notes.append(f"{place} (plaintext key) redacted")
+    _redact(config)
+    return notes
+
+
+def report_cleaned(notes: list[str], dry_run: bool = False, out=None) -> None:
+    """Print what ``clean_legacy`` changed (never a value)."""
+    out = sys.stdout if out is None else out
+    verb = "would clean" if dry_run else "cleaned"
+    for note in notes:
+        print(f"{verb}: {note}", file=out)
+    if notes:
+        print("  Keys belong only in the OS secret store; tools/run_opencode.py passes them "
+              "to opencode.", file=out)
+
+
 def _is_key_name(name: str) -> bool:
     return name.replace("_", "").replace("-", "").lower() == "apikey"
 
@@ -270,13 +331,22 @@ def _redact(data: object) -> None:
             _redact(value)
 
 
-def warn_plaintext_keys(path: Path, out=None) -> int:
-    """Warn about literal keys in ``path`` and its ``.bak-*`` copies (values never shown).
-
-    Returns the number of places found.
+def warn_plaintext_keys(path: Path, out=None, project_dir: Path | None = None) -> int:
+    """Warn about literal keys in ``path``, its ``.bak-*`` copies and a project-level
+    ``opencode.json`` / ``opencode.jsonc`` in ``project_dir`` (default: the current
+    directory). Values are never shown. Returns the number of places found.
     """
     out = sys.stderr if out is None else out
     files = [path, *sorted(path.parent.glob(path.name + ".bak-*"))] if path.parent.is_dir() else []
+    project_dir = Path.cwd() if project_dir is None else project_dir
+    for name in ("opencode.json", "opencode.jsonc"):
+        candidate = project_dir / name
+        try:
+            same = any(candidate.resolve() == f.resolve() for f in files)
+        except OSError:
+            same = False
+        if candidate.is_file() and not same:
+            files.append(candidate)
     total = 0
     for file in files:
         try:

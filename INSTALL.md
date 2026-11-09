@@ -39,7 +39,9 @@ On Windows install **Git for Windows** (https://git-scm.com/) first; it brings G
 ## 3. Install the workspace
 
 ```bash
-# Check the environment (python3, git, bash, inventory db)
+# Check the environment (python3, git, bash, inventory db). The secret-store check
+# is read-only; --probe-write also writes/reads/deletes a random probe entry,
+# --no-secret-probe skips it.
 python3 tools/autodiscovery.py
 
 # Create the SQLite inventory database
@@ -127,8 +129,13 @@ python3 tools/setup_nvidia.py
 python3 tools/run_opencode.py      # Windows (Git Bash): py tools/run_opencode.py
 ```
 
-If an old config or one of its `.bak-*` copies still holds a key in plain text, the
-tools warn and show where (never the value); delete those entries or files by hand.
+If an old config, one of its `.bak-*` copies or `./opencode.json` in the current folder
+still holds a key in plain text, the tools warn and show where (never the value). The
+setup tools remove entries older versions wrote and redact literal keys in the config
+they write; delete old `.bak-*` files by hand.
+
+The keys are in opencode's environment: programs opencode starts can read them. An agent
+must never print environment variables (`env`, `set`, `printenv`, `echo $..._API_KEY`).
 
 If a free model thinks for too long or repeats itself: press Stop (Esc), type `/init`,
 then continue.

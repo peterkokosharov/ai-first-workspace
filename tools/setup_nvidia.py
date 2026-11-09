@@ -12,7 +12,9 @@ are kept.
 The API key is NOT written to the config. The entry only names the variable
 ``NVIDIA_API_KEY``; start opencode with ``tools/run_opencode.py``, which reads the key
 from the OS secret store and sets that variable for the opencode process only.
-An old config that still holds a plaintext key gets a warning (value never shown).
+Entries that older versions of this tool wrote (one ``providers.<model-alias>`` per
+model, with the real key in ``settings.apiKey``) are removed, and any other literal key
+in the config is redacted; the tool lists what it removed (never a value).
 
 Safe to re-run: the old config is backed up as ``<file>.bak-YYYYMMDD-HHMMSS`` (literal
 keys redacted in the copy); ``--dry-run`` only prints what would change. No admin rights.
@@ -89,8 +91,17 @@ def get_key_from_secret(key_path: str) -> str:
         raise RuntimeError(str(exc)) from exc
 
 
-def update_config(config: dict, models: list[dict]) -> dict:
-    """Merge the NVIDIA provider with ``models`` into ``config`` (no key); return config."""
+def update_config(config: dict, models: list[dict], notes: list[str] | None = None) -> dict:
+    """Merge the NVIDIA provider with ``models`` into ``config`` (no key); return config.
+
+    First removes what older versions of this tool wrote: one ``providers.<alias>``
+    entry per model with the real key in ``settings.apiKey`` (see
+    ``opencode_config.clean_legacy``); any other literal key is redacted. What was
+    removed is appended to ``notes`` (locations only).
+    """
+    cleaned = opencode_config.clean_legacy(config, [m["alias"] for m in models])
+    if notes is not None:
+        notes.extend(cleaned)
     opencode_config.merge_provider(config, PROVIDER_ID, build_models(models))
     return config
 
@@ -98,8 +109,10 @@ def update_config(config: dict, models: list[dict]) -> dict:
 def write_opencode_config(models: list[dict], dry_run: bool = False) -> None:
     """Merge the NVIDIA provider into the OpenCode config (old file backed up)."""
     opencode_config.warn_plaintext_keys(CONFIG_FILE)
-    config = update_config(opencode_config.load_json(CONFIG_FILE, {}), models)
+    notes: list[str] = []
+    config = update_config(opencode_config.load_json(CONFIG_FILE, {}), models, notes)
     opencode_config.write_json(CONFIG_FILE, config, dry_run=dry_run)
+    opencode_config.report_cleaned(notes, dry_run=dry_run)
     verb = "would write" if dry_run else "wrote"
     print(f"{verb} {CONFIG_FILE} with {len(models)} model(s) under providers.{PROVIDER_ID}")
 

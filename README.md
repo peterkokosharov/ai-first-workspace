@@ -96,8 +96,14 @@ opencode, e.g. `python3 tools/run_opencode.py run -m nvidia/<model> 'hi'`. Plain
 `opencode` still works for opencode's own free models. Other providers (Gemini,
 DeepSeek, Groq, Mistral, OpenRouter): `python3 tools/setup_providers.py <name>`.
 
-If an old config (or one of its `.bak-*` copies) still contains a key in plain text,
-the tools warn and show where, never the value; delete those entries or files by hand.
+If an old config (or one of its `.bak-*` copies, or `./opencode.json` in the current
+folder) still contains a key in plain text, the tools warn and show where, never the
+value. The setup tools remove the entries that older versions wrote (one per model) and
+redact other literal keys in the config they write; old `.bak-*` files you delete by hand.
+
+The keys live in opencode's environment, so programs that opencode starts (shell
+commands, agent tools) can read them too. An agent must never print environment
+variables (`env`, `set`, `printenv`, `echo $NVIDIA_API_KEY`).
 
 The setup tools are safe to re-run: they need no admin rights (no sudo), change nothing
 outside your user folder, and copy the old config to `<file>.bak-YYYYMMDD-HHMMSS` before
