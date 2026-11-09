@@ -79,6 +79,19 @@ opencode is the default because it is free. The others also work with this folde
 
 The rex runtime only partly works with this folder.
 
+## Connect opencode to the NVIDIA models (optional)
+
+```bash
+python3 tools/setup_nvidia.py --dry-run   # shows what would change, writes nothing
+python3 tools/setup_nvidia.py             # merges the NVIDIA models into opencode's config
+```
+
+The setup tools are safe to re-run: they need no admin rights (no sudo), change nothing
+outside your user folder, and copy the old config to `<file>.bak-YYYYMMDD-HHMMSS` before
+writing. opencode's user config is `~/.config/opencode/opencode.json` on Linux and
+Windows (`%USERPROFILE%\.config\opencode`), `$XDG_CONFIG_HOME/opencode` if that is set,
+and `~/.configtde/opencode` only inside a TDE session; `OPENCODE_CONFIG` overrides it.
+
 ## If the model loops
 
 Free models such as **Big Pickle** (opencode) or **Nemotron Super** sometimes think for

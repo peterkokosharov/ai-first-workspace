@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-"""Configure OpenCode providers using keys from KWallet.
+"""Configure OpenCode providers using keys from the OS secret store.
 
 Reads the API key for a provider from ``data/inventory.db`` key paths via
-``tools/secret.py``, then adds/updates that provider in OpenCode's global
-config file ``~/.configtde/opencode/opencode.jsonc``.
+``tools/secret.py`` (automatic backend: Windows Credential Manager, KWallet, GNOME
+Keyring, ...), then adds/updates that provider in OpenCode's global config file
+(see ``opencode_config.config_file()``: ``~/.config/opencode`` by default).
+
+Safe to re-run: the old config is backed up as ``<file>.bak-YYYYMMDD-HHMMSS`` before
+it is overwritten; ``--dry-run`` only prints what would change. No admin rights.
 
 Standard library only: no venv, no pip.
 
 Usage:
+    python3 tools/setup_providers.py gemini --dry-run
     python3 tools/setup_providers.py gemini
     python3 tools/setup_providers.py nvidia
     python3 tools/setup_providers.py deepseek
@@ -17,26 +22,26 @@ Exit codes: 0 ok, 1 not found, 2 error.
 
 from __future__ import annotations
 
-import json
-import os
-import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
+import opencode_config  # noqa: E402  (shared helpers next to this file)
 DATA = ROOT / "data"
 INVENTORY_DB = DATA / "inventory.db"
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 
-# OpenCode config location on this Q4OS system.
-CONFIG_DIR = Path.home() / ".configtde" / "opencode"
-CONFIG_FILE = CONFIG_DIR / "opencode.jsonc"
+# OpenCode config location for this OS (TDE folder only inside a TDE session).
+CONFIG_FILE = opencode_config.config_file()
+CONFIG_DIR = CONFIG_FILE.parent
 
 EXIT_OK = 0
 EXIT_NOT_FOUND = 1
 EXIT_ERROR = 2
 
-# Map provider name -> key path in inventory / KWallet.
+# Map provider name -> key path in the inventory / OS secret store.
 KEY_PATHS = {
     "gemini": "gemini/personal/api_key",
     "nvidia": "nvidia/personal/api_key",
@@ -53,62 +58,34 @@ class SetupError(Exception):
         self.exit_code = exit_code
 
 
-def get_key_from_kwallet(key_path: str) -> str:
-    """Read a secret value from KWallet via tools/secret.py."""
+def get_key_from_secret(key_path: str) -> str:
+    """Read a secret value from the OS secret store via tools/secret.py (auto backend)."""
     try:
-        result = subprocess.run(
-            [sys.executable, str(SECRET_TOOL), "--backend", "auto", "get", key_path],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-    except subprocess.SubprocessError as exc:
-        raise SetupError(f"cannot run secret.py: {exc}") from exc
+        return opencode_config.get_secret(key_path)
+    except opencode_config.ConfigError as exc:
+        raise SetupError(str(exc), exc.exit_code) from exc
 
-    if result.returncode == 1:
-        raise SetupError(
-            f"key '{key_path}' not found in KWallet. "
-            f"Set it first: python3 tools/secret.py --backend file set {key_path}",
-            EXIT_NOT_FOUND,
-        )
-    if result.returncode != 0:
-        raise SetupError(
-            f"secret.py get failed (exit {result.returncode}): {result.stderr.strip()}"
-        )
 
-    value = result.stdout.strip()
-    if not value:
-        raise SetupError(f"key '{key_path}' is empty in KWallet")
-    return value
+get_key_from_kwallet = get_key_from_secret  # old name, kept for compatibility
 
 
 def load_config() -> dict:
-    """Load existing opencode.jsonc or return a minimal config."""
-    if not CONFIG_FILE.is_file():
-        return {"$schema": "https://opencode.ai/config.json"}
+    """Load the existing OpenCode config or return a minimal one."""
     try:
-        text = CONFIG_FILE.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise SetupError(f"cannot read {CONFIG_FILE}: {exc.strerror}") from exc
+        return opencode_config.load_json(CONFIG_FILE, {"$schema": "https://opencode.ai/config.json"})
+    except opencode_config.ConfigError as exc:
+        raise SetupError(str(exc)) from exc
+
+
+def save_config(config: dict, dry_run: bool = False) -> None:
+    """Write the config back; the old file is backed up first."""
     try:
-        return json.loads(text)
-    except json.JSONDecodeError as exc:
-        raise SetupError(f"cannot parse {CONFIG_FILE}: {exc}") from exc
+        opencode_config.write_json(CONFIG_FILE, config, dry_run=dry_run)
+    except opencode_config.ConfigError as exc:
+        raise SetupError(str(exc)) from exc
 
 
-def save_config(config: dict) -> None:
-    """Write config back to opencode.jsonc."""
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True, mode=0o700)
-    try:
-        CONFIG_FILE.write_text(
-            json.dumps(config, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8",
-        )
-    except OSError as exc:
-        raise SetupError(f"cannot write {CONFIG_FILE}: {exc.strerror}") from exc
-
-
-def configure_provider(provider: str) -> int:
+def configure_provider(provider: str, dry_run: bool = False) -> int:
     if provider not in KEY_PATHS:
         print(f"setup_providers: unknown provider '{provider}'")
         print(f"known providers: {', '.join(sorted(KEY_PATHS))}")
@@ -116,9 +93,9 @@ def configure_provider(provider: str) -> int:
 
     key_path = KEY_PATHS[provider]
 
-    # 1. Get the key from KWallet.
+    # 1. Get the key from the OS secret store.
     try:
-        api_key = get_key_from_kwallet(key_path)
+        api_key = get_key_from_secret(key_path)
     except SetupError as exc:
         print(f"setup_providers: {exc}")
         return exc.exit_code
@@ -156,14 +133,16 @@ def configure_provider(provider: str) -> int:
 
     # 5. Save.
     try:
-        save_config(config)
+        save_config(config, dry_run=dry_run)
     except SetupError as exc:
         print(f"setup_providers: {exc}")
         return exc.exit_code
 
+    if dry_run:
+        print(f"setup_providers: [dry-run] would configure '{provider}' in {CONFIG_FILE}")
+        return EXIT_OK
     print(f"setup_providers: configured '{provider}' provider in {CONFIG_FILE}")
-    print(f"  key path : {key_path}")
-    print(f"  apiKey   : {api_key[:4]}...{api_key[-4:]} (length {len(api_key)})")
+    print(f"  key path : {key_path} (value not shown)")
     print()
     print("Next: restart OpenCode (or run /reload in the TUI), then:")
     print(f"  opencode run -m {provider}/<model> 'hi'")
@@ -175,16 +154,18 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="setup_providers.py",
-        description="Configure OpenCode providers with keys from KWallet.",
+        description="Configure OpenCode providers with keys from the OS secret store.",
     )
     parser.add_argument(
         "provider",
         choices=sorted(KEY_PATHS),
         help="provider to configure (gemini, nvidia, deepseek, groq, openrouter, mistral)",
     )
+    parser.add_argument("--dry-run", action="store_true",
+                        help="print what would change; write nothing")
     args = parser.parse_args(argv)
 
-    return configure_provider(args.provider)
+    return configure_provider(args.provider, dry_run=args.dry_run)
 
 
 if __name__ == "__main__":

@@ -520,10 +520,12 @@ class SecretToolBackend(Backend):
         if result.returncode != 0:
             raise BackendError(f"secret-tool search failed: {_detail(result)}")
         found = set()
+        # secret-tool prints "attribute.kiko-identity = X" (older builds: no prefix).
         for line in (result.stdout or "").splitlines():
-            if not line.startswith("kiko-identity = "):
+            key, sep, rest = line.partition(" = ")
+            if not sep or key.strip().removeprefix("attribute.") != "kiko-identity":
                 continue
-            candidate = line.split("=", 1)[1].strip().lower()
+            candidate = rest.strip().lower()
             try:
                 found.add(validate_path(candidate))
             except UsageError:

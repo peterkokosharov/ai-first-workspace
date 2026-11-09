@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
 """Configure OpenCode providers for all free NVIDIA models in kb/models.xml.
 
-Reads key ``nvidia/personal/api_key`` from data/inventory.db via tools/secret.py,
-writes ~/.configtde/opencode/opencode.jsonc with one provider entry per model.
+Reads key ``nvidia/personal/api_key`` via tools/secret.py (automatic backend:
+Windows Credential Manager, KWallet, GNOME Keyring, ...) and merges one provider
+entry per model into OpenCode's global config (``~/.config/opencode`` by default;
+see ``opencode_config.config_file()``). Other settings in that file are kept.
+
+Safe to re-run: the old config is backed up as ``<file>.bak-YYYYMMDD-HHMMSS``;
+``--dry-run`` only prints what would change. No admin rights.
 
 Usage:
+    python3 tools/setup_nvidia.py --dry-run
     python3 tools/setup_nvidia.py
 """
 
 from __future__ import annotations
 
-import json
 import re
-import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
+import opencode_config  # noqa: E402  (shared helpers next to this file)
 KB_XML = ROOT / "kb" / "models.xml"
 INVENTORY_DB = ROOT / "data" / "inventory.db"
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 
-HOME = Path.home()
-CONFIG_DIR = HOME / ".configtde" / "opencode"
-CONFIG_FILE = CONFIG_DIR / "opencode.jsonc"
+CONFIG_FILE = opencode_config.config_file()
+CONFIG_DIR = CONFIG_FILE.parent
 
 
 def parse_models(xml_path: Path) -> list[dict]:
@@ -50,37 +56,17 @@ def parse_models(xml_path: Path) -> list[dict]:
 
 
 def get_key_from_secret(key_path: str) -> str:
-    """Read a secret value from the project secret tool."""
+    """Read a secret value from the OS secret store via tools/secret.py (auto backend)."""
     try:
-        result = subprocess.run(
-            [sys.executable, str(SECRET_TOOL), "--backend", "auto", "get", key_path],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-    except subprocess.SubprocessError as exc:
-        raise RuntimeError(f"cannot run {SECRET_TOOL}: {exc}") from exc
-
-    if result.returncode == 1:
-        raise RuntimeError(
-            f"key '{key_path}' not found in secret store. "
-            f"Set it first: python3 {SECRET_TOOL} --backend auto set {key_path}"
-        )
-    if result.returncode != 0:
-        raise RuntimeError(
-            f"{SECRET_TOOL} get failed: {result.stderr.strip()}"
-        )
-    value = result.stdout.strip()
-    if not value:
-        raise RuntimeError(f"key '{key_path}' is empty in secret store")
-    return value
+        return opencode_config.get_secret(key_path)
+    except opencode_config.ConfigError as exc:
+        raise RuntimeError(str(exc)) from exc
 
 
-def write_opencode_config(models: list[dict], api_key: str) -> None:
-    """Write ~/.configtde/opencode/opencode.jsonc with one provider per model."""
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-
-    providers: dict[str, dict] = {}
+def write_opencode_config(models: list[dict], api_key: str, dry_run: bool = False) -> None:
+    """Merge one provider per model into the OpenCode config (old file backed up)."""
+    config = opencode_config.load_json(CONFIG_FILE, {})
+    providers: dict[str, dict] = config.setdefault("providers", {})
     for m in models:
         providers[m["alias"]] = {
             "settings": {
@@ -95,12 +81,17 @@ def write_opencode_config(models: list[dict], api_key: str) -> None:
             },
         }
 
-    config = {"providers": providers}
-    CONFIG_FILE.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {CONFIG_FILE} with {len(models)} model(s)")
+    opencode_config.write_json(CONFIG_FILE, config, dry_run=dry_run)
+    verb = "would write" if dry_run else "wrote"
+    print(f"{verb} {CONFIG_FILE} with {len(models)} model(s)")
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(prog="setup_nvidia.py", description=__doc__.splitlines()[0])
+    parser.add_argument("--dry-run", action="store_true", help="print what would change; write nothing")
+    args = parser.parse_args(argv)
     models = parse_models(KB_XML)
     if not models:
         print(f"no models found in {KB_XML}")
@@ -112,7 +103,11 @@ def main() -> int:
         print(f"error: {exc}")
         return 1
 
-    write_opencode_config(models, api_key)
+    try:
+        write_opencode_config(models, api_key, dry_run=args.dry_run)
+    except opencode_config.ConfigError as exc:
+        print(f"error: {exc}")
+        return 1
     print()
     print("Next: restart OpenCode so it picks up the new providers.")
     return 0

@@ -94,6 +94,9 @@ def check_ram() -> str:
     return f"{mb} MB"
 
 
+PY_LAUNCHER = "py" if sys.platform == "win32" else "python3"
+
+
 def check_python() -> str:
     return f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
 
@@ -175,7 +178,10 @@ def main(argv: list[str] | None = None) -> int:
     merman_name = runtime.get("merman", "npx -y @mermaid-js/mermaid-cli")
     git_name = runtime.get("git", "git")
     bash_name = runtime.get("bash", "bash")
-    python_name = runtime.get("python", "python3")
+    python_name = runtime.get("python", "auto")
+    if python_name in ("", "auto"):
+        # "auto": the interpreter running this script (python3 on Linux, py/python on Windows).
+        python_name = sys.executable
     node_name = runtime.get("node", "node")
     docker_name = runtime.get("docker", "docker")
     npm_name = runtime.get("npm", "npm")
@@ -262,10 +268,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"data/inventory.db:   {'exists' if db_exists else 'MISSING'}")
     if db_exists and not db_has_tables:
         print("  -> database exists but has no tables (empty).")
-        print(f"     Run: python3 {INVENTORY_TOOL} init")
+        print(f"     Run: {PY_LAUNCHER} {INVENTORY_TOOL} init")
     elif not db_exists:
         print("  -> database missing.")
-        print(f"     Run: python3 {INVENTORY_TOOL} init")
+        print(f"     Run: {PY_LAUNCHER} {INVENTORY_TOOL} init")
 
     print()
     print("Notes:")

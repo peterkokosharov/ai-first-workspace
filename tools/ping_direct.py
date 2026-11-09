@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Ping an LLM provider directly via its HTTP API, using a key from KWallet.
+"""Ping an LLM provider directly via its HTTP API, using a key from the OS secret store.
 
 Usage:
     python3 tools/ping_direct.py gemini "hi"
     python3 tools/ping_direct.py nvidia "hi"
     python3 tools/ping_direct.py deepseek "hi"
 
-Reads the API key from ``data/inventory.db`` via ``tools/secret.py`` (KWallet),
+Reads the key path from ``data/inventory.db`` and the key via ``tools/secret.py``
+(automatic backend: Windows Credential Manager, KWallet, GNOME Keyring, ...),
 then sends a request to the provider's chat completions endpoint.
 
 Standard library only: no venv, no pip.
@@ -17,13 +18,15 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
-import subprocess
 import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
+import opencode_config  # noqa: E402  (shared helpers next to this file)
 DATA = ROOT / "data"
 INVENTORY_DB = DATA / "inventory.db"
 SECRET_TOOL = ROOT / "tools" / "secret.py"
@@ -98,33 +101,15 @@ class PingError(Exception):
         self.exit_code = exit_code
 
 
-def get_key_from_kwallet(key_path: str) -> str:
-    """Read a secret value from KWallet via tools/secret.py."""
+def get_key_from_secret(key_path: str) -> str:
+    """Read a secret value from the OS secret store via tools/secret.py (auto backend)."""
     try:
-        result = subprocess.run(
-            [sys.executable, str(SECRET_TOOL), "--backend", "auto", "get", key_path],
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
-    except subprocess.SubprocessError as exc:
-        raise PingError(f"cannot run secret.py: {exc}") from exc
+        return opencode_config.get_secret(key_path)
+    except opencode_config.ConfigError as exc:
+        raise PingError(str(exc), exc.exit_code) from exc
 
-    if result.returncode == 1:
-        raise PingError(
-            f"key '{key_path}' not found in KWallet. "
-            f"Set it first: python3 tools/secret.py --backend file set {key_path}",
-            EXIT_NOT_FOUND,
-        )
-    if result.returncode != 0:
-        raise PingError(
-            f"secret.py get failed (exit {result.returncode}): {result.stderr.strip()}"
-        )
 
-    value = result.stdout.strip()
-    if not value:
-        raise PingError(f"key '{key_path}' is empty in KWallet")
-    return value
+get_key_from_kwallet = get_key_from_secret  # old name, kept for compatibility
 
 
 def build_gemini_body(message: str) -> dict:
@@ -152,7 +137,7 @@ def ping_provider(provider: str, message: str, model_slug: str | None = None) ->
     info = get_provider_info(provider, model_slug)
     if not info:
         print(f"ping_direct: provider '{provider}' not found in inventory database")
-        print(f"Run: python3 tools/inventory.py init")
+        print("Run: python tools/inventory.py init")
         return EXIT_NOT_FOUND
     if not info["key_path"]:
         print(f"ping_direct: no active key for provider '{provider}' in inventory")
@@ -161,9 +146,9 @@ def ping_provider(provider: str, message: str, model_slug: str | None = None) ->
         print(f"ping_direct: no active model for provider '{provider}' in inventory")
         return EXIT_NOT_FOUND
 
-    # 1. Get key from KWallet.
+    # 1. Get key from the OS secret store.
     try:
-        api_key = get_key_from_kwallet(info["key_path"])
+        api_key = get_key_from_secret(info["key_path"])
     except PingError as exc:
         print(f"ping_direct: {exc}")
         return exc.exit_code
@@ -177,9 +162,8 @@ def ping_provider(provider: str, message: str, model_slug: str | None = None) ->
     }
 
     if provider == "gemini":
-        # Gemini uses key as query parameter ?key=API_KEY.
-        separator = "&" if "?" in endpoint else "?"
-        endpoint = f"{endpoint}{separator}key={api_key}"
+        # Key in a header, not in the URL, so it never shows up in printed output.
+        headers["x-goog-api-key"] = api_key
         body = json.dumps(build_gemini_body(message)).encode("utf-8")
     else:
         headers["Authorization"] = f"Bearer {api_key}"
@@ -219,7 +203,7 @@ def ping_provider(provider: str, message: str, model_slug: str | None = None) ->
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="ping_direct.py",
-        description="Ping an LLM provider directly via HTTP using a KWallet key.",
+        description="Ping an LLM provider directly via HTTP using a key from the OS secret store.",
     )
     parser.add_argument(
         "provider",

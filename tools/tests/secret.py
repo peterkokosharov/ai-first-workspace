@@ -48,6 +48,7 @@ atomic_write_text = secret_tool.atomic_write_text
 WcmBackend = secret_tool.WcmBackend
 DcopBackend = secret_tool.DcopBackend
 KWalletBackend = secret_tool.KWalletBackend
+SecretToolBackend = secret_tool.SecretToolBackend
 SecretError = secret_tool.SecretError
 NotFoundError = secret_tool.NotFoundError
 BackendError = secret_tool.BackendError
@@ -161,6 +162,7 @@ class TestFileBackend(unittest.TestCase):
         self.be.delete("a/b")
         self.assertEqual(self.be.names(), ["c/d"])
 
+    @unittest.skipIf(sys.platform == "win32", "POSIX file modes do not apply on Windows")
     def test_atomic_and_mode(self):
         self.be.set("a/b", "v1")
         st = self.path.stat()
@@ -226,6 +228,7 @@ class TestDcopMocked(unittest.TestCase):
 
         return mock.patch("tools.secret.kkeystore._run", side_effect=fake_run)
 
+    @unittest.skipIf(sys.platform == "win32", "DCOP exists only on Linux/TDE")
     def test_dcop_probe_finds_binary(self):
         with mock.patch.object(secret_tool, "_find_dcop", return_value="/opt/trinity/bin/dcop"), \
              mock.patch("tools.secret.kkeystore._run",
@@ -280,6 +283,77 @@ class TestDcopMocked(unittest.TestCase):
              self._patch_run(responses):
             be = DcopBackend()
             self.assertEqual(be.names(), ["a/b", "c/d"])
+
+
+# ------------------------------------------------------------------- mocked secret-tool (GNOME Keyring / libsecret, e.g. Linux Mint)
+
+
+class TestSecretToolMocked(unittest.TestCase):
+    def setUp(self):
+        self.calls = []
+
+    def _patch_run(self, responses):
+        iterator = iter(responses)
+
+        def fake_run(args, stdin=None):
+            self.calls.append((list(args), stdin))
+            rc, out = next(iterator)
+            return FakeCompletedProcess(rc, out)
+
+        return mock.patch.object(secret_tool.kkeystore, "_run", side_effect=fake_run)
+
+    def test_probe_needs_dbus_and_binary(self):
+        ks = secret_tool.kkeystore
+        with mock.patch.object(ks.sys, "platform", "linux"), \
+             mock.patch.dict(os.environ, {"DBUS_SESSION_BUS_ADDRESS": "unix:path=/x"}), \
+             mock.patch.object(ks.shutil, "which", return_value="/usr/bin/secret-tool"):
+            self.assertTrue(SecretToolBackend.probe()[0])
+        with mock.patch.object(ks.sys, "platform", "linux"), \
+             mock.patch.dict(os.environ, {}, clear=True):
+            self.assertFalse(SecretToolBackend.probe()[0])
+
+    def test_set_get_delete(self):
+        responses = [(0, ""), (0, "secret-value\n"), (0, ""), (1, "")]
+        with self._patch_run(responses):
+            be = SecretToolBackend()
+            be.set("a/b", "secret-value")
+            self.assertEqual(be.get("a/b"), "secret-value")
+            be.delete("a/b")
+            with self.assertRaises(NotFoundError):
+                be.get("a/b")
+        store_args, stdin = self.calls[0]
+        self.assertEqual(store_args[:2], ["secret-tool", "store"])
+        self.assertIn("A/B", store_args)
+        self.assertEqual(stdin, "secret-value")  # value on stdin, never on the command line
+        self.assertNotIn("secret-value", store_args)
+        self.assertEqual(self.calls[1][0], ["secret-tool", "lookup", "kiko-identity", "A/B"])
+
+    def test_names_parses_search_output(self):
+        out = ("[/org/freedesktop/secrets/collection/login/7]\n"
+               "label = portable-workspace a/b\n"
+               "secret = hidden\n"
+               "attribute.kiko-identity = A/B\n"
+               "attribute.service = portable-workspace\n"
+               "kiko-identity = C/D\n")
+        with self._patch_run([(0, out)]):
+            self.assertEqual(SecretToolBackend().names(), ["a/b", "c/d"])
+
+    def test_auto_picks_secret_tool_when_only_store(self):
+        def only(name):
+            return staticmethod(lambda: (name == "secret-tool", "mocked"))
+
+        patches = [mock.patch.object(cls, "probe", only(name))
+                   for name, cls in secret_tool.BACKENDS.items() if name != "file"]
+        for p in patches:
+            p.start()
+        try:
+            secret_tool._register_backends()
+            be = secret_tool.make_backend("auto")
+        finally:
+            for p in patches:
+                p.stop()
+            secret_tool._register_backends()
+        self.assertIsInstance(be, SecretToolBackend)
 
 
 # ------------------------------------------------------------------- CLI via subprocess
@@ -356,11 +430,13 @@ class TestCLI(unittest.TestCase):
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stdout.strip(), "MYVAL")
 
+    @unittest.skipUnless(SECRET_LIVE, "writes to the real OS store; needs SECRET_LIVE_TESTS=1")
     def test_auto_uses_available_store(self):
-        # On linux with the TDE wallet open, auto should pick dcop and probe ok.
+        # auto must pick the native store of this machine (wcm, dcop, secret-tool, ...).
         result = self._run(["probe"])
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("ok: dcop", result.stdout)
+        self.assertIn("ok: ", result.stdout)
+        self.assertNotIn("ok: file", result.stdout)
 
     def test_file_backend_cli_is_explicit(self):
         # --backend file must be explicit; auto never silently uses plaintext.
