@@ -1,6 +1,6 @@
 # Project Architecture — Portable Development Workspace
 
-Status: **v5** — tooling implemented and tested. Self-contained, portable folder for AI-assisted software development.
+Self-contained, portable folder for AI-assisted software development.
 
 ## 1. Repository Layout
 
@@ -215,7 +215,7 @@ flowchart TD
 OpenCode is a terminal TUI (Terminal User Interface) application — the entire interface runs in a single terminal window, without split GUI panes. Conceptual layout:
 
 ```
-konsole — petark@petar-hpprobook: ~/Documents/Default Project
+konsole — user@host: ~/ai-first-workspace
 ─────────────────────────────────────────────────────────────────────
  OpenCode v2 — Portable Workspace (Q4OS/TDE)
 ─────────────────────────────────────────────────────────────────────

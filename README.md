@@ -5,8 +5,6 @@ itself is the product: rules, inventory, tooling and configuration live here.
 It can be archived, moved to another machine, unpacked and continued without missing
 pieces.
 
-Status: **v5 — tooling implemented and tested; auto-discovery added**.
-
 ## Goals
 
 The workspace answers three questions at any time:
@@ -58,7 +56,7 @@ it with a coding agent → work continues, with no file left behind on the old m
   self-containment, technical requirements, working habits, no action without
   explicit confirmation, and git operation rules. Project records are in English;
   chat with the assistant is in Bulgarian Cyrillic.
-- `lib/kikolib` — vendored copy of `~/kiko/packages/kikolib/kikolib` (MIT), providing
+- `lib/kikolib` — vendored copy of the author's `kikolib` (MIT), providing
   `kikolib.factory` (backend registry/selection) and `kikolib.keystore` (native
   credential-store calls: WCM, Keychain, `secret-tool`, KWallet, TDE DCOP).
 - `tools/secret.py` — portable secret tool over native credential stores. Backends:
@@ -86,19 +84,6 @@ it with a coding agent → work continues, with no file left behind on the old m
   Live DCOP write/read/delete runs only with `SECRET_LIVE_TESTS=1`.
 - `proc/autodiscovery.md` — expanded form of Rule 7 in `AGENTS.md`; describes the
   terminal procedure when `secret.py` or `inventory.db` are missing or unusable.
-
-## Running Services — Model Providers
-
-| Service | Port | Description | Models |
-|---------|------|-------------|--------|
-| `kiko-proxy` | `4000` | Anthropic-compatible proxy (kiko-lite) | Anthropic-compatible |
-| `litellm` | `8000` | LiteLLM proxy over multiple providers | nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder |
-
-Systemd user services:
-- `kiko-proxy.service` — `systemctl --user status kiko-proxy`
-- `litellm.service` — `systemctl --user status litellm`
-
-API keys are stored in `~/.litellm/env` (never in git) and loaded from `~/.kiko/.env` / KWallet via `tools/secret.py`.
 
 ## Secrets
 
@@ -178,58 +163,17 @@ No local LLM is used: on the available hardware it is too slow to be practical.
 7. Run tests: `python3 -m unittest discover -s tools/tests -t . -v`.
 8. Start a session with any available harness.
 
-## Running Services — Model Providers
+## Optional example — local model proxy
 
-| Service | Port | Description | Models |
-|---------|------|-------------|--------|
-| `kiko-proxy` | `4000` | Anthropic-compatible proxy (kiko-lite) | Anthropic-compatible |
-| `litellm` | `8000` | LiteLLM proxy over multiple providers | nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder |
+Not needed to start. One test machine ran a local OpenAI-compatible proxy (for example
+LiteLLM on `http://127.0.0.1:8000/v1`) as a user service in front of the free NVIDIA
+models. The workspace does not install or require it. If you run one, keep its keys in
+the OS secret store (`tools/secret.py`), never in a file inside this folder.
 
-Systemd user services:
-- `kiko-proxy.service` — `systemctl --user status kiko-proxy`
-- `litellm.service` — `systemctl --user status litellm`
+## Goose CLI
 
-API keys are stored in `~/.litellm/env` (never in git) and loaded from `~/.kiko/.env` / KWallet via `tools/secret.py`.
-
-## AI Agent Clients — Goose CLI
-
-| Tool | Path | Description | Configured With |
-|------|------|-------------|-----------------|
-| `goose` | `/home/petark/test-env/bin/goose` | Open-source AI agent CLI | Litellm → NVIDIA nemotron-ultra |
-
-Config file: `~/.configtde/goose/secrets.yaml`
-
-Test session:
-```bash
-echo "каков е planos-a?" | /home/petark/test-env/bin/goose run --text -
-```
-
-Goose reads `AGENTS.md` from the working directory automatically.
-
-## Service Status Example
-
-```text
-systemctl --user status kiko-proxy.service litellm.service
-
-● kiko-proxy.service — kiko-proxy: Anthropic API proxy server (kiko-lite)
-     Active: active (running) — http://127.0.0.1:4000
-
-● litellm.service — LiteLLM Proxy
-     Active: active (running) — http://127.0.0.1:8000
-```
-
-```text
-curl -s http://127.0.0.1:8000/v1/models
-{"data":[
-  {"id":"nvidia/nemotron-ultra","object":"model"},
-  {"id":"nvidia/nemotron-super","object":"model"},
-  {"id":"gemini/gemini-flash","object":"model"},
-  {"id":"gemini/gemini-flash-lite","object":"model"},
-  {"id":"anthropic/claude-sonnet","object":"model"},
-  {"id":"groq/llama","object":"model"},
-  {"id":"qwen/qwen-coder","object":"model"}
-]}
-```
+Install goose from its releases page and put it on `PATH`. Goose reads `AGENTS.md` from
+the working directory automatically. Quick test: `echo "hi" | goose run --text -`.
 
 ## Language
 

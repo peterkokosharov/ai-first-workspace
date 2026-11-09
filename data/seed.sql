@@ -5,9 +5,9 @@
 INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '2');
 
 INSERT OR IGNORE INTO machines (id, name, os, arch, python, user_name, role, status, notes) VALUES
-    (1, 'q4os', 'Q4OS Linux (TDE)', 'x86_64', '3.13', 'petark', 'primary', 'active',
+    (1, 'q4os', 'Q4OS Linux (TDE)', 'x86_64', '3.13', '<user>', 'primary', 'active',
         'TDE session; /opt/trinity/bin contains dcop and tdewalletmanager'),
-    (2, 'win10', 'Windows 10', 'x86_64', '3.13', 'Dani', 'secondary', 'active',
+    (2, 'win10', 'Windows 10', 'x86_64', '3.13', '<user>', 'secondary', 'active',
         'Windows Credential Manager is the native store');
 
 INSERT OR IGNORE INTO services (id, name, kind, account, status, notes) VALUES
@@ -19,7 +19,7 @@ INSERT OR IGNORE INTO services (id, name, kind, account, status, notes) VALUES
 
 INSERT OR IGNORE INTO providers (id, name, kind, base_url, free_tier, status, notes) VALUES
     (1, 'gemini',   'llm', NULL, 1, 'active', 'free tier: gemini-3.5-flash-lite, gemini-3.8-flash'),
-    (2, 'nvidia',   'llm', NULL, 0, 'active', 'direct endpoint works; kiko-proxy returns 500'),
+    (2, 'nvidia',   'llm', NULL, 0, 'active', 'direct endpoint works'),
     (3, 'opencode', 'llm', NULL, 1, 'active', 'free models, no key'),
     (4, 'groq',     'llm', NULL, 0, 'active', NULL),
     (5, 'openrouter', 'llm', NULL, 0, 'active', NULL),
@@ -27,7 +27,7 @@ INSERT OR IGNORE INTO providers (id, name, kind, base_url, free_tier, status, no
     (7, 'mistral',  'llm', NULL, 0, 'active', NULL),
     (8, 'anthropic','llm', NULL, 0, 'active', 'claude: 12-15 models'),
     (9, 'codex',    'llm', NULL, 1, 'active', 'free tier: several GPT models'),
-    (10, 'litellm', 'llm', NULL, 1, 'active', 'litellm + kiko hack: 4 models'),
+    (10, 'litellm', 'llm', NULL, 1, 'active', 'optional local LiteLLM proxy'),
     (11, 'kiko',    'llm', NULL, 1, 'active', 'kiko proxy integration'),
     (12, 'goose',   'llm', NULL, 0, 'unknown', 'integration unknown'),
     (13, 'rez',     'llm', NULL, 1, 'active', 'rez integrated with kiko');
@@ -45,7 +45,7 @@ INSERT OR IGNORE INTO keys (id, path, service_id, provider_id, kind, status, not
     (9, 'mistral/personal/api_key', NULL, 7, 'api_key', 'active', NULL),
     (10, 'anthropic/personal/api_key', NULL, 8, 'api_key', 'planned', 'claude models'),
     (11, 'codex/personal/api_key', NULL, 9, 'api_key', 'planned', 'codex GPT models'),
-    (12, 'litellm/personal/api_key', NULL, 10, 'api_key', 'planned', 'litellm + kiko hack'),
+    (12, 'litellm/personal/api_key', NULL, 10, 'api_key', 'planned', 'optional local proxy'),
     (13, 'kiko/personal/api_key', NULL, 11, 'api_key', 'planned', 'kiko proxy'),
     (14, 'rez/personal/api_key', NULL, 13, 'api_key', 'planned', 'rez integrated with kiko');
 

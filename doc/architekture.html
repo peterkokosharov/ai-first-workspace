@@ -50,7 +50,7 @@
 
 <h1>Project Architecture — Portable Development Workspace</h1>
 
-<p class="note"><strong>Status:</strong> v5 — tooling implemented and tested. Self-contained, portable folder for AI-assisted software development.</p>
+<p class="note">Self-contained, portable folder for AI-assisted software development.</p>
 
 <h2>1. Repository Layout</h2>
 <pre>
@@ -143,9 +143,9 @@
   </div>
   <div class="desktop-body">
     <div class="desktop-panel">
-      <div class="desktop-panel-title">Terminal — ~/Documents/Default Project</div>
+      <div class="desktop-panel-title">Terminal — ~/ai-first-workspace</div>
       <div class="desktop-panel-content">
-        <span class="cmd-prompt">petark@petar-hpprobook:</span><span class="cmd-text"> ~/Documents/Default Project$ opencode</span><br>
+        <span class="cmd-prompt">user@host:</span><span class="cmd-text"> ~/ai-first-workspace$ opencode</span><br>
         <br>
         <span class="cmd-prompt">&gt; python3 tools/autodiscovery.py</span><br>
         OS: Linux 6.12 Q4OS (TDE)<br>
@@ -173,7 +173,7 @@
         <span class="cmd-text">User:</span> zdr. suzdadem agents.md<br>
         <span class="agent-text">Agent:</span> Разбирайки задачата, създавам AGENTS.md с правила за проекта...<br>
         <span class="cmd-text">User:</span> da, git push<br>
-        <span class="agent-text">Agent:</span> Git push изведнъж — lokalno commit, zatva push v remote samo s izris<|tool_call_arg_end|><|tool_call_arg_begin|>no "да".<br>
+        <span class="agent-text">Agent:</span> Git push изведнъж — lokalno commit, a push v remote samo s izrichno "да".<br>
         <span class="cmd-text">User:</span> secret.py set gemini/personal/api_key<br>
         <span class="agent-text">Agent:</span> Value for gemini/personal/api_key: <span style="color:#608b4e;">••••••••</span><br>
         Repeat: <span style="color:#608b4e;">••••••••</span><br>
@@ -185,27 +185,20 @@
 
 <div class="note"><strong>OpenCode Desktop notes:</strong> GUI приложение с ляв терминал и десен чат. Chat-а е на български кирилица, project record-овете са на английски. Тайните стойности никога не се отпечатват — <code>list</code> и <code>probe</code> показват само key path-ове. KWallet/DCOP портфейлът на Q4OS трябва да е отворен веднъж ръчно преди <code>secret.py</code> да го може да използва.</div>
 
-<h2>7. Running Services — Model Providers</h2>
-<table>
-  <tr><th>Service</th><th>Port</th><th>Description</th><th>Models</th></tr>
-  <tr><td><code>kiko-proxy.service</code></td><td>4000</td><td>Anthropic-compatible proxy (kiko-lite)</td><td>Anthropic-compatible</td></tr>
-  <tr><td><code>litellm.service</code></td><td>8000</td><td>LiteLLM proxy over multiple providers</td><td>nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder</td></tr>
-</table>
-<pre>systemctl --user status kiko-proxy.service litellm.service</pre>
-<pre>curl -s http://127.0.0.1:8000/v1/models</pre>
-<p>API keys are stored in <code>~/.litellm/env</code> (never in git) and loaded from <code>~/.kiko/.env</code> / KWallet via <code>tools/secret.py</code>.</p>
+<h2>7. Optional example — local model proxy</h2>
+<div class="note"><strong>Optional, not needed to start.</strong> One test machine ran a local OpenAI-compatible proxy
+(for example LiteLLM on <code>http://127.0.0.1:8000/v1</code>) as a user service in front of the free NVIDIA models.
+The workspace does not install or require it. If you run one, keep its keys in the OS secret store
+(<code>tools/secret.py</code>), never in a file inside this folder.</div>
 
 <h2>8. AI Agent Client — Goose CLI</h2>
-<table>
-  <tr><th>Tool</th><th>Path</th><th>Description</th><th>Configured With</th></tr>
-  <tr><td><code>goose</code></td><td>/home/petark/test-env/bin/goose</td><td>Open-source AI agent CLI</td><td>Litellm → NVIDIA nemotron-ultra</td></tr>
-</table>
-<pre>Config file: ~/.configtde/goose/config.yaml</pre>
-<pre>provider: litellm</pre>
-<pre>litellm_host: http://127.0.0.1:8000</pre>
-<pre>litellm_api_key: &lt;NVIDIA_API_KEY from your secret store&gt;</pre>
-<pre>litellm_model: nvidia/nemotron-ultra</pre>
-<pre>Test: echo "каков е planos-a?" | /home/petark/test-env/bin/goose run --text -</pre>
+<p>Install goose from its own releases page and put it on <code>PATH</code>. Example configuration
+(<code>~/.config/goose/config.yaml</code>; the key comes from the secret store):</p>
+<pre>provider: litellm
+litellm_host: http://127.0.0.1:8000
+litellm_api_key: &lt;NVIDIA_API_KEY from your secret store&gt;
+litellm_model: nvidia/nemotron-ultra</pre>
+<pre>Test: echo "hi" | goose run --text -</pre>
 <p>Goose reads <code>AGENTS.md</code> from the working directory automatically.</p>
 
 <h2>9. What Is Missing / Recommendations</h2>

@@ -7,7 +7,7 @@ You must change it to **your own GitHub username** before you can push.
 ## Step 0 — Prepare
 
 ```bash
-cd /home/petark/Documents/Default Project
+cd ~/ai-first-workspace   # the folder where you cloned this project
 ```
 
 Make sure you have committed locally:
@@ -67,18 +67,21 @@ git push origin main
 
 Git will ask for:
 
-- **username:** your GitHub username (e.g. `peterkokosharov`)
+- **username:** your GitHub username
 - **password:** your Personal Access Token — **not** your GitHub login password
 
 ## Step 4 — Remember the token (optional)
 
-Run once:
+Use the operating system's credential store, not a plain-text file:
 
 ```bash
-git config --global credential.helper store
+# Windows (Git for Windows ships Git Credential Manager)
+git config --global credential.helper manager
+# Linux: keep the token in memory for one hour
+git config --global credential.helper 'cache --timeout=3600'
 ```
 
-After the first successful push, Git will cache the token locally.
+Do not use `credential.helper store`: it writes the token in plain text to `~/.git-credentials`.
 
 ## Never commit tokens
 
