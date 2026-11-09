@@ -152,7 +152,8 @@ class TestCLIOutput(unittest.TestCase):
 
     def test_reports_inventory_exists(self):
         result = _run()
-        self.assertIn("data/inventory.db:   exists", result.stdout)
+        self.assertIn("inventory db:        exists", result.stdout)
+        self.assertIn(_ENV["INVENTORY_DB"], result.stdout)
 
     def test_prints_optional_notes(self):
         result = _run()

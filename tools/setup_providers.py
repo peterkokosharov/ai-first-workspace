@@ -34,6 +34,7 @@ Exit codes: 0 ok, 1 not found, 2 error.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -42,7 +43,7 @@ if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import opencode_config  # noqa: E402  (shared helpers next to this file)
 DATA = ROOT / "data"
-INVENTORY_DB = DATA / "inventory.db"
+INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(DATA / "inventory.db")))  # as in inventory.py
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 
 # OpenCode config location for this OS (TDE folder only inside a TDE session).

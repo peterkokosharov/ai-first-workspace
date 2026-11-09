@@ -8,7 +8,7 @@ Usage:
     python3 tools/ping.py <model_alias> [--message "hi"]
 
 The script:
-1. Looks up the model alias in data/inventory.db (models table).
+1. Looks up the model alias in data/inventory.db (or $INVENTORY_DB), models table.
 2. Checks OpenCode's model catalog for the provider to determine the tier.
 3. Pings the model via `opencode run -m <provider>/<model> --format json <message>`.
 4. Reports OK if the model answers, NOT OK on HTTP error / non-200 / no response.
@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sqlite3
 import subprocess
 import sys
@@ -27,7 +28,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
-INVENTORY_DB = DATA / "inventory.db"
+INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(DATA / "inventory.db")))  # as in inventory.py
 
 EXIT_OK = 0
 EXIT_NOT_FOUND = 1

@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sqlite3
 import sys
 import urllib.error
@@ -31,7 +32,7 @@ if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import opencode_config  # noqa: E402  (shared helpers next to this file)
 DATA = ROOT / "data"
-INVENTORY_DB = DATA / "inventory.db"
+INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(DATA / "inventory.db")))  # as in inventory.py
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 
 EXIT_OK = 0

@@ -181,5 +181,20 @@ class TestCheckTier(unittest.TestCase):
             self.assertIn("skipped", msg)
 
 
+
+class TestInventoryDbEnv(unittest.TestCase):
+    def test_inventory_db_env_is_honoured(self):
+        target = str(Path(tempfile.gettempdir()) / "elsewhere" / "inventory.db")
+        with mock.patch.dict(os.environ, {"INVENTORY_DB": target}):
+            module = _load_sut()
+        self.assertEqual(module.INVENTORY_DB, Path(target))
+
+    def test_default_is_data_folder(self):
+        with mock.patch.dict(os.environ):
+            os.environ.pop("INVENTORY_DB", None)
+            module = _load_sut()
+        self.assertEqual(module.INVENTORY_DB, SUT.parents[1] / "data" / "inventory.db")
+
+
 if __name__ == "__main__":
     unittest.main()

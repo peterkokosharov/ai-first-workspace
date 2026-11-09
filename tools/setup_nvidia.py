@@ -29,6 +29,7 @@ Usage:
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -38,7 +39,7 @@ if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import opencode_config  # noqa: E402  (shared helpers next to this file)
 KB_XML = ROOT / "kb" / "models.xml"
-INVENTORY_DB = ROOT / "data" / "inventory.db"
+INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(ROOT / "data" / "inventory.db")))
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 PROVIDER_ID = "nvidia"
 #: Full endpoint for direct HTTP calls (ping tools); opencode gets the base URL

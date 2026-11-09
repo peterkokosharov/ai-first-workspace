@@ -311,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"secret store:        {f'available: {detail} (read-only check)' if ok else 'no usable store'}")
 
     db_exists, db_has_tables = check_inventory_db()
-    print(f"data/inventory.db:   {'exists' if db_exists else 'MISSING'}")
+    print(f"inventory db:        {'exists' if db_exists else 'MISSING'}  ({INVENTORY_DB})")
     if db_exists and not db_has_tables:
         print("  -> database exists but has no tables (empty).")
         print(f"     Run: {PY_LAUNCHER} {INVENTORY_TOOL} init")
