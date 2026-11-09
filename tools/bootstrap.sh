@@ -49,13 +49,19 @@ if [[ -z "$PY" ]]; then
     exit 1
 fi
 
-# Secret-check hook: only inside a git repo; setting the same value again is harmless.
+# Secret-check hook: only inside a git repo. An existing different core.hooksPath
+# (the user's own hooks) is never overwritten.
 if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    if [[ "$(git config --get core.hooksPath || true)" != ".githooks" ]]; then
+    HOOKS_PATH="$(git config --get core.hooksPath || true)"
+    if [[ -z "$HOOKS_PATH" ]]; then
         git config core.hooksPath .githooks
         echo "[0/5] Secret check turned on (git config core.hooksPath .githooks)."
-    else
+    elif [[ "$HOOKS_PATH" == ".githooks" ]]; then
         echo "[0/5] Secret check already on (core.hooksPath = .githooks)."
+    else
+        echo "[0/5] WARNING: core.hooksPath is already set to '$HOOKS_PATH'; not changed."
+        echo "      The secret-check hook is NOT on. Call .githooks/pre-commit from your"
+        echo "      own hook, or run: git config core.hooksPath .githooks"
     fi
 else
     echo "[0/5] Not a git repo: secret-check hook not turned on (no git, nothing to commit)."
