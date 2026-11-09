@@ -100,8 +100,8 @@ refuses a commit that contains an API key or token (NVIDIA `nvapi-…`, `sk-…`
 `api_key: <value>`). The value itself is never printed. Scan the whole tree by hand with
 `python3 tools/secret_scan.py --all`.
 
-**Note:** if no Python 3 is found when you commit, the hook prints
-`pre-commit: Python 3 not found, secret scan skipped` and lets the commit through
+**Note:** if no Python 3.10 or newer is found when you commit, the hook prints
+`pre-commit: Python 3.10+ not found, secret scan skipped` and lets the commit through
 (exit 0), so a machine without Python can still commit. On such a machine the check
 does not protect you; install Python or scan by hand before you push.
 

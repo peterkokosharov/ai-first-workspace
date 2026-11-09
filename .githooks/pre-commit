@@ -6,9 +6,9 @@
 # Enable once per clone:  git config core.hooksPath .githooks
 root=$(git rev-parse --show-toplevel) || exit 1
 for py in python3 python "py -3"; do
-    if $py -c "import sys; sys.exit(sys.version_info < (3, 9))" >/dev/null 2>&1; then
+    if $py -c "import sys; sys.exit(sys.version_info < (3, 10))" >/dev/null 2>&1; then
         exec $py -I "$root/tools/secret_scan.py"
     fi
 done
-echo "pre-commit: Python 3 not found, secret scan skipped" >&2
+echo "pre-commit: Python 3.10+ not found, secret scan skipped" >&2
 exit 0
