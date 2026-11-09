@@ -14,3 +14,6 @@ projects/
 
 # Local settings: copy settings.json.example to settings.json and edit it
 settings.json
+
+# Reports and test output (audits, reviews) — not in git
+out/

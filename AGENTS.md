@@ -1,111 +1,48 @@
-# Project Rules
-
-This folder is self-contained and portable: archive it, move it, unpack it, work continues. Nothing belongs outside except the coding agent program, `~/SECRETS`, and session history.
+# Rules for every agent in this folder
+Read this whole file. A line "Doing X -> file" means: read that file before you do X.
 
 ## Language
+- The user may write Bulgarian in Latin letters. Do not correct or comment on it.
+- Reply in Bulgarian, Cyrillic letters. (Other users: put your own language here.)
+- Every file, code comment and commit message is in English.
 
-- User writes in Bulgarian phonetic Latin ("pinyin BG") — do not correct or comment.
-- Assistant replies in literary Bulgarian, Cyrillic alphabet.
-- All repo files (Markdown, Python, SQL, config, comments, commits) are in English.
-
-## Commands (exact)
-
-Tests:
-```
-python3 -m unittest discover -s tools/tests -t . -v
-```
-Tests that write to the real OS secret store are skipped unless `SECRET_LIVE_TESTS=1`.
-
-Inventory database (local, gitignored — recreate if missing):
-```
-python3 tools/inventory.py init
-python3 tools/inventory.py tables
-python3 tools/inventory.py list machines
-```
-
-Secret tool (stdlib only, no venv, no pip):
-```
-python3 tools/secret.py setup
-python3 tools/secret.py probe
-python3 tools/secret.py --backend auto set provider/scope/kind   # read value from prompt/stdin
-python3 tools/secret.py get provider/scope/kind
-python3 tools/secret.py list
-```
-Exit codes: 0 OK, 1 not found, 2 backend error, 3 usage error. `auto` never falls back to plaintext — use `--backend file` explicitly.
-
-Auto-discovery (run first on a new machine):
-```
-python3 tools/autodiscovery.py
-```
-Exit codes: 0 OK, 1 minimum not met (git + bash missing), 2 database missing, 3 database empty.
-
-Mermaid diagrams (optional):
-```
-npx -y @mermaid-js/mermaid-cli -i doc/diagrams/<name>.mmd -o doc/diagrams/<name>.svg -t default -b white
-```
-Requires `node.js` + `npm`.
-
-## Git
-
-- `git commit` / `git push` locally: perform without discussion.
-- `git push remote`: clarify remote and branch first, then ask for explicit confirmation ("да").
-  - Git will ask for your GitHub username and password — enter your GitHub **Personal Access Token** (not your login password). Create it at GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens.
-  - To avoid typing the token every time, use the OS credential helper (`git config --global credential.helper manager` on Windows); never `credential.helper store` (plain-text file).
-  - See `proc/github-push.md` for the full push procedure.
-- `data/inventory.db` is gitignored — never commit it.
+## Orders and confirmation
+- Do only what the user asked. Start no other work on your own.
+- You may always read files in this folder. Running commands or writing files needs an order.
+- An order is a user message that names the action. When you ask "Shall I <action>?",
+  only a reply that starts with "да" or "yes" as its own word confirms it.
+- Ask first, one action at a time: deleting or overwriting files, dropping data,
+  git revert, anything outside this folder. Never git push (a human pushes).
+- Unsure? Ask one yes/no question. Never guess.
 
 ## Secrets
+- Never write a key, token or password into a file, commit, chat or log. Never print one.
+- Keys live only in the OS secret store, through tools/secret.py.
+  Names look like provider/scope/kind, e.g. nvidia/personal/api_key.
+- List key names (never values): python3 tools/secret.py list
+- Never use "--backend file" unless the user orders exactly that.
 
-- Secret values never enter git or the archive.
-- Primary store is the OS native credential store (WCM, Keychain, secret-tool, KWallet, TDE DCOP).
-- `~/SECRETS` is a temporary export/transfer file outside the project — delete after import.
-- On Q4OS/TDE the wallet is reached via `dcop kded tdewalletd` (`/opt/trinity/bin/dcop`).
-- Key path scheme: `provider/scope/kind` (e.g. `github/personal/token`).
+## Git
+- Commit at each milestone (see procedure). Never push.
+- Never commit data/inventory.db, settings.json, out/ or projects/.
+- If the pre-commit hook blocks a commit, remove the key. Never use --no-verify.
 
-## Project folders (per task)
+## Where things are
+- On Windows type "py" instead of "python3".
+- tools/  Python tools, standard library only. Help: read the text at the top of
+  tools/<name>.py. Do not run a tool only to see its help.
+- Tests: python3 -m unittest discover -s tools/tests -t . -v
+- Machines, providers, models, key names: python3 tools/inventory.py tables, then
+  python3 tools/inventory.py list <table>. Check there before asking the user.
+  Missing database: python3 tools/inventory.py init
+- kb/ free model list. doc/ architecture pages. out/ reports (not in git).
+- projects/<name>/ one folder per user project; it may be its own git repo.
 
-- Each task or project gets its own folder under `projects/`, e.g. `projects/oc-connnector-free-models/`.
-- That folder is self-contained: scripts, config, config files, and anything else needed to run it.
-- You may `git init` inside such a folder and `git push` it to GitHub as a standalone repo.
-- Never put secret values or secrets into git or the archive.
-- Never put `data/inventory.db` into git — it is gitignored.
-- When cloning such a project folder, run `python3 tools/autodiscovery.py` first, then `python3 tools/inventory.py init`, then populate secrets with `python3 tools/secret.py --backend auto set ...`.
-
-## Inventory first
-
-Before asking about machines, services, providers, models, keys or tools, check `data/inventory.db` with `python3 tools/inventory.py`.
-
-## No initiative
-
-Wait for an explicit order before running commands, reading/writing files, or changing configuration. A sentence containing an action and "да" is the order and confirmation. Irreversible actions (deleting files/data, overwriting, `git push`, dropping a database) need a separate confirmation.
-
-## Requirements
-
-- Python 3.x (stdlib only; no venv, no pip)
-- git
-- node.js + npm — for `mermaid-cli` diagrams
-- One supported agent harness (OpenCode primary with free models; Gemini CLI, goose and Claude Code tested; Codex CLI untested; rex partly works)
-
-## Available tools
-
-- `tools/secret.py` — secret tool over native credential stores (`get`, `set`, `del`, `list`, `export`, `import`, `probe`, `setup`, `run`, `exec`).
-- `tools/inventory.py` — SQLite inventory manager (`init`, `tables`, `list`, `show`, `search`, `sql` read-only, `setting`).
-- `tools/autodiscovery.py` — machine discovery (OS, RAM, CPU, Python, git, bash, python, node, docker, npm, docker-compose, opencode, merman, presence of tools, inventory db). Reads runtime paths from `settings.json`.
-- `tools/ping.py` — ping a model via OpenCode and verify against inventory database.
-- `tools/ping_direct.py` — ping LLM providers directly via HTTP (gemini, nvidia, deepseek, mistral) using keys from inventory database.
-- `tools/setup_providers.py` — configure OpenCode providers from keys in inventory.
-- `tools/robota.py` — scrape `build.nvidia.com/models` for free-endpoint models into `kb/md/` and `kb/html/`.
-- `tools/gen_models_xml.py` — generate `kb/models.xml` from the scraped index.
-- `tools/bootstrap.sh` — one-command init: `init` → `autodiscovery.py` → reminders → tests.
-
-## Output
-
-Write audit reports and test artifacts to `out/` (gitignored, not committed).
-
-## Data
-
-`data/schema.sql` and `data/seed.sql` are committed. `data/inventory.db` is local and gitignored — recreate with `python3 tools/inventory.py init`.
-
-## License
-
-`LICENSE` — MIT License, copyright 2026 Peter Kokosharov.
+## Procedures
+- Finished a step -> docs/procedures/review.md
+- Reached a milestone -> docs/procedures/commit.md
+- Before a release or tag -> docs/procedures/release-audit.md
+- Writing HTML docs or diagrams -> docs/procedures/html-docs.md
+- Publishing to GitHub -> docs/procedures/github-deploy.md
+- Work split over several agents -> docs/procedures/orchestration.md
+- New machine, missing tool or database -> INSTALL.md
