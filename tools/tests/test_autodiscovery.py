@@ -5,12 +5,16 @@
 """Functional tests for tools/autodiscovery.py.
 
 Checks OS, RAM, processor, Python version, git, bash, and inventory db state.
-No secrets are printed.
+No secrets are printed. Self-contained: the CLI runs against a temporary inventory
+database (created with ``inventory.py init`` via ``INVENTORY_DB``), never the real
+``data/inventory.db``, and with ``--no-secret-probe`` so the OS secret store is not
+touched.
 """
 
 from __future__ import annotations
 
 import importlib.util
+import ctypes
 import os
 import sqlite3
 import subprocess
@@ -18,11 +22,9 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 SUT = Path(__file__).resolve().parents[1] / "autodiscovery.py"  # tools/autodiscovery.py
-ROOT = Path(__file__).resolve().parents[1]                      # project root
-DATA = ROOT / "data"
-INVENTORY_DB = DATA / "inventory.db"
 
 
 def _load_sut():
@@ -35,9 +37,30 @@ def _load_sut():
 ad = _load_sut()
 
 
+INVENTORY_TOOL = SUT.parent / "inventory.py"
+_TMP: tempfile.TemporaryDirectory | None = None
+_ENV: dict[str, str] = {}
+
+
+def setUpModule():
+    """Create a throw-away inventory DB with the project's own init code."""
+    global _TMP, _ENV
+    _TMP = tempfile.TemporaryDirectory(prefix="autodiscovery-test-")
+    _ENV = dict(os.environ, INVENTORY_DB=str(Path(_TMP.name) / "inventory.db"))
+    result = subprocess.run([sys.executable, "-I", str(INVENTORY_TOOL), "init"],
+                            capture_output=True, text=True, timeout=60, env=_ENV)
+    if result.returncode != 0:
+        raise unittest.SkipTest(f"inventory.py init failed in a temp dir: {result.stderr}")
+
+
+def tearDownModule():
+    if _TMP is not None:
+        _TMP.cleanup()
+
+
 def _run(args=None):
-    cmd = [sys.executable, str(SUT)] + (args or [])
-    return subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+    cmd = [sys.executable, "-I", str(SUT), "--no-secret-probe"] + (args or [])
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=30, env=_ENV)
 
 
 class TestAutodiscoveryFunctions(unittest.TestCase):
@@ -68,6 +91,33 @@ class TestAutodiscoveryFunctions(unittest.TestCase):
         self.assertIsInstance(ad.check_bash(), bool)
 
 
+class TestWindowsRam(unittest.TestCase):
+    """GlobalMemoryStatusEx with a fake kernel32 (runs on every OS)."""
+
+    def test_struct_size_matches_win32(self):
+        self.assertEqual(ctypes.sizeof(ad.MEMORYSTATUSEX), 64)
+
+    def test_reads_total_phys(self):
+        def fake_call(ref):
+            mem = ctypes.cast(ref, ctypes.POINTER(ad.MEMORYSTATUSEX)).contents
+            self.assertEqual(mem.dwLength, 64)
+            mem.ullTotalPhys = 8 * 1024 ** 3
+            return 1
+
+        kernel32 = mock.Mock()
+        kernel32.GlobalMemoryStatusEx.side_effect = fake_call
+        self.assertEqual(ad._windows_ram_mb(kernel32), 8192)
+
+    def test_failed_call_returns_none(self):
+        kernel32 = mock.Mock()
+        kernel32.GlobalMemoryStatusEx.return_value = 0
+        self.assertIsNone(ad._windows_ram_mb(kernel32))
+
+    @unittest.skipUnless(sys.platform == "win32", "real Windows API only on Windows")
+    def test_real_windows_ram_is_positive(self):
+        self.assertGreater(ad._windows_ram_mb(), 0)
+
+
 class TestCLIOutput(unittest.TestCase):
     def test_runs_and_prints_header(self):
         result = _run()
@@ -83,6 +133,10 @@ class TestCLIOutput(unittest.TestCase):
     def test_reports_minimum(self):
         result = _run()
         self.assertIn("Minimum met", result.stdout)
+
+    def test_secret_probe_skipped(self):
+        result = _run()
+        self.assertIn("secret store:        not checked", result.stdout)
 
     def test_reports_secret_and_inventory_present(self):
         result = _run()
@@ -171,8 +225,8 @@ class TestInventoryDbMissing(unittest.TestCase):
     def test_db_missing(self):
         tmp = tempfile.mkdtemp(prefix="autodiscovery-test-")
         db_path = Path(tmp) / "inventory.db"
-        ad.INVENTORY_DB = db_path
-        exists, has_tables = ad.check_inventory_db()
+        with mock.patch.object(ad, "INVENTORY_DB", db_path):
+            exists, has_tables = ad.check_inventory_db()
         self.assertFalse(exists)
         self.assertFalse(has_tables)
 
@@ -183,8 +237,8 @@ class TestInventoryDbEmpty(unittest.TestCase):
         db_path = Path(tmp) / "inventory.db"
         conn = sqlite3.connect(str(db_path))
         conn.close()
-        ad.INVENTORY_DB = db_path
-        exists, has_tables = ad.check_inventory_db()
+        with mock.patch.object(ad, "INVENTORY_DB", db_path):
+            exists, has_tables = ad.check_inventory_db()
         self.assertTrue(exists)
         self.assertFalse(has_tables)
 

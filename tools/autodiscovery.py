@@ -32,13 +32,43 @@ EXIT_DB_EMPTY = 3
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
-INVENTORY_DB = DATA / "inventory.db"
+# INVENTORY_DB overrides the location, as in tools/inventory.py.
+INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(DATA / "inventory.db")))
 SCHEMA = DATA / "schema.sql"
 SEED = DATA / "seed.sql"
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 INVENTORY_TOOL = ROOT / "tools" / "inventory.py"
 SETTINGS = ROOT / "settings.json"
 SETTINGS_EXAMPLE = ROOT / "settings.json.example"  # used when settings.json is absent
+
+
+class MEMORYSTATUSEX(ctypes.Structure):
+    """Win32 MEMORYSTATUSEX (sysinfoapi.h): two DWORDs, then seven DWORDLONGs."""
+
+    _fields_ = [
+        ("dwLength", ctypes.c_uint32),
+        ("dwMemoryLoad", ctypes.c_uint32),
+        ("ullTotalPhys", ctypes.c_uint64),
+        ("ullAvailPhys", ctypes.c_uint64),
+        ("ullTotalPageFile", ctypes.c_uint64),
+        ("ullAvailPageFile", ctypes.c_uint64),
+        ("ullTotalVirtual", ctypes.c_uint64),
+        ("ullAvailVirtual", ctypes.c_uint64),
+        ("ullAvailExtendedVirtual", ctypes.c_uint64),
+    ]
+
+
+def _windows_ram_mb(kernel32=None) -> int | None:
+    """Total physical RAM in MB via GlobalMemoryStatusEx; None if the call fails."""
+    if kernel32 is None:
+        kernel32 = ctypes.windll.kernel32  # type: ignore[attr-defined]
+    mem = MEMORYSTATUSEX()
+    mem.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+    if not kernel32.GlobalMemoryStatusEx(ctypes.byref(mem)):
+        return None
+    if not mem.ullTotalPhys:
+        return None
+    return mem.ullTotalPhys // (1024 * 1024)
 
 
 def _ram_mb() -> int | None:
@@ -59,25 +89,7 @@ def _ram_mb() -> int | None:
             )
             return int(out.strip()) // (1024 * 1024)
         elif system == "Windows":
-
-            class MEMORYSTATUS(ctypes.Structure):
-                _fields_ = [
-                    ("dwLength", ctypes.c_ulong),
-                    ("dwMemoryLoad", ctypes.c_ulong),
-                    ("dwTotalPhys", ctypes.c_ulonglong),
-                    ("dwAvailPhys", ctypes.c_ulonglong),
-                    ("dwTotalPageFile", ctypes.c_ulonglong),
-                    ("dwAvailPageFile", ctypes.c_ulonglong),
-                    ("dwTotalVirtual", ctypes.c_ulonglong),
-                    ("dwAvailVirtual", ctypes.c_ulonglong),
-                    ("dwExtendedTotal", ctypes.c_ulonglong),
-                    ("dwExtendedAvail", ctypes.c_ulonglong),
-                ]
-
-            mem = MEMORYSTATUS()
-            mem.dwLength = ctypes.sizeof(MEMORYSTATUS)
-            ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(mem))
-            return mem.dwTotalPhys // (1024 * 1024)
+            return _windows_ram_mb()
     except (OSError, ValueError, AttributeError, ImportError):
         pass
     return None
@@ -177,7 +189,12 @@ def main(argv: list[str] | None = None) -> int:
         prog="autodiscovery.py",
         description="Discover the local environment for the portable workspace.",
     )
-    parser.parse_args(argv)
+    parser.add_argument(
+        "--no-secret-probe", action="store_true",
+        help="skip the secret-store check (it writes, reads and deletes a random probe "
+             "entry in the OS store)",
+    )
+    args = parser.parse_args(argv)
 
     runtime = load_settings()
     opencode_name = runtime.get("opencode", "opencode")
@@ -268,7 +285,10 @@ def main(argv: list[str] | None = None) -> int:
     print()
     print(f"tools/secret.py:     {'present' if SECRET_TOOL.is_file() else 'MISSING'}")
     print(f"tools/inventory.py:  {'present' if INVENTORY_TOOL.is_file() else 'MISSING'}")
-    print(f"secret store:        {'ok' if check_secret_store() else 'no usable store'}")
+    if args.no_secret_probe:
+        print("secret store:        not checked (--no-secret-probe)")
+    else:
+        print(f"secret store:        {'ok' if check_secret_store() else 'no usable store'}")
 
     db_exists, db_has_tables = check_inventory_db()
     print(f"data/inventory.db:   {'exists' if db_exists else 'MISSING'}")
