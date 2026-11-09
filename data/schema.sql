@@ -11,7 +11,9 @@
 --
 -- v3: the settings table is gone (nothing read it; tool paths and git settings live in
 -- settings.json).  An older data/inventory.db keeps its settings table; that is a
--- harmless leftover and may be dropped by hand.
+-- harmless leftover and may be dropped by hand.  v3 also adds machines.ram_mb and
+-- machines.updated_at (filled by "autodiscovery.py --save"); "inventory.py init"
+-- adds them to an older database.
 
 PRAGMA foreign_keys = ON;
 
@@ -30,7 +32,9 @@ CREATE TABLE IF NOT EXISTS machines (
     role      TEXT,
     status    TEXT NOT NULL DEFAULT 'active'
               CHECK (status IN ('active', 'planned', 'broken', 'retired', 'unknown')),
-    notes     TEXT
+    notes     TEXT,
+    ram_mb    INTEGER,
+    updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS services (

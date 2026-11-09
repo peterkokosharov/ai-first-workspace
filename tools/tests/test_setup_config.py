@@ -543,7 +543,8 @@ class TestLauncher(unittest.TestCase):
                 calls.append(cmd)
                 return mock.Mock(returncode=0)
 
-            with mock.patch.dict(os.environ, {"OPENCODE_CONFIG": str(Path(tmp) / "none.json")}),                     mock.patch.object(sys, "stderr", io.StringIO()):
+            with mock.patch.dict(os.environ, {"OPENCODE_CONFIG": str(Path(tmp) / "none.json")}), \
+                    mock.patch.object(sys, "stderr", io.StringIO()):
                 code = run_opencode.main(["run", "hi"], run=fake_run,
                                          which=lambda name: "/bin/opencode",
                                          get_secret=self.fake_secret,

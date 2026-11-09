@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import importlib.util
 import io
+import json
 import ctypes
 import os
 import sqlite3
@@ -301,6 +302,146 @@ class TestSecretStoreCheck(unittest.TestCase):
                 mock.patch("sys.stdout", new_callable=io.StringIO):
             ad.main(["--no-secret-probe", "--probe-write"])
         check.assert_not_called()
+
+
+
+WSL_STUB = r"C:\Windows\System32\bash.exe"
+
+
+class TestFindBash(unittest.TestCase):
+    def test_wsl_stub_detected(self):
+        self.assertTrue(ad.is_wsl_stub(WSL_STUB))
+        self.assertTrue(ad.is_wsl_stub("c:/windows/system32/BASH.EXE"))
+        self.assertFalse(ad.is_wsl_stub(r"C:\Program Files\Git\bin\bash.exe"))
+        self.assertFalse(ad.is_wsl_stub("/usr/bin/bash"))
+
+    def test_wsl_stub_skipped_for_git_bash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            git_bash = Path(tmp) / "Git" / "bin" / "bash.exe"
+            git_bash.parent.mkdir(parents=True)
+            git_bash.write_text("", encoding="utf-8")
+            found = ad.find_bash("bash", which=lambda n: WSL_STUB,
+                                 candidates=[str(git_bash)])
+        self.assertEqual(found, str(git_bash))
+
+    def test_only_wsl_stub_means_no_bash(self):
+        self.assertIsNone(ad.find_bash("bash", which=lambda n: WSL_STUB, candidates=[]))
+
+    def test_normal_bash_on_path(self):
+        self.assertEqual(ad.find_bash("bash", which=lambda n: "/usr/bin/bash", candidates=[]),
+                         "/usr/bin/bash")
+
+    def test_main_uses_find_bash(self):
+        with mock.patch.object(ad, "find_bash", return_value=None), \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            ad.main(["--no-secret-probe"])
+        self.assertIn("missing: bash", out.getvalue())
+
+
+class TestSave(unittest.TestCase):
+    """--save with a temp settings.json and a temp inventory DB."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(prefix="autodiscovery-save-")
+        self.addCleanup(self.tmp.cleanup)
+        base = Path(self.tmp.name)
+        self.settings = base / "settings.json"
+        self.example = base / "settings.json.example"
+        self.example.write_text(ad.SETTINGS_EXAMPLE.read_text(encoding="utf-8"),
+                                encoding="utf-8")
+        self.db = base / "inventory.db"
+        env = dict(os.environ, INVENTORY_DB=str(self.db))
+        subprocess.run([sys.executable, "-I", str(INVENTORY_TOOL), "init"],
+                       capture_output=True, text=True, timeout=60, env=env, check=True)
+        for name, value in (("SETTINGS", self.settings), ("SETTINGS_EXAMPLE", self.example),
+                            ("INVENTORY_DB", self.db)):
+            patcher = mock.patch.object(ad, name, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def run_main(self, argv):
+        with mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            code = ad.main(["--no-secret-probe", *argv])
+        return code, out.getvalue()
+
+    def machines(self):
+        conn = sqlite3.connect(str(self.db))
+        try:
+            return conn.execute("SELECT name, os, python, ram_mb, role FROM machines").fetchall()
+        finally:
+            conn.close()
+
+    def test_without_save_nothing_is_written(self):
+        self.run_main([])
+        self.assertFalse(self.settings.exists())
+        self.assertEqual(self.machines(), [])
+
+    def test_save_writes_tools_and_machine(self):
+        code, out = self.run_main(["--save"])
+        data = json.loads(self.settings.read_text(encoding="utf-8"))
+        self.assertEqual(data["tools"]["python"], str(Path(sys.executable).resolve()))
+        self.assertEqual(data["git"]["token_key"], "personal/my-project/github_token")
+        rows = self.machines()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][0], ad.machine_info()["name"])
+        self.assertIn("saved: this machine added", out)
+
+    def test_save_keeps_other_keys_and_backs_up_exactly(self):
+        original = ('{"runtime": {"opencode": "opencode"},\n "remote": {"origin": "x"},\n'
+                    ' "tools": {"merman": "my-mmdc", "opencode": "missing-oc-xyz"}}\n')
+        self.settings.write_bytes(original.encode("utf-8"))
+        self.run_main(["--save"])
+        data = json.loads(self.settings.read_text(encoding="utf-8"))
+        self.assertEqual(data["remote"], {"origin": "x"})
+        self.assertEqual(data["runtime"], {"opencode": "opencode"})
+        self.assertEqual(data["tools"]["merman"], "my-mmdc")
+        self.assertEqual(data["tools"]["opencode"], "missing-oc-xyz")  # not found: kept
+        self.assertIn("python", data["tools"])
+        backups = list(self.settings.parent.glob("settings.json.bak-*"))
+        self.assertEqual(len(backups), 1)
+        self.assertEqual(backups[0].read_bytes(), original.encode("utf-8"))
+
+    def test_save_refuses_broken_settings(self):
+        self.settings.write_text("{broken", encoding="utf-8")
+        _, out = self.run_main(["--save"])
+        self.assertIn("not saved", out)
+        self.assertEqual(self.settings.read_text(encoding="utf-8"), "{broken")
+
+    def test_save_twice_updates_and_keeps_role(self):
+        self.run_main(["--save"])
+        conn = sqlite3.connect(str(self.db))
+        conn.execute("UPDATE machines SET role = 'laptop'")
+        conn.commit()
+        conn.close()
+        _, out = self.run_main(["--save"])
+        rows = self.machines()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0][4], "laptop")
+        self.assertIn("saved: this machine updated", out)
+
+    def test_save_migrates_old_machines_table(self):
+        old = Path(self.tmp.name) / "old.db"
+        conn = sqlite3.connect(str(old))
+        conn.execute("CREATE TABLE machines (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE,"
+                     " os TEXT, arch TEXT, python TEXT, user_name TEXT, role TEXT,"
+                     " status TEXT NOT NULL DEFAULT 'active', notes TEXT)")
+        conn.commit()
+        conn.close()
+        self.assertEqual(ad.save_machine({"name": "box", "os": "Linux 6", "arch": "x86_64",
+                                          "python": "3.10.0", "user_name": "u",
+                                          "ram_mb": 4096}, old), "added")
+        conn = sqlite3.connect(str(old))
+        try:
+            self.assertEqual(conn.execute("SELECT ram_mb FROM machines").fetchone(), (4096,))
+        finally:
+            conn.close()
+
+    def test_save_without_inventory_still_saves_settings(self):
+        self.db.unlink()
+        _, out = self.run_main(["--save"])
+        self.assertTrue(self.settings.exists())
+        self.assertIn("not saved: machine row", out)
+        self.assertFalse(self.db.exists())
 
 
 if __name__ == "__main__":

@@ -190,7 +190,8 @@ class TestOpencodeCommand(unittest.TestCase):
 
     def test_settings_tools_opencode_is_used_for_run(self):
         data = {"tools": {"opencode": "/opt/oc/opencode"}}
-        with mock.patch.object(ping.workspace_settings, "load", return_value=data),                 mock.patch.object(ping.subprocess, "run",
+        with mock.patch.object(ping.workspace_settings, "load", return_value=data), \
+                mock.patch.object(ping.subprocess, "run",
                                   return_value=FakeCompletedProcess(0, "", "")) as run:
             ping.ping_model("x/y", "hi")
         self.assertEqual(run.call_args[0][0][0], "/opt/oc/opencode")

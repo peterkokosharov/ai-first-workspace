@@ -179,6 +179,30 @@ def _validate_key_path(path: str) -> str:
 # -------------------------------------------------------------------------------------- commands
 
 
+#: Columns added after a table was first created: (table, column, declaration).
+#: CREATE TABLE IF NOT EXISTS does not add them to an existing database.
+ADDED_COLUMNS = (
+    ("machines", "ram_mb", "INTEGER"),
+    ("machines", "updated_at", "TEXT"),
+)
+
+
+def migrate(conn: sqlite3.Connection) -> list[str]:
+    """Add the columns of ``ADDED_COLUMNS`` that an older database lacks.
+
+    Returns "table.column" for each column added. Safe to run again.
+    """
+    added = []
+    tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    for table, column, declaration in ADDED_COLUMNS:
+        columns = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+        if table in tables and column not in columns:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
+            added.append(f"{table}.{column}")
+    conn.commit()
+    return added
+
+
 def cmd_init(_args) -> int:
     if not SCHEMA.exists():
         raise InventoryError(f"schema file not found: {SCHEMA}", EXIT_DB)
@@ -186,6 +210,8 @@ def cmd_init(_args) -> int:
     try:
         conn.executescript(_read_sql_file(SCHEMA))
         conn.commit()
+        for name in migrate(conn):
+            print(f"added column {name}")
         if SEED.exists():
             conn.executescript(_read_sql_file(SEED))
             conn.commit()
