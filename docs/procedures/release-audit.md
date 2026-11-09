@@ -30,4 +30,4 @@ On Windows type `py` instead of `python3`.
 8. All PASS: ask the user "Shall I create tag vX.Y.Z?". Wait for a confirmation (AGENTS.md).
 9. Create the tag locally: `git tag vX.Y.Z`.
 10. Do not push the tag in this procedure. Tell the user it is ready to publish:
-    docs/procedures/github-deploy.md.
+    docs/procedures/github-deploy.md, step 10 (tag), or by hand: `git push origin <tag>`.

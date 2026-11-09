@@ -27,7 +27,8 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - Never use "--backend file" unless the user orders exactly that.
 
 ## Git
-- Local commit: make it yourself at each milestone (see procedure). Do not ask.
+- Local commit: make it yourself at each milestone (see procedure). Do not ask:
+  the order for the work includes its milestone commits.
 - Push: only by docs/procedures/github-deploy.md, after a confirmation.
   Never use --force or --force-with-lease.
 - Never commit data/inventory.db, settings.json, out/ or projects/.

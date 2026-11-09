@@ -23,6 +23,9 @@ Goal: put local commits on GitHub. The agent may push only after the user confir
    order), and the key must be replaced (revoke it, store the new one with
    tools/secret.py).
 9. If git asks for a user name or password, stop: the HUMAN steps below are not done.
+10. Tag (after docs/procedures/release-audit.md): the same steps with the tag name.
+    In step 4 run `git log --oneline -1 <tag>`, in step 5 show
+    `git push origin <tag>`. Push one tag at a time, never `--tags`.
 
 ## HUMAN: once per clone
 1. A fresh clone points `origin` to the author's repository. Create your own empty
