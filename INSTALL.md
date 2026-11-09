@@ -163,7 +163,7 @@ The value is read from **prompt/stdin** — never printed.
 ### Key names
 
 - Form: `scope/project/kind`, scope = `personal` or `company`, e.g.
-  `personal/my-book/github_token`, `company/nw/github_token`.
+  `personal/my-book/github_token`, `company/acme/github_token`.
 - Lowercase, at least two parts, no leading `/` (`secret.py` refuses other names).
 - One key per project: with several projects open you see which key belongs where.
 - Model provider keys keep their names (`nvidia/personal/api_key` and the others above).
