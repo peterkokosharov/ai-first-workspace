@@ -362,7 +362,8 @@ class TestLauncher(unittest.TestCase):
 
     def test_cmd_shim_refuses_cmd_metacharacters(self):
         which = {"opencode": "C:/npm-missing/opencode.cmd"}.get
-        for arg in ("a & calc", "x|y", "^", "100%", "<in", ">out", 'say "hi"'):
+        for arg in ("a & calc", "x|y", "^", "100%", "<in", ">out", 'say "hi"', "hi!",
+                    "a\nb", "a\rb"):
             with self.subTest(arg=arg):
                 code, calls, err = self.run_main(["run", arg], which=which)
                 self.assertEqual(code, 2)
@@ -397,6 +398,20 @@ class TestLauncher(unittest.TestCase):
         self.assertTrue(callable(seen[0]))
         self.assertNotIn(seen[0], (signal.default_int_handler, before))
         self.assertIs(signal.getsignal(signal.SIGINT), before)
+
+    def test_sigint_handler_restored_when_run_raises(self):
+        import signal
+        before = signal.getsignal(signal.SIGINT)
+        for exc, expected in ((OSError(2, "No such file"), run_opencode.EXIT_NOT_FOUND),
+                              (KeyboardInterrupt(), 130)):
+            with self.subTest(exc=type(exc).__name__):
+                def failing_run(cmd, env, exc=exc):
+                    raise exc
+
+                code, _, _ = self.run_main([], which=lambda name: "/bin/opencode",
+                                           run=failing_run)
+                self.assertEqual(code, expected)
+                self.assertIs(signal.getsignal(signal.SIGINT), before)
 
 
 if __name__ == "__main__":

@@ -73,8 +73,10 @@ def child_env(base: Mapping[str, str], providers: list[str],
     return env
 
 
-#: Characters cmd.exe interprets even inside quotes when it runs a .cmd/.bat file.
-CMD_UNSAFE = set('&|^%<>"')
+#: Characters cmd.exe interprets even inside quotes when it runs a .cmd/.bat file:
+#: operators, variable expansion (``%`` and, with delayed expansion, ``!``), quotes,
+#: and line breaks (a CR or LF ends the command line).
+CMD_UNSAFE = set('&|^%<>"!\r\n')
 
 
 def is_batch(path: str) -> bool:
@@ -170,8 +172,8 @@ def main(argv: list[str] | None = None,
         bad = unsafe_for_batch(args)
         if bad:
             print(f"run_opencode: {exe} is a batch file; cmd.exe would re-interpret "
-                  f"{len(bad)} argument(s) containing one of & | ^ % < > \". Leave those "
-                  "characters out or install opencode.exe.", file=sys.stderr)
+                  f"{len(bad)} argument(s) containing one of & | ^ % < > \" ! or a line "
+                  "break. Leave those characters out or install opencode.exe.", file=sys.stderr)
             return 2
 
     opencode_config.warn_plaintext_keys(opencode_config.config_file())
