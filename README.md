@@ -83,14 +83,30 @@ The rex runtime only partly works with this folder.
 
 ```bash
 python3 tools/setup_nvidia.py --dry-run   # shows what would change, writes nothing
-python3 tools/setup_nvidia.py             # merges the NVIDIA models into opencode's config
+python3 tools/setup_nvidia.py             # adds the NVIDIA models to opencode's config
+python3 tools/run_opencode.py             # start opencode WITH your stored keys
 ```
+
+(`py` instead of `python3` on Windows.) The key is **never written to opencode's
+config**: the config only names the variable `NVIDIA_API_KEY`. Start opencode through
+`tools/run_opencode.py`: it reads your keys from the OS secret store and hands them to
+the opencode process only (not to your shell, not to a file). All arguments go on to
+opencode, e.g. `python3 tools/run_opencode.py run -m nvidia/<model> 'hi'`. Plain
+`opencode` still works for opencode's own free models. Other providers (Gemini,
+DeepSeek, Groq, Mistral, OpenRouter): `python3 tools/setup_providers.py <name>`.
+
+If an old config (or one of its `.bak-*` copies) still contains a key in plain text,
+the tools warn and show where, never the value; delete those entries or files by hand.
 
 The setup tools are safe to re-run: they need no admin rights (no sudo), change nothing
 outside your user folder, and copy the old config to `<file>.bak-YYYYMMDD-HHMMSS` before
-writing. opencode's user config is `~/.config/opencode/opencode.json` on Linux and
-Windows (`%USERPROFILE%\.config\opencode`), `$XDG_CONFIG_HOME/opencode` if that is set,
-and `~/.configtde/opencode` only inside a TDE session; `OPENCODE_CONFIG` overrides it.
+writing (keys in plain text are blanked in that copy). opencode's documentation names
+`~/.config/opencode/opencode.json` as the global config; the tools use that folder on
+Linux and on Windows (`%USERPROFILE%\.config\opencode`). **Unverified on Windows:**
+the docs give no Windows-specific path and this was not tested with a real opencode
+install on Windows; if your opencode reads another folder, set `OPENCODE_CONFIG` to that
+file so the tools write there (the config page does not document this variable). Also `$XDG_CONFIG_HOME/opencode` if that is set, and `~/.configtde/opencode` only
+inside a TDE session.
 
 ## If the model loops
 
@@ -126,6 +142,7 @@ projects/      your own projects, one folder each (not in this repo's git)
 Tools: `secret.py` (keys), `inventory.py` (local SQLite list of machines, providers,
 models), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test a model),
 `setup_nvidia.py` / `setup_providers.py` (connect opencode to providers),
+`run_opencode.py` (start opencode with the keys from the OS store),
 `robota.py` + `gen_models_xml.py` (refresh `kb/`), `secret_scan.py` (the commit check).
 
 Run the tests: `python3 -m unittest discover -s tools/tests -t . -v` (`py` on Windows).

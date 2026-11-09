@@ -93,8 +93,20 @@ goose session
 claude      # Claude Code (paid plan)
 ```
 
-To connect opencode to the free NVIDIA models, see `tools/setup_nvidia.py` (it reads the
-key from the secret store and writes opencode's user config).
+To connect opencode to the free NVIDIA models, run `tools/setup_nvidia.py` (add
+`--dry-run` first to see the change). It writes the models into opencode's user config
+but **never the key**: the config only names the variable `NVIDIA_API_KEY`. Then start
+opencode with the launcher instead of plain `opencode`; it reads your keys from the OS
+secret store and passes them to the opencode process only (not to your shell, not to a
+file). Arguments go on to opencode.
+
+```bash
+python3 tools/setup_nvidia.py
+python3 tools/run_opencode.py      # Windows (Git Bash): py tools/run_opencode.py
+```
+
+If an old config or one of its `.bak-*` copies still holds a key in plain text, the
+tools warn and show where (never the value); delete those entries or files by hand.
 
 If a free model thinks for too long or repeats itself: press Stop (Esc), type `/init`,
 then continue.

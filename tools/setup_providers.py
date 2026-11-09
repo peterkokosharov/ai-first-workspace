@@ -2,15 +2,21 @@
 # Copyright (c) 2026 Peter Kokosharov
 # SPDX-License-Identifier: MIT
 # Author: Peter Kokosharov <peter.kokosharov@gmail.com>
-"""Configure OpenCode providers using keys from the OS secret store.
+"""Configure OpenCode providers whose keys live in the OS secret store.
 
-Reads the API key for a provider from ``data/inventory.db`` key paths via
-``tools/secret.py`` (automatic backend: Windows Credential Manager, KWallet, GNOME
-Keyring, ...), then adds/updates that provider in OpenCode's global config file
-(see ``opencode_config.config_file()``: ``~/.config/opencode`` by default).
+Adds/updates one provider in OpenCode's global config file (see
+``opencode_config.config_file()``: ``~/.config/opencode`` by default), in the
+``providers`` schema of https://opencode.ai/config.json: an OpenAI-compatible entry
+with ``settings.baseURL`` and ``env: ["<PROVIDER>_API_KEY"]``.
 
-Safe to re-run: the old config is backed up as ``<file>.bak-YYYYMMDD-HHMMSS`` before
-it is overwritten; ``--dry-run`` only prints what would change. No admin rights.
+The API key is NOT written to the config. Start opencode with
+``tools/run_opencode.py``: it reads the keys through ``tools/secret.py`` (Windows
+Credential Manager, KWallet, GNOME Keyring, ...) and sets the variables for the
+opencode process only. An old config that still holds a plaintext key gets a warning
+(value never shown).
+
+Safe to re-run: the old config is backed up as ``<file>.bak-YYYYMMDD-HHMMSS`` (literal
+keys redacted in the copy); ``--dry-run`` only prints what would change. No admin rights.
 
 Standard library only: no venv, no pip.
 
@@ -45,13 +51,21 @@ EXIT_NOT_FOUND = 1
 EXIT_ERROR = 2
 
 # Map provider name -> key path in the inventory / OS secret store.
-KEY_PATHS = {
-    "gemini": "gemini/personal/api_key",
-    "nvidia": "nvidia/personal/api_key",
-    "deepseek": "deepseek/personal/api_key",
-    "groq": "groq/personal/api_key",
-    "openrouter": "openrouter/personal/api_key",
-    "mistral": "mistral/personal/api_key",
+KEY_PATHS = {pid: spec["key_path"] for pid, spec in opencode_config.PROVIDERS.items()}
+
+# Default models per provider: alias -> {modelID (as the provider's API expects), name}.
+DEFAULT_MODELS: dict[str, dict[str, dict]] = {
+    "gemini": {
+        "gemini-3.5-flash-lite": {"modelID": "gemini-3.5-flash-lite", "name": "Gemini 3.5 Flash Lite"},
+        "gemini-3.8-flash": {"modelID": "gemini-3.8-flash", "name": "Gemini 3.8 Flash"},
+    },
+    "nvidia": {
+        "nemotron-3-ultra": {"modelID": "nvidia/nemotron-3-ultra-550b-a55b",
+                             "name": "Nemotron 3 Ultra 550B"},
+    },
+    "deepseek": {
+        "deepseek-chat": {"modelID": "deepseek-chat", "name": "DeepSeek Chat"},
+    },
 }
 
 
@@ -88,6 +102,12 @@ def save_config(config: dict, dry_run: bool = False) -> None:
         raise SetupError(str(exc)) from exc
 
 
+def update_config(config: dict, provider: str) -> dict:
+    """Add/update ``provider`` in ``config`` (no key, only the variable name)."""
+    opencode_config.merge_provider(config, provider, DEFAULT_MODELS.get(provider, {}))
+    return config
+
+
 def configure_provider(provider: str, dry_run: bool = False) -> int:
     if provider not in KEY_PATHS:
         print(f"setup_providers: unknown provider '{provider}'")
@@ -95,47 +115,24 @@ def configure_provider(provider: str, dry_run: bool = False) -> int:
         return EXIT_ERROR
 
     key_path = KEY_PATHS[provider]
+    spec = opencode_config.PROVIDERS[provider]
 
-    # 1. Get the key from the OS secret store.
+    # 1. The key must exist in the OS secret store (the launcher reads it later).
     try:
-        api_key = get_key_from_secret(key_path)
+        get_key_from_secret(key_path)
     except SetupError as exc:
         print(f"setup_providers: {exc}")
         return exc.exit_code
 
-    # 2. Load config.
-    config = load_config()
+    opencode_config.warn_plaintext_keys(CONFIG_FILE)
+    if spec["base_url"] is None:
+        print(f"setup_providers: '{provider}' is built into opencode; nothing to write.")
+        print(f"  Start opencode with tools/run_opencode.py; it sets {spec['env']}.")
+        return EXIT_OK
 
-    # 3. Add/update provider settings.
-    providers = config.setdefault("providers", {})
-    provider_cfg = providers.setdefault(provider, {})
-    settings = provider_cfg.setdefault("settings", {})
-    settings["apiKey"] = api_key
-
-    # 4. Add known model aliases for this provider.
-    models = provider_cfg.setdefault("models", {})
-    if provider == "gemini":
-        models.setdefault("gemini-3.5-flash-lite", {
-            "modelID": "gemini/gemini-3.5-flash-lite",
-            "name": "Gemini 3.5 Flash Lite",
-        })
-        models.setdefault("gemini-3.8-flash", {
-            "modelID": "gemini/gemini-3.8-flash",
-            "name": "Gemini 3.8 Flash",
-        })
-    elif provider == "nvidia":
-        models.setdefault("nemotron-3-ultra", {
-            "modelID": "nvidia/nemotron-3-ultra-550b-a55b",
-            "name": "Nemotron 3 Ultra 550B",
-        })
-    elif provider == "deepseek":
-        models.setdefault("deepseek-chat", {
-            "modelID": "deepseek/deepseek-chat",
-            "name": "DeepSeek Chat",
-        })
-
-    # 5. Save.
+    # 2. Load, update, save (old file backed up).
     try:
+        config = update_config(load_config(), provider)
         save_config(config, dry_run=dry_run)
     except SetupError as exc:
         print(f"setup_providers: {exc}")
@@ -145,10 +142,11 @@ def configure_provider(provider: str, dry_run: bool = False) -> int:
         print(f"setup_providers: [dry-run] would configure '{provider}' in {CONFIG_FILE}")
         return EXIT_OK
     print(f"setup_providers: configured '{provider}' provider in {CONFIG_FILE}")
-    print(f"  key path : {key_path} (value not shown)")
+    print(f"  key path : {key_path} (value not shown, not written to the config)")
+    print(f"  variable : {spec['env']} (set by tools/run_opencode.py for opencode only)")
     print()
-    print("Next: restart OpenCode (or run /reload in the TUI), then:")
-    print(f"  opencode run -m {provider}/<model> 'hi'")
+    print("Next: start opencode with the launcher, then pick the model:")
+    print(f"  python3 tools/run_opencode.py run -m {provider}/<model> 'hi'")
     return EXIT_OK
 
 

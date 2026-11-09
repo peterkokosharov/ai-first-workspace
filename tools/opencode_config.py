@@ -9,6 +9,13 @@
 * ``get_secret()`` reads a key through ``tools/secret.py --backend auto``, which picks
   the native store of the OS (Windows Credential Manager, macOS Keychain, GNOME
   Keyring / libsecret ``secret-tool``, KWallet, TDE DCOP).
+* ``PROVIDERS`` / ``merge_provider()`` describe and write provider entries in the
+  ``providers`` schema of https://opencode.ai/config.json. No key is ever written to
+  the config: each entry names the environment variable that holds its key
+  (``"env": ["NVIDIA_API_KEY"]``) and ``tools/run_opencode.py`` sets that variable for
+  the opencode process only.
+* ``find_plaintext_keys()`` / ``warn_plaintext_keys()`` report literal keys left in an
+  old config or its backups (locations only, never values).
 
 Nothing here needs administrator rights or changes anything outside the user's home.
 """
@@ -49,9 +56,11 @@ def config_dir(env: Mapping[str, str] | None = None, platform: str | None = None
     Order: ``$XDG_CONFIG_HOME/opencode`` if set; ``~/.configtde/opencode`` only in a
     TDE session where that folder exists; otherwise ``~/.config/opencode``.
 
-    Assumption (from OpenCode's documentation, not tested live on Windows): OpenCode
-    uses ``~/.config/opencode`` on every OS, including Windows
-    (``%USERPROFILE%\\.config\\opencode``), not ``%APPDATA%``.
+    https://opencode.ai/docs/config (read 2026-11-09) names only
+    ``~/.config/opencode/opencode.json(c)`` for the global config and gives no separate
+    Windows path, so on Windows we use ``%USERPROFILE%\\.config\\opencode``. UNVERIFIED:
+    not tested with a real opencode install on Windows. ``XDG_CONFIG_HOME`` and
+    ``OPENCODE_CONFIG`` are not documented on that page either (kept as overrides).
     """
     env = os.environ if env is None else env
     platform = sys.platform if platform is None else platform
@@ -80,13 +89,29 @@ def config_file(env: Mapping[str, str] | None = None, platform: str | None = Non
     return folder / "opencode.json"
 
 
+REDACTED = "<removed: plaintext key; keep keys in the OS secret store>"
+
+
 def backup(path: Path, now: float | None = None) -> Path | None:
-    """Copy ``path`` to ``path.bak-YYYYMMDD-HHMMSS``; return the copy (None if no file)."""
+    """Copy ``path`` to ``path.bak-YYYYMMDD-HHMMSS``; return the copy (None if no file).
+
+    If the file is JSON and holds literal API keys (see ``find_plaintext_keys``), the
+    backup gets ``REDACTED`` in their place, so a backup never adds another copy of a
+    key. Anything else is copied byte for byte.
+    """
     if not path.is_file():
         return None
     stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(now))
     target = path.with_name(f"{path.name}.bak-{stamp}")
-    shutil.copy2(path, target)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = None
+    if isinstance(data, dict) and find_plaintext_keys(data):
+        _redact(data)
+        target.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    else:
+        shutil.copy2(path, target)
     return target
 
 
@@ -141,3 +166,128 @@ def get_secret(key_path: str, timeout: int = 15) -> str:
     if not value:
         raise ConfigError(f"key '{key_path}' is empty in the OS secret store")
     return value
+
+
+# ---------------------------------------------------------------------------
+# Providers (schema: "providers" in https://opencode.ai/config.json, read 2026-11-09;
+# the older "provider" key is marked deprecated there)
+# ---------------------------------------------------------------------------
+
+#: Runtime package for an OpenAI-compatible endpoint (custom-provider example in
+#: https://opencode.ai/docs/providers).
+OPENAI_COMPATIBLE = "@opencode/ai/providers/openai-compatible"
+
+#: Provider id -> display name, key path in the OS store, environment variable the
+#: launcher sets, OpenAI-compatible base URL. ``base_url`` None = opencode has a native
+#: provider and only needs the variable (docs: "Provide OPENROUTER_API_KEY to the
+#: OpenCode server"). Base URLs other than NVIDIA come from the vendors' own docs and
+#: were not re-checked here.
+PROVIDERS: dict[str, dict] = {
+    "nvidia": {"name": "NVIDIA", "key_path": "nvidia/personal/api_key",
+               "env": "NVIDIA_API_KEY", "base_url": "https://integrate.api.nvidia.com/v1"},
+    "gemini": {"name": "Gemini", "key_path": "gemini/personal/api_key",
+               "env": "GEMINI_API_KEY",
+               "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"},
+    "deepseek": {"name": "DeepSeek", "key_path": "deepseek/personal/api_key",
+                 "env": "DEEPSEEK_API_KEY", "base_url": "https://api.deepseek.com/v1"},
+    "groq": {"name": "Groq", "key_path": "groq/personal/api_key",
+             "env": "GROQ_API_KEY", "base_url": "https://api.groq.com/openai/v1"},
+    "mistral": {"name": "Mistral", "key_path": "mistral/personal/api_key",
+                "env": "MISTRAL_API_KEY", "base_url": "https://api.mistral.ai/v1"},
+    "openrouter": {"name": "OpenRouter", "key_path": "openrouter/personal/api_key",
+                   "env": "OPENROUTER_API_KEY", "base_url": None},
+}
+
+#: Settings that older versions of the setup tools wrote: ``apiBase`` is not in the
+#: schema, and ``apiKey`` must never hold a literal key.
+_STALE_SETTINGS = ("apiKey", "apiBase")
+
+
+def merge_provider(config: dict, provider_id: str, models: Mapping[str, dict]) -> dict:
+    """Add or update ``config["providers"][provider_id]``; return that entry.
+
+    The entry gets ``name``, ``env`` (the variable NAME, never the key), ``package`` and
+    ``settings.baseURL``; ``models`` are merged in (models already there are kept).
+    ``apiKey`` / old ``apiBase`` settings of this entry are removed.
+    """
+    spec = PROVIDERS[provider_id]
+    if spec["base_url"] is None:
+        raise ValueError(f"{provider_id} is a native opencode provider; nothing to write")
+    providers = config.setdefault("providers", {})
+    entry = providers.setdefault(provider_id, {})
+    entry["name"] = entry.get("name") or spec["name"]
+    others = [n for n in entry.get("env", []) if n != spec["env"]]
+    entry["env"] = [spec["env"], *others]
+    entry["package"] = OPENAI_COMPATIBLE
+    settings = entry.setdefault("settings", {})
+    for stale in _STALE_SETTINGS:
+        settings.pop(stale, None)
+    settings["baseURL"] = spec["base_url"]
+    entry.setdefault("models", {}).update(models)
+    return entry
+
+
+def _is_key_name(name: str) -> bool:
+    return name.replace("_", "").replace("-", "").lower() == "apikey"
+
+
+def _is_literal(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    text = value.strip()
+    return bool(text) and text != REDACTED and not text.startswith(("{env:", "${"))
+
+
+def find_plaintext_keys(data: object, prefix: str = "") -> list[str]:
+    """Return the dotted locations of literal API keys in ``data`` (never the values).
+
+    Literal = a key named ``apiKey`` / ``api_key`` holding a non-empty string that is
+    not an ``{env:...}`` or ``${...}`` reference.
+    """
+    found: list[str] = []
+    if isinstance(data, dict):
+        for name, value in data.items():
+            where = f"{prefix}.{name}" if prefix else str(name)
+            if _is_key_name(str(name)) and _is_literal(value):
+                found.append(where)
+            else:
+                found.extend(find_plaintext_keys(value, where))
+    elif isinstance(data, list):
+        for index, value in enumerate(data):
+            found.extend(find_plaintext_keys(value, f"{prefix}[{index}]"))
+    return found
+
+
+def _redact(data: object) -> None:
+    if isinstance(data, dict):
+        for name, value in data.items():
+            if _is_key_name(str(name)) and _is_literal(value):
+                data[name] = REDACTED
+            else:
+                _redact(value)
+    elif isinstance(data, list):
+        for value in data:
+            _redact(value)
+
+
+def warn_plaintext_keys(path: Path, out=None) -> int:
+    """Warn about literal keys in ``path`` and its ``.bak-*`` copies (values never shown).
+
+    Returns the number of places found.
+    """
+    out = sys.stderr if out is None else out
+    files = [path, *sorted(path.parent.glob(path.name + ".bak-*"))] if path.parent.is_dir() else []
+    total = 0
+    for file in files:
+        try:
+            places = find_plaintext_keys(json.loads(file.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            continue
+        if places:
+            total += len(places)
+            print(f"warning: {file} holds {len(places)} plaintext API key(s) at "
+                  f"{', '.join(places)} (values not shown).", file=out)
+    if total:
+        print("  Keys belong only in the OS secret store. Delete those entries or old "
+              ".bak-* files by hand; start opencode with tools/run_opencode.py.", file=out)
+    return total
