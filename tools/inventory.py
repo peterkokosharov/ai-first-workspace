@@ -10,7 +10,7 @@ data are ``data/schema.sql`` and ``data/seed.sql`` and are committed.
 
 Standard library only, no venv, no pip.
 
-Tables: machines, services, providers, keys, models, tools, settings.
+Tables: machines, services, providers, keys, models, tools.
 A key belongs either to a service or to a provider, never both.
 
 Usage:
@@ -20,14 +20,14 @@ Usage:
     python3 tools/inventory.py show TABLE ID # show one row
     python3 tools/inventory.py search TABLE COLUMN LIKE_STRING
     python3 tools/inventory.py sql "SELECT ..."          # read-only (database opened read-only)
-    python3 tools/inventory.py setting KEY [VALUE]       # read or write a setting
     python3 tools/inventory.py key NAME     # key paths of a service or provider (never values)
     python3 tools/inventory.py add-service NAME KIND [--account A] [--notes N]
     python3 tools/inventory.py add-key PATH (--service NAME | --provider NAME) [--kind K]
                                        [--status S] [--notes N]
 
 Key paths follow the rules of tools/secret.py: lowercase segments separated by "/",
-at least two segments, no leading "/", e.g. gmail/personal/app_password.
+at least two segments, no leading "/". Per-project tokens: scope/project/kind,
+scope = personal | company, e.g. personal/my-project/github_token.
 add-service and add-key write only to the local database (INVENTORY_DB if set);
 data/seed.sql is never changed.
 
@@ -381,30 +381,6 @@ def cmd_add_key(args) -> int:
     return EXIT_OK
 
 
-def cmd_setting(args) -> int:
-    key = args.key
-    conn = _connect()
-    try:
-        row = conn.execute("SELECT * FROM settings WHERE key = ?", (key,)).fetchone()
-        if row is None and args.value is None:
-            raise NotFoundError(f"setting {key!r} not found")
-        if args.value is not None:
-            conn.execute(
-                "INSERT INTO settings (key, value) VALUES (?, ?) "
-                "ON CONFLICT(key) DO UPDATE SET value = excluded.value, "
-                "updated_at = datetime('now')",
-                (key, args.value),
-            )
-            conn.commit()
-            print(f"setting {key!r} = {args.value!r}")
-            return EXIT_OK
-        value = row["value"]
-        print(f"{key} = {value!r}" if value is not None else f"{key} = NULL")
-        return EXIT_OK
-    finally:
-        conn.close()
-
-
 # -------------------------------------------------------------------------------------- command line
 
 
@@ -448,11 +424,6 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("statement")
     p.set_defaults(func=cmd_sql)
 
-    p = sub.add_parser("setting", help="read or write a setting")
-    p.add_argument("key")
-    p.add_argument("value", nargs="?")
-    p.set_defaults(func=cmd_setting)
-
     p = sub.add_parser("key", help="key paths of a service or provider (never values)")
     p.add_argument("name", help="service or provider name, e.g. gmail or nvidia")
     p.set_defaults(func=cmd_key)
@@ -465,7 +436,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_add_service)
 
     p = sub.add_parser("add-key", help="add a key path (not a value) to the local database")
-    p.add_argument("path", help="provider/scope/kind, e.g. gmail/personal/app_password")
+    p.add_argument("path", help="scope/project/kind, e.g. personal/my-project/github_token")
     owner = p.add_mutually_exclusive_group(required=True)
     owner.add_argument("--service")
     owner.add_argument("--provider")

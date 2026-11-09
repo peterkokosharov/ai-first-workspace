@@ -180,11 +180,6 @@ erDiagram
         int machine_id FK
         text status
     }
-    
-    settings {
-        text key PK
-        text value
-    }
 ```
 
 ## 5. Auto-Discovery Procedure

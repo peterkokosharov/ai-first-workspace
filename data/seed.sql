@@ -1,14 +1,14 @@
 -- Initial inventory data.  Committed to git and safe to re-run: every statement is
 -- INSERT OR IGNORE, so user edits in data/inventory.db are not overwritten.
 -- Values of secrets are never recorded here; only key paths.
+-- No machine rows: "python3 tools/autodiscovery.py --save" records this machine in the
+-- local database. Your own services and keys: inventory.py add-service / add-key.
+--
+-- Key names for per-project tokens: scope/project/kind, scope = personal | company
+-- (e.g. personal/my-project/github_token). Model provider keys keep their names
+-- (e.g. nvidia/personal/api_key).
 
-INSERT OR IGNORE INTO schema_meta (key, value) VALUES ('schema_version', '2');
-
-INSERT OR IGNORE INTO machines (id, name, os, arch, python, user_name, role, status, notes) VALUES
-    (1, 'q4os', 'Q4OS Linux (TDE)', 'x86_64', '3.13', '<user>', 'primary', 'active',
-        'TDE session; /opt/trinity/bin contains dcop and tdewalletmanager'),
-    (2, 'win10', 'Windows 10', 'x86_64', '3.13', '<user>', 'secondary', 'active',
-        'Windows Credential Manager is the native store');
+INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '3');
 
 INSERT OR IGNORE INTO services (id, name, kind, account, status, notes) VALUES
     (1, 'github', 'code hosting', 'personal', 'active', NULL),
@@ -33,9 +33,14 @@ INSERT OR IGNORE INTO providers (id, name, kind, base_url, free_tier, status, no
     (13, 'rez',     'llm', NULL, 1, 'active', 'rez integrated with kiko');
 
 INSERT OR IGNORE INTO keys (id, path, service_id, provider_id, kind, status, notes) VALUES
-    (1, 'github/personal/token', 1, NULL, 'token', 'active', NULL),
-    (2, 'github/work/prj1/token', 1, NULL, 'token', 'planned', 'no value on this machine'),
-    (3, 'github/work/prj2/token', 1, NULL, 'token', 'planned', 'no value on this machine'),
+    -- GitHub tokens are stored in the OS store by git's credential helper (see
+    -- docs/procedures/github-deploy.md); the rows only name them.
+    (1, 'personal/my-project/github_token', 1, NULL, 'github_token', 'active',
+        'managed by git credential helper, not secret.py'),
+    (2, 'company/prj1/github_token', 1, NULL, 'github_token', 'planned',
+        'managed by git credential helper, not secret.py'),
+    (3, 'company/prj2/github_token', 1, NULL, 'github_token', 'planned',
+        'managed by git credential helper, not secret.py'),
     (4, 'gemini/personal/api_key', NULL, 1, 'api_key', 'active', NULL),
     (5, 'nvidia/personal/api_key', NULL, 2, 'api_key', 'active', NULL),
     (6, 'groq/personal/api_key', NULL, 4, 'api_key', 'active', NULL),
@@ -47,7 +52,9 @@ INSERT OR IGNORE INTO keys (id, path, service_id, provider_id, kind, status, not
     (11, 'codex/personal/api_key', NULL, 9, 'api_key', 'planned', 'codex GPT models'),
     (12, 'litellm/personal/api_key', NULL, 10, 'api_key', 'planned', 'optional local proxy'),
     (13, 'kiko/personal/api_key', NULL, 11, 'api_key', 'planned', 'kiko proxy'),
-    (14, 'rez/personal/api_key', NULL, 13, 'api_key', 'planned', 'rez integrated with kiko');
+    (14, 'rez/personal/api_key', NULL, 13, 'api_key', 'planned', 'rez integrated with kiko'),
+    (15, 'personal/gmail/app_password', 2, NULL, 'app_password', 'planned',
+        'no value until you store one with tools/secret.py set');
 
 INSERT OR IGNORE INTO models (id, alias, model_id, provider_id, key_id, tier, context_window, cost_per_1k, status, notes) VALUES
     -- Gemini (free tier)
@@ -127,14 +134,4 @@ INSERT OR IGNORE INTO models (id, alias, model_id, provider_id, key_id, tier, co
     (34, 'rez-kiko-1', 'rez-kiko-model-1', 13, 14, 'free', NULL, NULL, 'planned', 'rez integrated with kiko');
 
 INSERT OR IGNORE INTO tools (id, name, machine_id, status, notes) VALUES
-    (1, 'Python', 1, 'active', NULL),
-    (2, 'Python', 2, 'active', NULL),
-    (3, 'Git', 1, 'active', NULL),
-    (4, 'Docker', NULL, 'planned', NULL),
-    (5, 'Windows 10 SDK', 2, 'planned', NULL),
-    (6, 'MSVC + linker', 2, 'planned', NULL);
-
-INSERT OR IGNORE INTO settings (key, value) VALUES
-    ('active_model', 'nemotron-ultra'),
-    ('default_backend', 'auto'),
-    ('export_file', '~/SECRETS');
+    (4, 'Docker', NULL, 'planned', NULL);

@@ -4,7 +4,7 @@
 # Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Functional tests for tools/inventory.py.
 
-Exercises init / tables / list / show / search / sql / setting over a
+Exercises init / tables / list / show / search / sql / key / add-* over a
 temporary copy of the database (via the INVENTORY_DB environment variable),
 plus the committed schema and seed counts. No secrets are printed.
 """
@@ -54,7 +54,7 @@ class TestInventory(unittest.TestCase):
             return {
                 t: conn.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
                 for t in ("machines", "services", "providers", "keys",
-                          "models", "tools", "settings")
+                          "models", "tools")
             }
         finally:
             conn.close()
@@ -65,8 +65,8 @@ class TestInventory(unittest.TestCase):
         self.assertTrue(self.db.exists())
         counts = self._counts(self.db)
         expected = {
-            "machines": 2, "services": 5, "providers": 13, "keys": 14,
-            "models": 56, "tools": 6, "settings": 3,
+            "machines": 0, "services": 5, "providers": 13, "keys": 15,
+            "models": 56, "tools": 1,
         }
         self.assertEqual(counts, expected)
 
@@ -81,22 +81,37 @@ class TestInventory(unittest.TestCase):
         result = _run(["tables"])
         self.assertEqual(result.returncode, 0)
         for t in ("machines", "services", "providers", "keys", "models",
-                  "tools", "settings", "schema_meta"):
+                  "tools", "schema_meta"):
             self.assertIn(t, result.stdout)
 
     def test_list(self):
         _run(["init"])
+        result = _run(["list", "services"])
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("github", result.stdout)
+        self.assertIn("gmail", result.stdout)
+
+    def test_seed_has_no_machines(self):
+        _run(["init"])
         result = _run(["list", "machines"])
         self.assertEqual(result.returncode, 0)
-        self.assertIn("q4os", result.stdout)
-        self.assertIn("win10", result.stdout)
+        self.assertIn("table machines is empty", result.stdout)
+
+    def test_seed_github_token_is_managed_by_git(self):
+        _run(["init"])
+        result = _run(["key", "github"])
+        self.assertIn("personal/my-project/github_token", result.stdout)
+        self.assertIn("managed by git credential helper, not secret.py", result.stdout)
+
+    def test_seed_has_no_settings_table(self):
+        _run(["init"])
+        self.assertNotIn("settings", _run(["tables"]).stdout.split())
 
     def test_show(self):
         _run(["init"])
-        result = _run(["show", "machines", "1"])
+        result = _run(["show", "services", "1"])
         self.assertEqual(result.returncode, 0)
-        self.assertIn("q4os", result.stdout)
-        self.assertIn("name = 'q4os'", result.stdout)
+        self.assertIn("name = 'github'", result.stdout)
 
     def test_show_missing(self):
         _run(["init"])
@@ -108,14 +123,14 @@ class TestInventory(unittest.TestCase):
         _run(["init"])
         result = _run(["search", "keys", "path", "github"])
         self.assertEqual(result.returncode, 0)
-        self.assertIn("github/personal/token", result.stdout)
+        self.assertIn("personal/my-project/github_token", result.stdout)
 
     def test_sql_read_only(self):
         _run(["init"])
-        result = _run(["sql", "SELECT name FROM machines ORDER BY name"])
+        result = _run(["sql", "SELECT name FROM services ORDER BY name"])
         self.assertEqual(result.returncode, 0)
-        self.assertIn("q4os", result.stdout)
-        self.assertIn("win10", result.stdout)
+        self.assertIn("github", result.stdout)
+        self.assertIn("gmail", result.stdout)
 
     def test_sql_write_rejected(self):
         _run(["init"])
@@ -157,7 +172,7 @@ class TestInventory(unittest.TestCase):
         _run(["init"])
         result = _run(["key", "github"])
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("github/personal/token", result.stdout)
+        self.assertIn("personal/my-project/github_token", result.stdout)
         self.assertIn("service github", result.stdout)
 
     def test_key_for_provider_is_case_insensitive(self):
@@ -228,7 +243,7 @@ class TestInventory(unittest.TestCase):
 
     def test_add_key_duplicate_is_refused(self):
         _run(["init"])
-        result = _run(["add-key", "github/personal/token", "--service", "github"])
+        result = _run(["add-key", "personal/my-project/github_token", "--service", "github"])
         self.assertEqual(result.returncode, 3)
 
     def test_add_without_database_creates_nothing(self):
@@ -244,26 +259,6 @@ class TestInventory(unittest.TestCase):
         self.assertTrue(lines[0].startswith("id | name"))
         self.assertEqual(len(lines), 2 + self._service_count())
         self.assertNotIn(" = ", result.stdout)
-
-    def test_setting_read_write(self):
-        _run(["init"])
-        result = _run(["setting", "default_backend"])
-        self.assertEqual(result.returncode, 0)
-        self.assertIn("auto", result.stdout)
-
-        result = _run(["setting", "test_key", "test_value"])
-        self.assertEqual(result.returncode, 0)
-        self.assertIn("test_value", result.stdout)
-
-        result = _run(["setting", "test_key"])
-        self.assertEqual(result.returncode, 0)
-        self.assertIn("test_value", result.stdout)
-
-    def test_setting_missing(self):
-        _run(["init"])
-        result = _run(["setting", "does_not_exist"])
-        self.assertEqual(result.returncode, 1)
-        self.assertIn("not found", result.stderr)
 
 
 if __name__ == "__main__":
