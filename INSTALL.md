@@ -8,6 +8,34 @@ On Windows use `py` where this page says `python3`.
 
 ---
 
+## What the machine needs
+
+4-8 GB RAM is enough: the models run in the cloud on free tiers, nothing runs locally.
+
+**Linux Mint / Ubuntu:**
+
+```bash
+sudo apt install python3 git gnome-keyring libsecret-tools   # nodejs npm: optional, diagrams only
+```
+
+For pushing to GitHub, git's own keyring helper comes as source and is built once
+(from memory, check on your machine):
+
+```bash
+sudo apt install libsecret-1-dev build-essential
+sudo make -C /usr/share/doc/git/contrib/credential/libsecret
+```
+
+**Windows 10/11:** install **Git for Windows** (https://git-scm.com/; it brings Git Bash
+and Git Credential Manager, which keeps tokens in Windows Credential Manager) and
+**Python 3.10 or newer** from python.org (run it as `py`). node.js is optional (diagrams only).
+
+Then run `python3 tools/autodiscovery.py` (`py` on Windows): it shows what is missing.
+With `--save` it also writes the found program paths into `settings.json` and this
+machine into the inventory database.
+
+---
+
 ## 1. Clone / unpack the project
 
 ```bash

@@ -27,6 +27,8 @@ model list lives in [`kb/`](kb/README.md); it was collected from build.nvidia.co
 
 ## Start on Windows (3 steps)
 
+What to install first: [`INSTALL.md`](INSTALL.md), "What the machine needs".
+
 1. Install **Python 3.10 or newer** from python.org (it brings the `py` launcher) and **Git for
    Windows** (it brings Git Bash). Install **opencode** (https://opencode.ai).
 2. Get this folder (`git clone https://github.com/peterkokosharov/ai-first-workspace.git`
@@ -45,6 +47,8 @@ model list lives in [`kb/`](kb/README.md); it was collected from build.nvidia.co
    ```
 
 ## Start on Linux (3 steps)
+
+What to install first: [`INSTALL.md`](INSTALL.md), "What the machine needs".
 
 Target: Linux Mint (Cinnamon), which keeps keys in GNOME Keyring through `secret-tool`
 (package `libsecret-tools`, usually already there). Tested so far on Q4OS (TDE, KWallet).
