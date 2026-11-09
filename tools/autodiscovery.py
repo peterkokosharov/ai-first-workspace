@@ -184,6 +184,38 @@ def check_inventory_db() -> tuple[bool, bool]:
         return True, False
 
 
+def check_secret_store(write: bool = False, run=None) -> tuple[bool, str]:
+    """Check whether a native secret store is usable via tools/secret.py.
+
+    Default (read-only): runs ``secret.py setup``, which only detects the available
+    backends, and reports the one ``auto`` would use. Nothing in the store is read,
+    written or deleted.
+
+    ``write=True``: runs ``secret.py probe``, which writes, reads back and deletes a
+    random probe entry. Only on explicit request (``--probe-write``).
+
+    Returns (ok, detail). Never prints secret values.
+    """
+    import subprocess
+
+    run = subprocess.run if run is None else run
+    command = "probe" if write else "setup"
+    try:
+        result = run([sys.executable, "-I", str(SECRET_TOOL), command],
+                     capture_output=True, text=True, timeout=20)
+    except (subprocess.SubprocessError, OSError):
+        return False, ""
+    if result.returncode != 0:
+        return False, ""
+    if write:
+        return True, "probe ok"
+    for line in (result.stdout or "").splitlines():
+        if line.startswith("auto would use:"):
+            chosen = line.partition(":")[2].strip()
+            return (chosen not in ("", "none")), chosen
+    return False, ""
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="autodiscovery.py",
@@ -191,8 +223,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--no-secret-probe", action="store_true",
-        help="skip the secret-store check (it writes, reads and deletes a random probe "
-             "entry in the OS store)",
+        help="skip the secret-store check entirely",
+    )
+    parser.add_argument(
+        "--probe-write", action="store_true",
+        help="test the secret store by writing, reading and deleting a random probe "
+             "entry (default: read-only check of which store is available)",
     )
     args = parser.parse_args(argv)
 
@@ -231,26 +267,6 @@ def main(argv: list[str] | None = None) -> int:
     def docker_compose_path() -> bool:
         return shutil.which(docker_compose_name) is not None
 
-    def check_secret_store() -> bool:
-        """Check whether any native secret store is usable via tools/secret.py.
-
-        Runs ``secret.py probe`` and reports True if at least one backend answers ok.
-        Does not print secret values.
-        """
-        import subprocess
-        import sys as _sys
-
-        try:
-            result = subprocess.run(
-                [_sys.executable, str(SECRET_TOOL), "probe"],
-                capture_output=True,
-                text=True,
-                timeout=20,
-            )
-        except (subprocess.SubprocessError, OSError):
-            return False
-        return result.returncode == 0
-
     print("=== Portable workspace auto-discovery ===")
     print(f"OS:        {check_os()}")
     print(f"Processor: {check_processor()}")
@@ -287,8 +303,12 @@ def main(argv: list[str] | None = None) -> int:
     print(f"tools/inventory.py:  {'present' if INVENTORY_TOOL.is_file() else 'MISSING'}")
     if args.no_secret_probe:
         print("secret store:        not checked (--no-secret-probe)")
+    elif args.probe_write:
+        ok, _ = check_secret_store(write=True)
+        print(f"secret store:        {'ok (write/read/delete probe)' if ok else 'no usable store'}")
     else:
-        print(f"secret store:        {'ok' if check_secret_store() else 'no usable store'}")
+        ok, detail = check_secret_store()
+        print(f"secret store:        {f'available: {detail} (read-only check)' if ok else 'no usable store'}")
 
     db_exists, db_has_tables = check_inventory_db()
     print(f"data/inventory.db:   {'exists' if db_exists else 'MISSING'}")

@@ -14,6 +14,7 @@ touched.
 from __future__ import annotations
 
 import importlib.util
+import io
 import ctypes
 import os
 import sqlite3
@@ -138,6 +139,12 @@ class TestCLIOutput(unittest.TestCase):
         result = _run()
         self.assertIn("secret store:        not checked", result.stdout)
 
+    def test_probe_write_flag_exists(self):
+        result = subprocess.run([sys.executable, "-I", str(SUT), "--help"],
+                                capture_output=True, text=True, timeout=30, env=_ENV)
+        self.assertIn("--probe-write", result.stdout)
+        self.assertIn("--no-secret-probe", result.stdout)
+
     def test_reports_secret_and_inventory_present(self):
         result = _run()
         self.assertIn("tools/secret.py:     present", result.stdout)
@@ -241,6 +248,58 @@ class TestInventoryDbEmpty(unittest.TestCase):
             exists, has_tables = ad.check_inventory_db()
         self.assertTrue(exists)
         self.assertFalse(has_tables)
+
+
+class TestSecretStoreCheck(unittest.TestCase):
+    """check_secret_store with a fake runner: the real secret store is never touched."""
+
+    def fake(self, stdout="", code=0):
+        calls = []
+
+        def run(cmd, **kwargs):
+            calls.append(cmd)
+            return mock.Mock(returncode=code, stdout=stdout)
+
+        return run, calls
+
+    def test_default_is_read_only_setup(self):
+        run, calls = self.fake("native stores (priority order):\n  yes wcm  x\n"
+                               "auto would use: wcm\n")
+        self.assertEqual(ad.check_secret_store(run=run), (True, "wcm"))
+        self.assertEqual(calls[0][-1], "setup")
+        self.assertNotIn("probe", calls[0])
+
+    def test_default_reports_no_store(self):
+        run, _ = self.fake("auto would use: none\n")
+        self.assertFalse(ad.check_secret_store(run=run)[0])
+
+    def test_probe_only_with_write(self):
+        run, calls = self.fake("ok: wcm (write, read and delete)\n")
+        self.assertEqual(ad.check_secret_store(write=True, run=run), (True, "probe ok"))
+        self.assertEqual(calls[0][-1], "probe")
+
+    def test_failure(self):
+        run, _ = self.fake("", code=3)
+        self.assertEqual(ad.check_secret_store(run=run), (False, ""))
+
+    def test_main_default_uses_read_only_check(self):
+        with mock.patch.object(ad, "check_secret_store", return_value=(True, "wcm")) as check, \
+                mock.patch("sys.stdout", new_callable=io.StringIO) as out:
+            ad.main([])
+        check.assert_called_once_with()
+        self.assertIn("available: wcm (read-only check)", out.getvalue())
+
+    def test_main_probe_write(self):
+        with mock.patch.object(ad, "check_secret_store", return_value=(True, "probe ok")) as check, \
+                mock.patch("sys.stdout", new_callable=io.StringIO):
+            ad.main(["--probe-write"])
+        check.assert_called_once_with(write=True)
+
+    def test_main_no_secret_probe_skips(self):
+        with mock.patch.object(ad, "check_secret_store") as check, \
+                mock.patch("sys.stdout", new_callable=io.StringIO):
+            ad.main(["--no-secret-probe", "--probe-write"])
+        check.assert_not_called()
 
 
 if __name__ == "__main__":
