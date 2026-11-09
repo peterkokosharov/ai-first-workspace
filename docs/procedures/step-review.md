@@ -10,13 +10,16 @@ On Windows type `py` instead of `python3`.
 1. Write the step goal in one or two sentences.
 2. Run `git status` and `git diff`. Check that only files of this step changed.
 3. Pick a reviewer model that is NOT the model you are. Prefer a stronger one.
+   If you do not know which model you are, ask the user.
    - List models: type `/models` in opencode, or run `opencode models` in a terminal.
    - Check the inventory too: `python3 tools/inventory.py list models`.
 4. Start the reviewer with only the goal and the diff (keep its context small).
+   Use opencode's `plan` agent: it does not edit project files.
+   (`--agent plan` is not verified yet: check with `opencode run --help`.)
    - opencode's own free models:
-     `opencode run -m <provider/model> "<prompt>"`
+     `opencode run --agent plan -m <provider/model> "<prompt>"`
    - Models that need a stored key (for example NVIDIA):
-     `python3 tools/run_opencode.py run -m <provider/model> "<prompt>"`
+     `python3 tools/run_opencode.py run --agent plan -m <provider/model> "<prompt>"`
    - No terminal access to a second model? Ask the user to run the review.
 5. Use this prompt (fill in the goal):
    ```text

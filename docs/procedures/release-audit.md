@@ -13,7 +13,7 @@ On Windows type `py` instead of `python3`.
    - Secret scan: `python3 tools/secret_scan.py --all` (must print no finding).
    - Tests: `python3 -m unittest discover -s tools/tests -t . -v` (must pass).
 4. Pick the strongest model you can use as auditor. It must not be the model that wrote
-   the code. Start it as in docs/procedures/review.md, step 4.
+   the code. Start it as in docs/procedures/step-review.md, step 4.
 5. Give the auditor this prompt (fill in the tag):
    ```text
    Audit this folder for a release. Changes since <lasttag>: run

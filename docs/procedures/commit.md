@@ -5,7 +5,7 @@ Goal: save finished work as a local git commit. A human pushes later.
 ## A milestone is
 - The tests pass: `python3 -m unittest discover -s tools/tests -t . -v`
   (on Windows: `py -m unittest discover -s tools/tests -t . -v`).
-- The review passed (docs/procedures/review.md).
+- The review passed (docs/procedures/step-review.md).
 
 ## Steps
 1. Run `git status`.

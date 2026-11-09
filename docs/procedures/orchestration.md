@@ -8,7 +8,7 @@ On Windows type `py` instead of `python3`.
 - **coder**: changes code for one step. Nothing else.
 - **test-coder**: writes tests from the step goal, not from the code.
 - **qa**: runs the tests and reports pass or fail with the output.
-- **reviewer**: follows docs/procedures/review.md. Reads only.
+- **reviewer**: follows docs/procedures/step-review.md. Reads only.
 - **git-pusher**: prepares the push line and prints it. A human pushes.
 
 ## Brief for each role (keep it short)
@@ -25,7 +25,7 @@ On Windows type `py` instead of `python3`.
    2. coder changes the code.
    3. qa runs `python3 -m unittest discover -s tools/tests -t . -v`
       (or the project's own test command) and reports pass or fail + output.
-   4. reviewer reviews the diff (docs/procedures/review.md).
+   4. reviewer reviews the diff (docs/procedures/step-review.md).
 4. All OK: commit the step (docs/procedures/commit.md).
 5. Not OK and you cannot fix it:
    - Not committed yet: ask "Shall I undo the changes in <files>?".

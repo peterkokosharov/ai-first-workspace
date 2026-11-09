@@ -39,7 +39,7 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - projects/<name>/ one folder per user project; it may be its own git repo.
 
 ## Procedures
-- Finished a step -> docs/procedures/review.md
+- Finished a step -> docs/procedures/step-review.md
 - Reached a milestone -> docs/procedures/commit.md
 - Before a release or tag -> docs/procedures/release-audit.md
 - Writing HTML docs or diagrams -> docs/procedures/html-docs.md

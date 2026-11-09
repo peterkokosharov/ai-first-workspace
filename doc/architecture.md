@@ -39,7 +39,7 @@ Self-contained, portable folder for AI-assisted software development.
 │   ├── seed.sql           # committed initial inventory data
 │   └── inventory.db       # local only, gitignored
 ├── docs/
-│   └── procedures/        # step-by-step procedures (review, commit, HTML docs, ...)
+│   └── procedures/        # step-by-step procedures (step-review, commit, HTML docs, ...)
 ├── tools/
 │   ├── __init__.py
 │   ├── secret.py          # portable secret tool over native stores
