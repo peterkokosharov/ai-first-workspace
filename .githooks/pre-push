@@ -2,16 +2,16 @@
 # Copyright (c) 2026 Peter Kokosharov
 # SPDX-License-Identifier: MIT
 # Author: Peter Kokosharov <peter.kokosharov@gmail.com>
-# Pre-push hook: refuse a push while any tracked file contains an API key or token.
-# It scans every tracked file (secret_scan.py --all), not only the pushed commits:
-# simple, and it also sees files the pushed commits do not touch.
+# Pre-push hook: refuse a push when a pushed commit adds an API key or token.
+# git sends one line per ref on stdin: <local ref> <local sha> <remote ref> <remote sha>.
+# secret_scan.py --push reads them and scans the added lines of every commit the
+# push would publish (a key removed by a later commit still blocks). Deletes pass.
 # Enable once per clone:  git config core.hooksPath .githooks
-cat >/dev/null  # git sends the ref list on stdin; it is not needed
 root=$(git rev-parse --show-toplevel) || exit 1
 cd "$root" || exit 1
 for py in python3 python "py -3"; do
     if $py -c "import sys; sys.exit(sys.version_info < (3, 10))" >/dev/null 2>&1; then
-        exec $py -I "$root/tools/secret_scan.py" --all
+        exec $py -I "$root/tools/secret_scan.py" --push
     fi
 done
 echo "pre-push: Python 3.10+ not found, secret scan skipped" >&2

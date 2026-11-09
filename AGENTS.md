@@ -31,7 +31,9 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - Push: only by docs/procedures/github-deploy.md, after a confirmation.
   Never use --force or --force-with-lease.
 - Never commit data/inventory.db, settings.json, out/ or projects/.
-- If a hook (pre-commit or pre-push) blocks, remove the key. Never use --no-verify.
+- If pre-commit blocks, remove the key. Never use --no-verify.
+- If pre-push blocks, stop: a commit to be pushed holds a key. Tell the user the history
+  must be cleaned first (only on the user's order) and the key must be replaced.
 
 ## Where things are
 - On Windows type "py" instead of "python3".

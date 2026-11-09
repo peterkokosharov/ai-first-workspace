@@ -101,8 +101,9 @@ refuses a commit that contains an API key or token (NVIDIA `nvapi-…`, `sk-…`
 `python3 tools/secret_scan.py --all`.
 
 The same setting turns on a second hook: every `git push` first runs
-`tools/secret_scan.py --all` over all tracked files and refuses the push if it finds a
-key (also a key in a file you changed but did not commit yet).
+`tools/secret_scan.py --push`. It scans the lines added by every commit the push would
+publish (for a new branch: every commit not yet on a remote) and refuses the push if one
+adds a key, even when a later commit removed it again. A deleted branch passes.
 
 **Note:** if no Python 3.10 or newer is found when you commit, the hook prints
 `pre-commit: Python 3.10+ not found, secret scan skipped` and lets the commit through

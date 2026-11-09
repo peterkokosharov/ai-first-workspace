@@ -55,5 +55,86 @@ class TestFindSecrets(unittest.TestCase):
         self.assertEqual(hits, [(2, "NVIDIA API key")])
 
 
+
+SHA1 = "a" * 40
+SHA2 = "b" * 40
+
+
+class TestFindSecretsInDiff(unittest.TestCase):
+    def test_added_line_reported_with_commit_path_and_line(self):
+        diff = "\n".join([
+            SHA1,
+            "diff --git a/note.txt b/note.txt",
+            "--- a/note.txt",
+            "+++ b/note.txt",
+            "@@ -3,0 +4,2 @@",
+            "+fine",
+            "+token nvapi-" + FAKE,
+        ])
+        self.assertEqual(secret_scan.find_secrets_in_diff(diff),
+                         [(SHA1, "note.txt", 5, "NVIDIA API key")])
+
+    def test_removed_and_allowed_lines_are_not_reported(self):
+        diff = "\n".join([
+            SHA2,
+            "diff --git a/note.txt b/note.txt",
+            "--- a/note.txt",
+            "+++ b/note.txt",
+            "@@ -1 +1 @@",
+            "-token nvapi-" + FAKE,
+            "+token nvapi-" + FAKE + "  # secret-scan: allow",
+            "\\ No newline at end of file",
+        ])
+        self.assertEqual(secret_scan.find_secrets_in_diff(diff), [])
+
+    def test_new_file_and_second_commit(self):
+        diff = "\n".join([
+            SHA1,
+            "diff --git a/a.txt b/a.txt",
+            "new file mode 100644",
+            "--- /dev/null",
+            "+++ b/a.txt",
+            "@@ -0,0 +1 @@",
+            "+clean",
+            SHA2,
+            "diff --git a/b.txt b/b.txt",
+            "--- a/b.txt",
+            "+++ b/b.txt",
+            "@@ -1,0 +2 @@",
+            "+ghp_" + FAKE,
+        ])
+        self.assertEqual(secret_scan.find_secrets_in_diff(diff),
+                         [(SHA2, "b.txt", 2, "GitHub token")])
+
+    def test_combined_merge_diff_reports_only_new_lines(self):
+        diff = "\n".join([
+            SHA1,
+            "diff --cc m.txt",
+            "--- a/m.txt",
+            "+++ b/m.txt",
+            "@@@ -1,1 -1,1 +1,2 @@@",
+            "- old nvapi-" + FAKE,
+            " +from one parent",
+            "++evil nvapi-" + FAKE,
+        ])
+        self.assertEqual(secret_scan.find_secrets_in_diff(diff),
+                         [(SHA1, "m.txt", 2, "NVIDIA API key")])
+
+    def test_header_lines_are_not_scanned(self):
+        diff = "\n".join([
+            SHA1,
+            "diff --git a/x b/x",
+            "--- a/x",
+            "+++ b/nvapi-" + FAKE,
+        ])
+        self.assertEqual(secret_scan.find_secrets_in_diff(diff), [])
+
+
+class TestCommitsToPush(unittest.TestCase):
+    def test_delete_and_malformed_lines_publish_nothing(self):
+        lines = "(delete) " + "0" * 40 + " refs/heads/x " + SHA1 + "\nshort line\n"
+        self.assertEqual(secret_scan.commits_to_push(lines), [])
+
+
 if __name__ == "__main__":
     unittest.main()

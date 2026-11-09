@@ -17,8 +17,11 @@ Goal: put local commits on GitHub. The agent may push only after the user confir
 6. Ask: "Shall I run this push?" Stop and wait.
 7. Confirmed: run exactly the command you showed. Not confirmed: do not push.
    The user may also run the command by hand (see below).
-8. If the pre-push hook blocks the push: it found a key. Remove it, commit again
-   (docs/procedures/commit.md), then start again at step 1.
+8. If the pre-push hook blocks the push: a commit to be pushed holds a key. A new
+   commit that removes it does not help: the old commit would still be published.
+   Stop and tell the user: the history must be cleaned first (only on the user's
+   order), and the key must be replaced (revoke it, store the new one with
+   tools/secret.py).
 9. If git asks for a user name or password, stop: the HUMAN steps below are not done.
 
 ## HUMAN: once per clone
