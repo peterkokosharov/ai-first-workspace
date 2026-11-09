@@ -16,11 +16,20 @@ A key belongs either to a service or to a provider, never both.
 Usage:
     python3 tools/inventory.py init         # create schema, load seed (re-runnable)
     python3 tools/inventory.py tables       # list tables
-    python3 tools/inventory.py list TABLE   # list rows of a table
+    python3 tools/inventory.py list TABLE [--table]  # list rows (--table: one line per row)
     python3 tools/inventory.py show TABLE ID # show one row
     python3 tools/inventory.py search TABLE COLUMN LIKE_STRING
     python3 tools/inventory.py sql "SELECT ..."          # read-only (database opened read-only)
     python3 tools/inventory.py setting KEY [VALUE]       # read or write a setting
+    python3 tools/inventory.py key NAME     # key paths of a service or provider (never values)
+    python3 tools/inventory.py add-service NAME KIND [--account A] [--notes N]
+    python3 tools/inventory.py add-key PATH (--service NAME | --provider NAME) [--kind K]
+                                       [--status S] [--notes N]
+
+Key paths follow the rules of tools/secret.py: lowercase segments separated by "/",
+at least two segments, no leading "/", e.g. gmail/personal/app_password.
+add-service and add-key write only to the local database (INVENTORY_DB if set);
+data/seed.sql is never changed.
 
 Exit codes: 0 ok, 1 not found, 2 database error, 3 usage error.
 """
@@ -128,6 +137,45 @@ def _is_read_only(statement: str) -> bool:
     return bool(READ_ONLY_PREFIX.match(statement))
 
 
+def _print_table(columns: list[str], rows, max_width: int | None = None) -> None:
+    """Print rows as aligned columns; cells longer than ``max_width`` are cut."""
+    def cell(value) -> str:
+        text = "" if value is None else " ".join(str(value).split())
+        if max_width and len(text) > max_width:
+            text = text[: max_width - 3] + "..."
+        return text
+
+    cells = [[cell(value) for value in row] for row in rows]
+    widths = [len(c) for c in columns]
+    for row in cells:
+        for index, text in enumerate(row):
+            widths[index] = max(widths[index], len(text))
+    print(" | ".join(c.ljust(widths[i]) for i, c in enumerate(columns)).rstrip())
+    print("-+-".join("-" * widths[i] for i in range(len(columns))))
+    for row in cells:
+        print(" | ".join(text.ljust(widths[i]) for i, text in enumerate(row)).rstrip())
+
+
+def _connect_existing() -> sqlite3.Connection:
+    """Open the database for writing, but only if it exists (never create an empty one)."""
+    if not DB.is_file():
+        raise InventoryError(f"database not found: {DB}. Run: python3 tools/inventory.py init")
+    return _connect()
+
+
+def _validate_key_path(path: str) -> str:
+    """Check ``path`` with the same rules as tools/secret.py (one source of the rules)."""
+    tools_dir = str(Path(__file__).resolve().parent)
+    if tools_dir not in sys.path:
+        sys.path.insert(0, tools_dir)
+    import secret  # noqa: E402  (tools/secret.py, standard library only)
+
+    try:
+        return secret.validate_path(path)
+    except secret.UsageError as exc:
+        raise UsageError(str(exc)) from exc
+
+
 # -------------------------------------------------------------------------------------- commands
 
 
@@ -176,6 +224,9 @@ def cmd_list(args) -> int:
         conn.close()
     if not rows:
         print(f"table {table} is empty")
+        return EXIT_OK
+    if args.table_format:
+        _print_table(columns, rows, max_width=40)
         return EXIT_OK
     print(f"table {table} ({len(rows)} row{'s' if len(rows) != 1 else ''}):")
     for row in rows:
@@ -246,19 +297,87 @@ def cmd_sql(args) -> int:
     if not rows:
         print("(no rows)")
         return EXIT_OK
-    columns = [desc[0] for desc in cur.description]
-    widths = [len(c) for c in columns]
+    _print_table([desc[0] for desc in cur.description], rows)
+    return EXIT_OK
+
+
+def cmd_key(args) -> int:
+    """Key paths (never values) that belong to a service or provider NAME."""
+    conn = _connect_read_only()
+    try:
+        rows = conn.execute(
+            "SELECT k.path, k.status, k.notes, "
+            "       CASE WHEN s.id IS NOT NULL THEN 'service ' || s.name "
+            "            ELSE 'provider ' || p.name END AS owner "
+            "FROM keys k "
+            "LEFT JOIN services s ON k.service_id = s.id "
+            "LEFT JOIN providers p ON k.provider_id = p.id "
+            "WHERE lower(s.name) = lower(?) OR lower(p.name) = lower(?) "
+            "ORDER BY k.id",
+            (args.name, args.name),
+        ).fetchall()
+    except sqlite3.Error as exc:
+        raise InventoryError(f"SQL error: {exc}") from exc
+    finally:
+        conn.close()
+    if not rows:
+        raise NotFoundError(
+            f"no key for a service or provider named {args.name!r}. Add one: "
+            f"python3 tools/inventory.py add-key <path> --service {args.name}")
     for row in rows:
-        for index, value in enumerate(row):
-            text = "" if value is None else str(value)
-            widths[index] = max(widths[index], len(text))
-    header = " | ".join(c.ljust(widths[i]) for i, c in enumerate(columns))
-    sep = "-+-".join("-" * widths[i] for i in range(len(columns)))
-    print(header)
-    print(sep)
-    for row in rows:
-        print(" | ".join(("" if value is None else str(value)).ljust(widths[i])
-                         for i, value in enumerate(row)))
+        note = f"  ({row['notes']})" if row["notes"] else ""
+        print(f"{row['path']}  [{row['status']}] {row['owner']}{note}")
+    return EXIT_OK
+
+
+def cmd_add_service(args) -> int:
+    conn = _connect_existing()
+    try:
+        conn.execute(
+            "INSERT INTO services (name, kind, account, notes) VALUES (?, ?, ?, ?)",
+            (args.name, args.kind, args.account, args.notes),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError as exc:
+        raise UsageError(f"cannot add service {args.name!r}: {exc}") from exc
+    except sqlite3.Error as exc:
+        raise InventoryError(f"SQL error: {exc}") from exc
+    finally:
+        conn.close()
+    print(f"added service {args.name!r} ({args.kind}) to {DB}")
+    return EXIT_OK
+
+
+def cmd_add_key(args) -> int:
+    path = _validate_key_path(args.path)
+    owner_table = "services" if args.service else "providers"
+    owner_name = args.service or args.provider
+    kind = args.kind or path.rsplit("/", 1)[-1]
+    conn = _connect_existing()
+    try:
+        owner = conn.execute(
+            f"SELECT id FROM {owner_table} WHERE lower(name) = lower(?)", (owner_name,)
+        ).fetchone()
+        if owner is None:
+            hint = ("python3 tools/inventory.py add-service NAME KIND" if args.service
+                    else "python3 tools/inventory.py list providers")
+            raise NotFoundError(f"no {owner_table[:-1]} named {owner_name!r} ({hint})")
+        service_id = owner["id"] if args.service else None
+        provider_id = owner["id"] if args.provider else None
+        conn.execute(
+            "INSERT INTO keys (path, service_id, provider_id, kind, status, notes) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (path, service_id, provider_id, kind, args.status, args.notes),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError as exc:
+        raise UsageError(f"cannot add key {path!r}: {exc}") from exc
+    except sqlite3.Error as exc:
+        raise InventoryError(f"SQL error: {exc}") from exc
+    finally:
+        conn.close()
+    print(f"added key path {path!r} for {owner_table[:-1]} {owner_name!r} to {DB} "
+          "(only the name; store the value with tools/secret.py set)")
     return EXIT_OK
 
 
@@ -310,6 +429,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("list", help="list rows of a table")
     p.add_argument("table")
+    p.add_argument("--table", dest="table_format", action="store_true",
+                   help="compact output: one line per row, long cells cut")
     p.set_defaults(func=cmd_list)
 
     p = sub.add_parser("show", help="show one row by id")
@@ -331,6 +452,28 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("key")
     p.add_argument("value", nargs="?")
     p.set_defaults(func=cmd_setting)
+
+    p = sub.add_parser("key", help="key paths of a service or provider (never values)")
+    p.add_argument("name", help="service or provider name, e.g. gmail or nvidia")
+    p.set_defaults(func=cmd_key)
+
+    p = sub.add_parser("add-service", help="add a service to the local database")
+    p.add_argument("name")
+    p.add_argument("kind", help="e.g. mail, code hosting")
+    p.add_argument("--account")
+    p.add_argument("--notes")
+    p.set_defaults(func=cmd_add_service)
+
+    p = sub.add_parser("add-key", help="add a key path (not a value) to the local database")
+    p.add_argument("path", help="provider/scope/kind, e.g. gmail/personal/app_password")
+    owner = p.add_mutually_exclusive_group(required=True)
+    owner.add_argument("--service")
+    owner.add_argument("--provider")
+    p.add_argument("--kind", help="default: the last segment of PATH")
+    p.add_argument("--status", default="active",
+                   choices=["active", "planned", "broken", "retired", "unknown"])
+    p.add_argument("--notes")
+    p.set_defaults(func=cmd_add_key)
 
     return parser
 

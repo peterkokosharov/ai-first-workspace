@@ -153,6 +153,98 @@ class TestInventory(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertFalse(self.db.exists())
 
+    def test_key_for_service(self):
+        _run(["init"])
+        result = _run(["key", "github"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("github/personal/token", result.stdout)
+        self.assertIn("service github", result.stdout)
+
+    def test_key_for_provider_is_case_insensitive(self):
+        _run(["init"])
+        result = _run(["key", "NVIDIA"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("nvidia/personal/api_key", result.stdout)
+        self.assertIn("provider nvidia", result.stdout)
+
+    def test_key_unknown_name(self):
+        _run(["init"])
+        result = _run(["key", "nosuchservice"])
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("add-key", result.stderr)
+
+    def test_add_service_and_key_then_look_up(self):
+        _run(["init"])
+        result = _run(["add-service", "mymail", "mail", "--account", "personal"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result = _run(["add-key", "mymail/personal/app_password", "--service", "mymail"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        result = _run(["key", "mymail"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("mymail/personal/app_password", result.stdout)
+        conn = sqlite3.connect(str(self.db))
+        try:
+            row = conn.execute("SELECT kind, provider_id FROM keys "
+                               "WHERE path = 'mymail/personal/app_password'").fetchone()
+        finally:
+            conn.close()
+        self.assertEqual(row, ("app_password", None))
+
+    def test_add_key_for_provider(self):
+        _run(["init"])
+        result = _run(["add-key", "nvidia/work/api_key", "--provider", "nvidia",
+                       "--status", "planned"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("nvidia/work/api_key", _run(["key", "nvidia"]).stdout)
+
+    def test_add_service_twice_is_refused(self):
+        _run(["init"])
+        result = _run(["add-service", "github", "code hosting"])
+        self.assertEqual(result.returncode, 3)
+
+    def test_add_key_rejects_bad_paths(self):
+        _run(["init"])
+        for bad in ("UPPER/case", "single", "a//b", "a/../b", "a/b c", "a/b/"):
+            result = _run(["add-key", bad, "--service", "github"])
+            self.assertEqual(result.returncode, 3, bad)
+        # a leading "/" (passed in-process: Git Bash on Windows rewrites "/x" arguments)
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("inventory_sut", SUT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with self.assertRaises(module.UsageError):
+            module._validate_key_path("/github/token")
+
+    def test_add_key_needs_exactly_one_owner(self):
+        _run(["init"])
+        self.assertEqual(_run(["add-key", "a/b"]).returncode, 3)
+        self.assertEqual(_run(["add-key", "a/b", "--service", "github",
+                               "--provider", "nvidia"]).returncode, 3)
+
+    def test_add_key_unknown_owner(self):
+        _run(["init"])
+        result = _run(["add-key", "x/personal/token", "--service", "nosuch"])
+        self.assertEqual(result.returncode, 1)
+
+    def test_add_key_duplicate_is_refused(self):
+        _run(["init"])
+        result = _run(["add-key", "github/personal/token", "--service", "github"])
+        self.assertEqual(result.returncode, 3)
+
+    def test_add_without_database_creates_nothing(self):
+        result = _run(["add-service", "x", "mail"])
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(self.db.exists())
+
+    def test_list_table_is_one_line_per_row(self):
+        _run(["init"])
+        result = _run(["list", "services", "--table"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = result.stdout.strip().splitlines()
+        self.assertTrue(lines[0].startswith("id | name"))
+        self.assertEqual(len(lines), 2 + self._service_count())
+        self.assertNotIn(" = ", result.stdout)
+
     def test_setting_read_write(self):
         _run(["init"])
         result = _run(["setting", "default_backend"])
