@@ -61,6 +61,17 @@ python3 -m unittest discover -s tools/tests -t . -v
 # Expected: 69 tests, all OK (1 skipped — live DCOP needs SECRET_LIVE_TESTS=1)
 ```
 
+### Turn on the secret check (once per clone)
+
+```bash
+git config core.hooksPath .githooks
+```
+
+From then on every `git commit` runs `tools/secret_scan.py`, which refuses a commit
+that contains an API key or token (NVIDIA `nvapi-…`, `sk-…`, GitHub `ghp_…` /
+`github_pat_…`, AWS `AKIA…`, or a literal `api_key: <value>`). The value itself is
+never printed. Scan the whole tree by hand with `python3 tools/secret_scan.py --all`.
+
 ---
 
 ## 4. Add your AI provider key
