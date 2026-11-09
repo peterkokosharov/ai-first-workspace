@@ -215,13 +215,14 @@ then continue.
 ## Working on outside repos
 
 Your own repos can live outside the workspace and still be reached from it: make
-`projects` a link to them (git ignores `projects`, link or folder).
+`projects` a link to them (git ignores the root `projects`, folder or link).
+First move or remove an existing `projects/` folder, otherwise the link cannot be made.
 
 ```bash
 # Linux / macOS
 ln -s ~/repos projects
 # Windows (cmd; a junction needs no admin rights)
-mklink /J projects %USERPROFILE%epos
+mklink /J projects %USERPROFILE%\repos
 ```
 
 The workspace rules (`AGENTS.md`) are the base; a project's own `AGENTS.md` only adds to
