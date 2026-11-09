@@ -187,6 +187,11 @@ class TestLegacyCleanup(unittest.TestCase):
         self.assertEqual(notes, ["providers.gemini.settings.apiKey (plaintext key, already in "
                                  "the OS store) removed"])
         self.assertEqual(config["providers"]["gemini"]["env"], ["GEMINI_API_KEY"])
+        out = io.StringIO()
+        oc.report_cleaned(notes, out=out)
+        self.assertIn("may differ from the stored key", out.getvalue())
+        self.assertIn("backup", out.getvalue())
+        self.assertNotIn(FAKE_KEY, out.getvalue())
 
     def test_native_provider_old_key_removed_and_file_written(self):
         old = {"providers": {"openrouter": {"settings": {"apiKey": FAKE_KEY}}}}

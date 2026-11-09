@@ -405,6 +405,10 @@ def report_cleaned(notes: list[str], dry_run: bool = False, out=None,
         print(f"{verb}: {note}", file=out)
     for warning in warnings:
         print(f"warning: {warning}", file=out)
+    if any("already in the OS store" in note for note in notes):
+        print("  warning: a removed plaintext key may differ from the stored key of the "
+              "same name (for example after a rotation). The backup of the old file keeps "
+              "the removed value; check it before you delete the backup.", file=out)
     if notes or warnings:
         print("  Keys belong only in the OS secret store; tools/run_opencode.py passes them "
               "to opencode.", file=out)
