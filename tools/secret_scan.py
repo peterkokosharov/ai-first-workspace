@@ -30,6 +30,7 @@ RULES: list[tuple[str, re.Pattern[str]]] = [
     ("GitHub token", re.compile(r"\bghp_[A-Za-z0-9]{30,}")),
     ("GitHub fine-grained token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}")),
     ("AWS access key id", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+    ("Google / Gemini API key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])")),
     # api_key: <literal> / api_key = "<literal>" with 16+ key-like characters.
     # Values that start with $, <, {, or a name followed by ( or [ are skipped.
     ("api_key literal", re.compile(

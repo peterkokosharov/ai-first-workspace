@@ -28,6 +28,7 @@ class TestFindSecrets(unittest.TestCase):
             "ghp_" + FAKE,
             "github_pat_" + FAKE,
             "AKIA" + "ABCDEFGHIJKLMNOP",
+            "GEMINI_API_KEY=" + "AI" + "za" + FAKE[:35],
             "litellm_api_key: " + FAKE,
             'api_key = "' + FAKE + '"',
         ):
@@ -42,6 +43,8 @@ class TestFindSecrets(unittest.TestCase):
             'api_key = os.environ["NVIDIA_API_KEY"]',
             "keys start with nvapi- and are stored in KWallet",
             "desk-top risk-free",
+            "Gemini keys start with AIza and are 39 characters long",
+            "AI" + "za" + FAKE[:20],  # too short for a Google key
             "nvapi-" + FAKE + "  # secret-scan: allow",
         ):
             with self.subTest(text=text):
