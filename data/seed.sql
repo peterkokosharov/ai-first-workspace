@@ -18,8 +18,8 @@ INSERT OR IGNORE INTO providers (id, name, kind, base_url, free_tier, status, no
     (1, 'gemini',   'llm', NULL, 1, 'active', 'free tier: gemini-3.5-flash-lite, gemini-3.8-flash'),
     (2, 'nvidia',   'llm', NULL, 1, 'active', 'free tier with a free NVIDIA_API_KEY; direct endpoint works'),
     (3, 'opencode', 'llm', NULL, 1, 'active', 'free models, no key'),
-    (4, 'groq',     'llm', NULL, 0, 'active', NULL),
-    (5, 'openrouter', 'llm', NULL, 0, 'active', NULL),
+    (4, 'groq',     'llm', NULL, 1, 'active', NULL),
+    (5, 'openrouter', 'llm', NULL, 1, 'active', NULL),
     (6, 'deepseek', 'llm', NULL, 0, 'active', NULL),
     (7, 'mistral',  'llm', NULL, 0, 'active', NULL),
     (8, 'anthropic','llm', NULL, 0, 'active', NULL);
@@ -92,13 +92,7 @@ INSERT OR IGNORE INTO models (id, alias, model_id, provider_id, key_id, tier, co
     (17, 'mimo-v2.6-flash-free', 'opencode/mimo-v2.6-flash-free', 3, NULL, 'free', NULL, NULL, 'active',
         'OpenCode free model'),
     (18, 'nemotron-3.5-lightning-free', 'opencode/nemotron-3.5-lightning-free', 3, NULL, 'free',
-        NULL, NULL, 'active', 'OpenCode free model'),
-    -- Anthropic / Claude (paid)
-    (19, 'claude-3-5-sonnet', 'claude-3-5-sonnet-20241022', 8, 10, 'paid', 200000, NULL, 'planned', NULL),
-    (20, 'claude-3-5-haiku', 'claude-3-5-haiku-20241022', 8, 10, 'paid', 200000, NULL, 'planned', NULL),
-    (21, 'claude-3-opus', 'claude-3-opus-20240229', 8, 10, 'paid', 200000, NULL, 'planned', NULL),
-    (22, 'claude-3-sonnet', 'claude-3-sonnet-20240229', 8, 10, 'paid', 200000, NULL, 'planned', NULL),
-    (23, 'claude-3-haiku', 'claude-3-haiku-20240307', 8, 10, 'paid', 200000, NULL, 'planned', NULL);
+        NULL, NULL, 'active', 'OpenCode free model');
 
 INSERT OR IGNORE INTO tools (id, name, machine_id, status, notes) VALUES
     (4, 'Docker', NULL, 'planned', NULL);
