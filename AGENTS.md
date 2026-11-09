@@ -10,8 +10,8 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - Do only what the user asked. Start no other work on your own.
 - You may always read files in this folder. Running commands or writing files needs an order.
 - An order is a user message that names the action.
-- Inside an order you may run these without asking again: tools/inventory.py tables
-  and list, git status/diff/log, the test command, tools/secret_scan.py, and the
+- Inside an order you may run these without asking again: tools/inventory.py tables,
+  list and key, git status/diff/log, the test command, tools/secret_scan.py, and the
   step-review and commit procedures.
 - Confirmation: when you ask "Shall I <action>?", only a reply that starts with
   "да", "da" or "yes" as its own word confirms it.
@@ -22,8 +22,14 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 ## Secrets
 - Never write a key, token or password into a file, commit, chat or log. Never print one.
 - Keys live only in the OS secret store, through tools/secret.py.
-  Names look like provider/scope/kind, e.g. nvidia/personal/api_key.
+- Key names: scope/project/kind, e.g. personal/my-project/github_token; model provider
+  keys keep their names (nvidia/personal/api_key). Details: INSTALL.md "Key names".
 - List key names (never values): python3 tools/secret.py list
+- Key name of a service or provider (never a value): python3 tools/inventory.py key <name>
+  Need the key for gmail? python3 tools/inventory.py key gmail prints its name; only if the
+  user ordered the work, pass it on with python3 tools/secret.py run <name> -- <command>.
+- Record a service: python3 tools/inventory.py add-service NAME KIND
+- Record a key name: python3 tools/inventory.py add-key NAME --service S | --provider P
 - Never use "--backend file" unless the user orders exactly that.
 
 ## Git
