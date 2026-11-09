@@ -12,6 +12,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 SUT = Path(__file__).resolve().parents[1] / "opencode_config.py"
 _spec = importlib.util.spec_from_file_location("opencode_config", SUT)
@@ -63,9 +64,32 @@ class TestWriteJson(unittest.TestCase):
             path.write_text('{"old": 1}\n', encoding="utf-8")
             with redirect_stdout(io.StringIO()):
                 saved = oc.write_json(path, {"new": 2})
-            self.assertRegex(saved.name, r"^opencode\.json\.bak-\d{8}-\d{6}$")
+            self.assertRegex(saved.name, r"^opencode\.json\.bak-\d{8}-\d{6}-\d{6}$")
             self.assertEqual(json.loads(saved.read_text(encoding="utf-8")), {"old": 1})
             self.assertEqual(json.loads(path.read_text(encoding="utf-8")), {"new": 2})
+
+    def test_backups_in_the_same_instant_never_overwrite(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "opencode.json"
+            path.write_text("1", encoding="utf-8")
+            first = oc.backup(path, now=1000.5)
+            path.write_text("2", encoding="utf-8")
+            second = oc.backup(path, now=1000.5)
+            self.assertNotEqual(first, second)
+            self.assertEqual(first.read_text(encoding="utf-8"), "1")
+            self.assertEqual(second.read_text(encoding="utf-8"), "2")
+            self.assertTrue(second.name.endswith("-1"))
+
+    def test_failed_write_keeps_old_file_and_leaves_no_temp_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "opencode.json"
+            path.write_text('{"old": 1}', encoding="utf-8")
+            with mock.patch.object(oc.os, "replace", side_effect=OSError(13, "denied")), \
+                    redirect_stdout(io.StringIO()):
+                with self.assertRaises(oc.ConfigError):
+                    oc.write_json(path, {"new": 2})
+            self.assertEqual(path.read_text(encoding="utf-8"), '{"old": 1}')
+            self.assertEqual([f for f in Path(tmp).iterdir() if f.name.endswith(".tmp")], [])
 
     def test_new_file_needs_no_backup(self):
         with tempfile.TemporaryDirectory() as tmp:

@@ -15,8 +15,9 @@ Credential Manager, KWallet, GNOME Keyring, ...) and sets the variables for the
 opencode process only. Plaintext keys that older versions wrote into the config are
 removed (or redacted) on the next run; the tool lists where (never a value).
 
-Safe to re-run: the old config is backed up as ``<file>.bak-YYYYMMDD-HHMMSS`` (literal
-keys redacted in the copy); ``--dry-run`` only prints what would change. No admin rights.
+Safe to re-run: the old config is copied unchanged to
+``<file>.bak-YYYYMMDD-HHMMSS-ffffff`` (mode 600 on POSIX; delete it once its keys are in
+the OS store); ``--dry-run`` only prints what would change. No admin rights.
 
 Standard library only: no venv, no pip.
 

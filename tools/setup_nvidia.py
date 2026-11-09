@@ -16,8 +16,9 @@ Entries that older versions of this tool wrote (one ``providers.<model-alias>`` 
 model, with the real key in ``settings.apiKey``) are removed, and any other literal key
 in the config is redacted; the tool lists what it removed (never a value).
 
-Safe to re-run: the old config is backed up as ``<file>.bak-YYYYMMDD-HHMMSS`` (literal
-keys redacted in the copy); ``--dry-run`` only prints what would change. No admin rights.
+Safe to re-run: the old config is copied unchanged to
+``<file>.bak-YYYYMMDD-HHMMSS-ffffff`` (mode 600 on POSIX; delete it once its keys are in
+the OS store); ``--dry-run`` only prints what would change. No admin rights.
 
 Usage:
     python3 tools/setup_nvidia.py --dry-run

@@ -132,8 +132,7 @@ class TestLegacyCleanup(unittest.TestCase):
                     redirect_stdout(out):
                 code = setup_providers.configure_provider("openrouter")
             self.assertEqual(code, 0)
-            for file in Path(tmp).iterdir():
-                self.assertNotIn(FAKE_KEY, file.read_text(encoding="utf-8"))
+            self.assertNotIn(FAKE_KEY, path.read_text(encoding="utf-8"))
             self.assertEqual(json.loads(path.read_text(encoding="utf-8"))["providers"], {})
             self.assertIn("cleaned: providers.openrouter.settings.apiKey", out.getvalue())
             self.assertNotIn(FAKE_KEY, out.getvalue())
@@ -152,15 +151,16 @@ class TestLegacyCleanup(unittest.TestCase):
     def test_write_opencode_config_cleans_file_and_reports(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "opencode.json"
-            path.write_text(json.dumps(old_nvidia_config(self.aliases[:2])), encoding="utf-8")
+            body = json.dumps(old_nvidia_config(self.aliases[:2]))
+            path.write_text(body, encoding="utf-8")
             out = io.StringIO()
             with mock.patch.object(setup_nvidia, "CONFIG_FILE", path), \
                     mock.patch.object(sys, "stderr", io.StringIO()), redirect_stdout(out):
                 setup_nvidia.write_opencode_config(self.models)
-            files = list(Path(tmp).iterdir())
-            self.assertEqual(len(files), 2)  # config + one backup
-            for file in files:
-                self.assertNotIn(FAKE_KEY, file.read_text(encoding="utf-8"))
+            backups = list(Path(tmp).glob("opencode.json.bak-*"))
+            self.assertEqual(len(list(Path(tmp).iterdir())), 2)  # config + one backup
+            self.assertEqual(backups[0].read_text(encoding="utf-8"), body)  # exact copy
+            self.assertNotIn(FAKE_KEY, path.read_text(encoding="utf-8"))
             self.assertEqual(list(json.loads(path.read_text(encoding="utf-8"))["providers"]),
                              ["nvidia"])
             self.assertIn(f"cleaned: providers.{self.aliases[0]}", out.getvalue())
@@ -247,16 +247,21 @@ class TestPlaintextKeyWarnings(unittest.TestCase):
             path.write_text(json.dumps({"apiKey": FAKE_KEY}), encoding="utf-8")
             self.assertEqual(oc.warn_plaintext_keys(path, io.StringIO(), Path(tmp)), 1)
 
-    def test_backup_redacts_literal_keys(self):
+    def test_backup_is_exact_copy_and_warns_without_value(self):
+        # The backup may be the only copy of a key that is not in the store yet.
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "opencode.json"
-            path.write_text(json.dumps({"apiKey": FAKE_KEY, "theme": "t"}), encoding="utf-8")
-            with redirect_stdout(io.StringIO()):
+            body = json.dumps({"apiKey": FAKE_KEY, "theme": "t"}).encode()
+            path.write_bytes(body)
+            out = io.StringIO()
+            with redirect_stdout(out):
                 saved = oc.write_json(path, {"theme": "t"})
-            text = saved.read_text(encoding="utf-8")
-            self.assertNotIn(FAKE_KEY, text)
-            self.assertEqual(json.loads(text)["theme"], "t")
-            self.assertEqual(oc.find_plaintext_keys(json.loads(text)), [])
+            self.assertEqual(saved.read_bytes(), body)
+            self.assertIn("exact copy", out.getvalue())
+            self.assertIn("Delete it by hand", out.getvalue())
+            self.assertNotIn(FAKE_KEY, out.getvalue())
+            if os.name == "posix":
+                self.assertEqual(saved.stat().st_mode & 0o777, 0o600)
 
 
 class TestLauncher(unittest.TestCase):

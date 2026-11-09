@@ -104,8 +104,10 @@ commands, agent tools) can read them too. An agent must never print environment
 variables (`env`, `set`, `printenv`, `echo $NVIDIA_API_KEY`).
 
 The setup tools are safe to re-run: they need no admin rights (no sudo), change nothing
-outside your user folder, and copy the old config to `<file>.bak-YYYYMMDD-HHMMSS` before
-writing (keys in plain text are blanked in that copy). opencode's documentation names
+outside your user folder, and copy the old config unchanged to
+`<file>.bak-YYYYMMDD-HHMMSS-ffffff` before writing (readable only by you on Linux/macOS;
+default permissions on Windows). If that copy holds a plain-text key, the tool says so:
+delete the copy once the key is in the OS secret store. opencode's documentation names
 `~/.config/opencode/opencode.json` as the global config; the tools use that folder on
 Linux and on Windows (`%USERPROFILE%\.config\opencode`). **Unverified on Windows:**
 the docs give no Windows-specific path and this was not tested with a real opencode

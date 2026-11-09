@@ -4,8 +4,9 @@
 """Shared helpers for the setup and ping tools (standard library only).
 
 * ``config_file()`` finds OpenCode's global config file for this OS.
-* ``write_json()`` writes a config file safely: it backs up the old file as
-  ``<name>.bak-YYYYMMDD-HHMMSS`` first and supports a dry run.
+* ``write_json()`` writes a config file safely (atomic replace): it first copies the
+  old file byte for byte to ``<name>.bak-YYYYMMDD-HHMMSS-ffffff`` (mode 600 on POSIX)
+  and supports a dry run.
 * ``get_secret()`` reads a key through ``tools/secret.py --backend auto``, which picks
   the native store of the OS (Windows Credential Manager, macOS Keychain, GNOME
   Keyring / libsecret ``secret-tool``, KWallet, TDE DCOP).
@@ -31,6 +32,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Mapping
@@ -97,26 +99,61 @@ REDACTED = "<removed: plaintext key; keep keys in the OS secret store>"
 
 
 def backup(path: Path, now: float | None = None) -> Path | None:
-    """Copy ``path`` to ``path.bak-YYYYMMDD-HHMMSS``; return the copy (None if no file).
+    """Copy ``path`` byte for byte to ``path.bak-YYYYMMDD-HHMMSS-ffffff``; return the
+    copy (None if there is no file).
 
-    If the file is JSON and holds literal API keys (see ``find_plaintext_keys``), the
-    backup gets ``REDACTED`` in their place, so a backup never adds another copy of a
-    key. Anything else is copied byte for byte.
+    The copy is exact (a key not yet in the OS store is never lost) and is created with
+    mode ``600`` on POSIX; on Windows the folder's default permissions apply. An
+    existing backup is never overwritten: a counter is added if the name is taken.
     """
     if not path.is_file():
         return None
-    stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(now))
-    target = path.with_name(f"{path.name}.bak-{stamp}")
+    data = path.read_bytes()
+    now = time.time() if now is None else now
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(now)) + f"-{int(now % 1 * 1e6):06d}"
+    base = f"{path.name}.bak-{stamp}"
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0)
+    for count in range(1000):
+        target = path.with_name(base if count == 0 else f"{base}-{count}")
+        try:
+            fd = os.open(target, flags, 0o600)
+        except FileExistsError:
+            continue
+        try:
+            with os.fdopen(fd, "wb") as handle:
+                handle.write(data)
+        except BaseException:
+            try:
+                target.unlink()
+            except OSError:
+                pass
+            raise
+        return target
+    raise OSError(f"no free backup name for {path}")
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Write ``text`` to ``path`` atomically (temp file in the same folder, then
+    ``os.replace``). An existing file keeps its permission bits."""
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=str(path.parent))
+    tmp = Path(tmp_name)
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        data = None
-    if isinstance(data, dict) and find_plaintext_keys(data):
-        _redact(data)
-        target.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    else:
-        shutil.copy2(path, target)
-    return target
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
+        if path.exists():
+            try:
+                shutil.copymode(path, tmp)
+            except OSError:
+                pass
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise
 
 
 def load_json(path: Path, default: dict) -> dict:
@@ -131,10 +168,11 @@ def load_json(path: Path, default: dict) -> dict:
 
 
 def write_json(path: Path, data: dict, dry_run: bool = False) -> Path | None:
-    """Write ``data`` to ``path``. Back up an existing file first.
+    """Write ``data`` to ``path`` atomically. Back up an existing file first.
 
     With ``dry_run`` nothing is written; the planned change is printed instead.
-    Returns the backup path (or None).
+    Returns the backup path (or None). If the backup holds literal keys, a warning
+    says so (locations only) and asks to delete it once the keys are in the store.
     """
     if dry_run:
         print(f"[dry-run] would back up {path} (if it exists) and write it with "
@@ -143,11 +181,21 @@ def write_json(path: Path, data: dict, dry_run: bool = False) -> Path | None:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         saved = backup(path)
-        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        _atomic_write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
     except OSError as exc:
-        raise ConfigError(f"cannot write {path}: {exc.strerror}") from exc
+        raise ConfigError(f"cannot write {path}: {exc.strerror or exc}") from exc
     if saved:
         print(f"backup: {saved}")
+        try:
+            places = find_plaintext_keys(json.loads(saved.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            places = []
+        if places:
+            perms = ("readable only by you" if os.name == "posix"
+                     else "with the folder's default Windows permissions")
+            print(f"  warning: this backup is an exact copy of the old file and holds "
+                  f"{len(places)} plaintext key(s) at {', '.join(places)} ({perms}). "
+                  "Delete it by hand once the keys are in the OS secret store.")
     return saved
 
 
