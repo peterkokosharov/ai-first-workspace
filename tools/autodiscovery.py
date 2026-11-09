@@ -25,6 +25,10 @@ import sqlite3
 import sys
 from pathlib import Path
 
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+import workspace_settings  # noqa: E402  (shared helper next to this file)
+
 EXIT_OK = 0
 EXIT_MINIMUM_NOT_MET = 1
 EXIT_DB_MISSING = 2
@@ -137,23 +141,11 @@ def check_bash() -> bool:
 
 
 def load_settings() -> dict:
-    """Load runtime paths from settings.json, else settings.json.example (empty dict if
-    both are missing/invalid)."""
+    """Program -> command for every known program: settings.json (else
+    settings.json.example) ``tools``, then the older ``runtime`` section, then the
+    default name. See tools/workspace_settings.py."""
     source = SETTINGS if SETTINGS.is_file() else SETTINGS_EXAMPLE
-    try:
-        text = source.read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
-        return {}
-    try:
-        data = json.loads(text)
-    except ValueError:
-        return {}
-    if not isinstance(data, dict):
-        return {}
-    runtime = data.get("runtime")
-    if not isinstance(runtime, dict):
-        return {}
-    return runtime
+    return workspace_settings.all_commands(workspace_settings.load(source))
 
 
 def check_opencode(name: str = "opencode") -> bool:

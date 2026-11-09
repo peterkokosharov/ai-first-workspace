@@ -27,6 +27,10 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
+import workspace_settings  # noqa: E402  (shared helper next to this file)
+
 DATA = ROOT / "data"
 INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(DATA / "inventory.db")))  # as in inventory.py
 
@@ -79,11 +83,17 @@ def lookup_model(alias: str) -> dict | None:
 # -------------------------------------------------------------------------------------- opencode tier
 
 
+def opencode_command() -> str:
+    """``tools.opencode`` from settings.json (path or name), else ``opencode``."""
+    return workspace_settings.tool_command("opencode")
+
+
+
 def opencode_models_for_provider(provider_name: str) -> tuple[list[str], str | None]:
     """Return the list of models OpenCode knows for a provider, or an error."""
     try:
         result = subprocess.run(
-            ["opencode", "models", provider_name],
+            [opencode_command(), "models", provider_name],
             capture_output=True,
             text=True,
             timeout=15,
@@ -120,7 +130,7 @@ def ping_model(model_ref: str, message: str) -> tuple[int, str, str]:
     """
     try:
         result = subprocess.run(
-            ["opencode", "run", "-m", model_ref, "--format", "json", message],
+            [opencode_command(), "run", "-m", model_ref, "--format", "json", message],
             capture_output=True,
             text=True,
             timeout=60,

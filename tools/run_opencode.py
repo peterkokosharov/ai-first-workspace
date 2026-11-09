@@ -22,7 +22,8 @@ variables (``env``, ``set``, ``printenv``, ``echo $..._API_KEY``).
 Windows: if only an npm shim ``opencode.cmd`` / ``.bat`` is found, cmd.exe re-parses
 the arguments, so arguments with ``& | ^ % < > "`` are refused (use ``opencode.exe`` or
 leave those characters out). A real ``opencode.exe`` next to the shim or on PATH is
-preferred.
+preferred. ``tools.opencode`` in settings.json (a full path or a program name) is used
+instead of looking for ``opencode`` on PATH.
 
 Usage:
     python3 tools/run_opencode.py                       # opencode TUI in this folder
@@ -46,6 +47,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import opencode_config  # noqa: E402  (shared helpers next to this file)
+import workspace_settings  # noqa: E402
 
 EXIT_NOT_FOUND = 127
 
@@ -84,14 +86,24 @@ def is_batch(path: str) -> bool:
     return Path(path).suffix.lower() in (".cmd", ".bat")
 
 
-def find_opencode(which: Callable[[str], str | None] = shutil.which) -> str | None:
+def find_opencode(which: Callable[[str], str | None] = shutil.which,
+                  configured: str = "") -> str | None:
     """Path of the opencode program.
 
-    On Windows ``which`` may return the npm shim ``opencode.cmd``; a real
-    ``opencode.exe`` in the same folder or on PATH is preferred, because cmd.exe
-    re-parses the arguments of a batch file.
+    ``configured`` is ``tools.opencode`` from settings.json (a path or a program name);
+    empty = look for ``opencode`` on PATH. On Windows ``which`` may return the npm shim
+    ``opencode.cmd``; a real ``opencode.exe`` in the same folder or on PATH is
+    preferred, because cmd.exe re-parses the arguments of a batch file.
     """
-    found = which("opencode")
+    if configured:
+        if Path(configured).is_file():
+            found = configured
+        else:
+            found = which(configured)
+        if not found:
+            return None
+    else:
+        found = which("opencode")
     if found and is_batch(found):
         sibling = Path(found).with_name("opencode.exe")
         if sibling.is_file():
@@ -155,7 +167,8 @@ def parse_only(args: list[str]) -> tuple[list[str] | None, str | None]:
 def main(argv: list[str] | None = None,
          run: Callable[..., subprocess.CompletedProcess] = subprocess.run,
          which: Callable[[str], str | None] = shutil.which,
-         get_secret: Callable[[str], str] = opencode_config.get_secret) -> int:
+         get_secret: Callable[[str], str] = opencode_config.get_secret,
+         settings: dict | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
     wanted, error = parse_only(args)
     if error:
@@ -163,9 +176,12 @@ def main(argv: list[str] | None = None,
         return 2
     providers = wanted or sorted(opencode_config.PROVIDERS)
 
-    exe = find_opencode(which)
+    configured = workspace_settings.configured_tool("opencode", settings)
+    exe = find_opencode(which, configured)
     if not exe:
-        print("run_opencode: opencode not found on PATH. Install it from https://opencode.ai",
+        where = (f"'{configured}' (tools.opencode in settings.json)" if configured
+                 else "on PATH")
+        print(f"run_opencode: opencode not found {where}. Install it from https://opencode.ai",
               file=sys.stderr)
         return EXIT_NOT_FOUND
     if is_batch(exe):

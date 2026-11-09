@@ -405,6 +405,12 @@ class TestPlaintextKeyWarnings(unittest.TestCase):
 
 
 class TestLauncher(unittest.TestCase):
+    def setUp(self):
+        # The local settings.json must not change what these tests see.
+        patcher = mock.patch.object(run_opencode.workspace_settings, "load", return_value={})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def fake_secret(self, key_path):
         if key_path == "nvidia/personal/api_key":
             return FAKE_KEY
@@ -526,6 +532,38 @@ class TestLauncher(unittest.TestCase):
         code, calls, _ = self.run_main(["run", "a & b"], which=lambda name: "/bin/opencode")
         self.assertEqual(code, 0)
         self.assertEqual(calls, [["/bin/opencode", "run", "a & b"]])
+
+    def test_settings_tools_opencode_path_is_used(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            exe = Path(tmp) / "my-opencode"
+            exe.write_text("", encoding="utf-8")
+            calls = []
+
+            def fake_run(cmd, env):
+                calls.append(cmd)
+                return mock.Mock(returncode=0)
+
+            with mock.patch.dict(os.environ, {"OPENCODE_CONFIG": str(Path(tmp) / "none.json")}),                     mock.patch.object(sys, "stderr", io.StringIO()):
+                code = run_opencode.main(["run", "hi"], run=fake_run,
+                                         which=lambda name: "/bin/opencode",
+                                         get_secret=self.fake_secret,
+                                         settings={"tools": {"opencode": str(exe)}})
+        self.assertEqual(code, 0)
+        self.assertEqual(calls, [[str(exe), "run", "hi"]])
+
+    def test_settings_tools_opencode_name_goes_through_which(self):
+        which = {"oc-custom": "/opt/oc/oc-custom"}.get
+        self.assertEqual(run_opencode.find_opencode(which, "oc-custom"), "/opt/oc/oc-custom")
+        self.assertIsNone(run_opencode.find_opencode(which, "missing-oc"))
+
+    def test_settings_tools_opencode_missing_is_reported(self):
+        err = io.StringIO()
+        with mock.patch.object(sys, "stderr", err):
+            code = run_opencode.main([], run=None, which=lambda name: None,
+                                     get_secret=self.fake_secret,
+                                     settings={"tools": {"opencode": "nope-oc"}})
+        self.assertEqual(code, run_opencode.EXIT_NOT_FOUND)
+        self.assertIn("tools.opencode", err.getvalue())
 
     def test_sigint_not_default_while_child_runs_and_restored(self):
         import signal

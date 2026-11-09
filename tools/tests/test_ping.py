@@ -182,6 +182,19 @@ class TestCheckTier(unittest.TestCase):
 
 
 
+
+class TestOpencodeCommand(unittest.TestCase):
+    def test_default_is_opencode(self):
+        with mock.patch.object(ping.workspace_settings, "load", return_value={}):
+            self.assertEqual(ping.opencode_command(), "opencode")
+
+    def test_settings_tools_opencode_is_used_for_run(self):
+        data = {"tools": {"opencode": "/opt/oc/opencode"}}
+        with mock.patch.object(ping.workspace_settings, "load", return_value=data),                 mock.patch.object(ping.subprocess, "run",
+                                  return_value=FakeCompletedProcess(0, "", "")) as run:
+            ping.ping_model("x/y", "hi")
+        self.assertEqual(run.call_args[0][0][0], "/opt/oc/opencode")
+
 class TestInventoryDbEnv(unittest.TestCase):
     def test_inventory_db_env_is_honoured(self):
         target = str(Path(tempfile.gettempdir()) / "elsewhere" / "inventory.db")

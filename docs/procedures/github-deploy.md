@@ -7,7 +7,10 @@ Goal: put local commits on GitHub. The agent may push only after the user confir
 1. Run `git status`. It must say "nothing to commit, working tree clean".
    If not: follow docs/procedures/commit.md first.
 2. Run `git branch --show-current`. Note the branch name.
-3. Run `git remote -v`. Note where `origin` points.
+3. Run `git remote -v`. Note where `origin` points. Read `git.remote_url` and
+   `git.remote_user` in `settings.json` (copy of `settings.json.example`). If
+   `remote_url` is set and `origin` points elsewhere, stop and tell the user; do not
+   change the remote yourself. Empty values: use `origin` as it is.
 4. Run `git log --oneline origin/<branch>..HEAD` to list what will be pushed.
    If that fails, the branch is not on GitHub yet: run `git log --oneline` (all
    commits will be pushed) and say so.
@@ -32,20 +35,27 @@ Goal: put local commits on GitHub. The agent may push only after the user confir
    repository on GitHub, then point `origin` to it:
    `git remote set-url origin https://github.com/<you>/<repo>.git`
 2. Check: `git remote -v`.
+3. Write the same URL and your GitHub user name into `settings.json`:
+   `"git": {"remote_url": "...", "remote_user": "...", "token_key": "personal/<repo>/github_token"}`.
+   `token_key` only names the token (INSTALL.md, "Key names"); the value stays with git.
 
 ## HUMAN: once per machine
 1. Create a Personal Access Token (PAT) on github.com:
    Settings -> Developer settings -> Personal access tokens -> Fine-grained tokens.
    Give it access to your repository only (Contents: read and write).
-2. Choose where git remembers it (never in a plain file):
+2. Let git's credential helper keep it in the OS store (never in a plain file):
    - Windows: `git config --global credential.helper manager`
      (Git Credential Manager, ships with Git for Windows; the PAT goes to Windows
      Credential Manager).
-   - Linux: `git config --global credential.helper 'cache --timeout=3600'`
-     (in memory for one hour).
+   - Linux Mint / Ubuntu: `git config --global credential.helper
+     /usr/share/doc/git/contrib/credential/libsecret/git-credential-libsecret`
+     (GNOME Keyring; build the helper once, see INSTALL.md "What the machine needs").
+   - Last fallback only, if libsecret cannot be built:
+     `git config --global credential.helper 'cache --timeout=3600'` (memory, one hour).
    - Never `credential.helper store`: it writes the token in plain text to `~/.git-credentials`.
-3. git uses this helper, not tools/secret.py. Do not store the PAT with secret.py
-   for pushing; git never reads it from there.
+3. git uses this helper, not tools/secret.py. Do not store the PAT with secret.py;
+   git never reads it from there. The inventory row (`inventory.py key github`) only
+   names it and says "managed by git credential helper, not secret.py".
 
 ## Push by hand (instead of agent steps 6-7)
 1. Run the line the agent showed: `git push origin <branch>`.

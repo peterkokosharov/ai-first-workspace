@@ -160,8 +160,12 @@ models), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test 
 
 Run the tests: `python3 -m unittest discover -s tools/tests -t . -v` (`py` on Windows).
 
-Local settings: `settings.json.example` lists the program names `autodiscovery.py`
-looks for. To change one, copy it to `settings.json` (not tracked by git) and edit the copy.
+Local settings: copy `settings.json.example` to `settings.json` (not tracked by git).
+`tools` holds a full path or command per program (empty = found on PATH;
+`autodiscovery.py --save` fills it in); `run_opencode.py` and `ping.py` use
+`tools.opencode`. `git` holds `remote_url`, `remote_user` and `token_key` for the
+GitHub steps. An older `runtime` section is still read. Key names: see INSTALL.md,
+"Key names".
 
 ## Optional example — local model proxy
 

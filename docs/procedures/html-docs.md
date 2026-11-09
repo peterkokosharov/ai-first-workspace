@@ -35,8 +35,9 @@ Mermaid source plus a committed SVG. On Windows type `py` instead of `python3`.
 4. Not both `yes`: do not install anything. Commit the `.mmd` and leave the old `.svg`.
    Tell the user the `.svg` is out of date.
 5. Node.js is optional. It is needed only for step 3.
-6. The settings key `merman` in `settings.json` (copy of `settings.json.example`)
-   holds the command that runs mermaid-cli. autodiscovery checks only its first word.
+6. `tools.merman` in `settings.json` (copy of `settings.json.example`) may hold the
+   command that runs mermaid-cli; empty = `npx -y @mermaid-js/mermaid-cli`.
+   autodiscovery checks only its first word.
 
 ## View
 - Open the `.html` file in your browser (double-click it in the file manager).

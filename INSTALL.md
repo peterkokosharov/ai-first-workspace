@@ -132,6 +132,17 @@ Mint/Ubuntu.
 
 The value is read from **prompt/stdin** — never printed.
 
+### Key names
+
+- Form: `scope/project/kind`, scope = `personal` or `company`, e.g.
+  `personal/my-book/github_token`, `company/nw/github_token`.
+- Lowercase, at least two parts, no leading `/` (`secret.py` refuses other names).
+- One key per project: with several projects open you see which key belongs where.
+- Model provider keys keep their names (`nvidia/personal/api_key` and the others above).
+- `git.token_key` in `settings.json` names the key this repo uses. A GitHub token is
+  kept by git's credential helper, not by `secret.py` (docs/procedures/github-deploy.md).
+- Record a name (never a value): `python3 tools/inventory.py add-key <name> --service github`.
+
 ---
 
 ## 5. Start your agent in this folder

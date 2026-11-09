@@ -1,13 +1,16 @@
 {
-  "runtime": {
-    "opencode": "opencode",
-    "merman": "npx -y @mermaid-js/mermaid-cli",
-    "git": "git",
-    "bash": "bash",
-    "python": "auto",
-    "node": "node",
-    "docker": "docker",
-    "npm": "npm",
-    "docker-compose": "docker-compose"
+  "git": {
+    "remote_url": "",
+    "remote_user": "",
+    "token_key": "personal/my-project/github_token"
+  },
+  "tools": {
+    "python": "",
+    "git": "",
+    "bash": "",
+    "node": "",
+    "opencode": "",
+    "merman": "",
+    "docker": ""
   }
 }
