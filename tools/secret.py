@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Portable secret tool: one interface over native credential stores.
 
 The tool stores secrets under stable key paths: ``provider/scope/kind``.

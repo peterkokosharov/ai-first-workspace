@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Ping a model via OpenCode and verify it against the inventory database.
 
 Usage:

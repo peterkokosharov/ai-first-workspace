@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Auto-discovery for a new machine.
 
 Checks the operating system, hardware, Python, git and bash, and the local
@@ -35,6 +38,7 @@ SEED = DATA / "seed.sql"
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 INVENTORY_TOOL = ROOT / "tools" / "inventory.py"
 SETTINGS = ROOT / "settings.json"
+SETTINGS_EXAMPLE = ROOT / "settings.json.example"  # used when settings.json is absent
 
 
 def _ram_mb() -> int | None:
@@ -121,9 +125,11 @@ def check_bash() -> bool:
 
 
 def load_settings() -> dict:
-    """Load runtime paths from settings.json (empty dict if missing/invalid)."""
+    """Load runtime paths from settings.json, else settings.json.example (empty dict if
+    both are missing/invalid)."""
+    source = SETTINGS if SETTINGS.is_file() else SETTINGS_EXAMPLE
     try:
-        text = SETTINGS.read_text(encoding="utf-8")
+        text = source.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
         return {}
     try:

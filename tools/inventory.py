@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Portable workspace inventory over SQLite.
 
 The database file ``data/inventory.db`` lives next to the project root; it is

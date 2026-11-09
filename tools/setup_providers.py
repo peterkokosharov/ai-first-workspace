@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Configure OpenCode providers using keys from the OS secret store.
 
 Reads the API key for a provider from ``data/inventory.db`` key paths via

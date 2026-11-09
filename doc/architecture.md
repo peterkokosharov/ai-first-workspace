@@ -9,7 +9,7 @@ Self-contained, portable folder for AI-assisted software development.
 ├── AGENTS.md              # project rules (single source of truth)
 ├── README.md              # entry point, how to continue on another machine
 ├── doc/
-│   ├── architekture.html  # this file — architecture & UML diagrams
+│   ├── architecture.html  # this file — architecture & UML diagrams
 │   └── diagrams/
 │       ├── arch-overview.mmd   # Mermaid source
 │       ├── arch-overview.svg   # rendered SVG

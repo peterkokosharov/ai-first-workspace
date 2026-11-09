@@ -11,3 +11,6 @@ in/task.md
 
 # Per-task project folders (each can be its own git repo)
 projects/
+
+# Local settings: copy settings.json.example to settings.json and edit it
+settings.json

@@ -6,7 +6,7 @@ based on `in/HOWTO_HTML_DOCS.md`.
 
 ## Overview
 
-Documentation is a single self-contained HTML file (`doc/architekture.html`)
+Documentation is a single self-contained HTML file (`doc/architecture.html`)
 that embeds SVG diagrams generated from Mermaid source files. No client-side
 JavaScript or CDN is needed for viewing.
 
@@ -20,7 +20,7 @@ JavaScript or CDN is needed for viewing.
 
 ```
 doc/
-├── architekture.html          # Main documentation (self-contained HTML)
+├── architecture.html          # Main documentation (self-contained HTML)
 ├── diagrams/
 │   ├── arch-overview.mmd      # Mermaid source
 │   ├── arch-overview.svg      # Rendered SVG
@@ -52,7 +52,7 @@ npx -y @mermaid-js/mermaid-cli -i doc/diagrams/<name>.mmd -o doc/diagrams/<name>
 
 ### 3. Embed in HTML
 
-Replace or add an `` tag in `doc/architekture.html`:
+Replace or add an `` tag in `doc/architecture.html`:
 
 ```html
 <div class="diagram-container">
@@ -64,11 +64,11 @@ Replace or add an `` tag in `doc/architekture.html`:
 
 ```bash
 # Linux
-xdg-open doc/architekture.html
+xdg-open doc/architecture.html
 
 # Or serve locally
 python3 -m http.server 8080 -d doc
-# Then open http://localhost:8080/architekture.html
+# Then open http://localhost:8080/architecture.html
 ```
 
 ## Recommended Workflow
@@ -81,10 +81,10 @@ vim doc/diagrams/<name>.mmd
 npx -y @mermaid-js/mermaid-cli -i doc/diagrams/<name>.mmd -o doc/diagrams/<name>.svg -t default -b white
 
 # 3. Verify in browser
-xdg-open doc/architekture.html
+xdg-open doc/architecture.html
 
 # 4. Commit
-git add doc/diagrams/<name>.mmd doc/diagrams/<name>.svg doc/architekture.html
+git add doc/diagrams/<name>.mmd doc/diagrams/<name>.svg doc/architecture.html
 git commit -m "docs: update <name> diagram"
 ```
 

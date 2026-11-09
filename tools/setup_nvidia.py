@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Configure OpenCode providers for all free NVIDIA models in kb/models.xml.
 
 Reads key ``nvidia/personal/api_key`` via tools/secret.py (automatic backend:

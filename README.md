@@ -130,6 +130,9 @@ models), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test 
 
 Run the tests: `python3 -m unittest discover -s tools/tests -t . -v` (`py` on Windows).
 
+Local settings: `settings.json.example` lists the program names `autodiscovery.py`
+looks for. To change one, copy it to `settings.json` (not tracked by git) and edit the copy.
+
 ## Optional example — local model proxy
 
 Not needed to start. One test machine ran a local OpenAI-compatible proxy (for example

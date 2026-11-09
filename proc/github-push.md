@@ -25,17 +25,7 @@ git commit -m "your commit message"
 
 ## Step 1 — Change the remote URL to yours
 
-The remote URL is stored in `settings.json`:
-
-```json
-{
-  "remote": {
-    "origin": "https://github.com/<your-username>/ai-first-workspace.git"
-  }
-}
-```
-
-Change `<your-username>` to your GitHub username:
+Point `origin` at your own repository (replace `YOUR_USERNAME`):
 
 ```bash
 git remote set-url origin https://github.com/YOUR_USERNAME/ai-first-workspace.git
