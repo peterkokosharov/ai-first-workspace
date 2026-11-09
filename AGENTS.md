@@ -53,6 +53,15 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - kb/ free model list. doc/ architecture pages. out/ reports (not in git).
 - projects/<name>/ one folder per user project; it may be its own git repo.
 
+## What "agent" means
+- An agent is a role you play in this session (for example orc, coder, qa, reviewer),
+  or an opencode subagent. Nothing else.
+- Never start claude, gemini, goose, codex or another opencode process unless the
+  user names it in an order.
+- UNVERIFIED: that opencode subagents work in this setup, and that an opencode
+  permission rule can deny shell commands that start with those names. Until it is
+  tested on the installed opencode version, this is a rule only, not enforced.
+
 ## Procedures
 - Finished a step -> docs/procedures/step-review.md
 - Reached a milestone -> docs/procedures/commit.md

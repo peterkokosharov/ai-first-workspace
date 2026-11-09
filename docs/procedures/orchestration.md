@@ -3,6 +3,12 @@
 Goal: one lead agent (orc) splits work into small steps and gives each role one job.
 On Windows type `py` instead of `python3`.
 
+## What "agent" means
+An agent is a role you play in this session, or an opencode subagent. Never start
+claude, gemini, goose, codex or another opencode unless the user names it.
+UNVERIFIED: the opencode subagent mechanism, and an opencode permission rule that
+denies those commands (not configured here; until tested it is a rule only).
+
 ## Roles
 - **orc**: plans, splits the work into small steps, writes each brief, checks results.
 - **coder**: changes code for one step. Nothing else.

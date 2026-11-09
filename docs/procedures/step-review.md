@@ -1,6 +1,8 @@
 # Review after each finished step
 
 Goal: a different, stronger model checks every finished step before it is committed.
+If no other model is available, the review is optional: the same model reviews in a
+fresh reviewer role (read only, goal and diff only) and says so in the result.
 On Windows type `py` instead of `python3`.
 
 ## When
@@ -20,7 +22,11 @@ On Windows type `py` instead of `python3`.
      `opencode run --agent plan -m <provider/model> "<prompt>"`
    - Models that need a stored key (for example NVIDIA):
      `python3 tools/run_opencode.py run --agent plan -m <provider/model> "<prompt>"`
-   - No terminal access to a second model? Ask the user to run the review.
+   - No terminal access to a second model? Ask the user to run the review, or, if no
+     other model is available, review in a fresh reviewer role yourself and write
+     `Review: PASS (<your model>, same model, fresh role)`.
+   - UNVERIFIED: starting a reviewer from a shell (`opencode run`) and the opencode
+     subagent mechanism. Never start claude, gemini, goose or codex for this.
 5. Use this prompt (fill in the goal):
    ```text
    Review the uncommitted change in this folder. Goal: <goal>.
