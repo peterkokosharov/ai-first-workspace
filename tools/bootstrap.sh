@@ -60,8 +60,8 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         echo "[0/5] Secret check already on (core.hooksPath = .githooks)."
     else
         echo "[0/5] WARNING: core.hooksPath is already set to '$HOOKS_PATH'; not changed."
-        echo "      The secret-check hook is NOT on. Call .githooks/pre-commit from your"
-        echo "      own hook, or run: git config core.hooksPath .githooks"
+        echo "      The secret-check hooks are NOT on. Call .githooks/pre-commit and"
+        echo "      .githooks/pre-push from your own hooks, or run: git config core.hooksPath .githooks"
     fi
 else
     echo "[0/5] Not a git repo: secret-check hook not turned on (no git, nothing to commit)."

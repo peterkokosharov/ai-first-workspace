@@ -11,7 +11,7 @@ Usage:
 
 Exit code 0 = clean, 1 = possible secret found (the value is never printed).
 
-Enable it as a git pre-commit hook once per clone:
+Enable it as the git pre-commit and pre-push hooks once per clone:
     git config core.hooksPath .githooks
 """
 
