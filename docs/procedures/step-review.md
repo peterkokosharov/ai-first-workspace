@@ -16,17 +16,17 @@ On Windows type `py` instead of `python3`.
    - List models: type `/models` in opencode, or run `opencode models` in a terminal.
    - Check the inventory too: `python3 tools/inventory.py list models`.
 4. Start the reviewer with only the goal and the diff (keep its context small).
-   Use opencode's `plan` agent: it does not edit project files.
-   (`--agent plan` is not verified yet: check with `opencode run --help`.)
-   - opencode's own free models:
-     `opencode run --agent plan -m <provider/model> "<prompt>"`
-   - Models that need a stored key (for example NVIDIA):
-     `python3 tools/run_opencode.py run --agent plan -m <provider/model> "<prompt>"`
-   - No terminal access to a second model? Ask the user to run the review, or, if no
-     other model is available, review in a fresh reviewer role yourself and write
+   The reviewer is a fresh reviewer role in this session (it only reads), or an
+   opencode subagent. Pick a reviewer model that is not you if one is available.
+   - Starting another opencode process (`opencode run --agent plan -m <provider/model>`,
+     or `python3 tools/run_opencode.py run ...` for models with a stored key) only when
+     the user names it.
+   - No second model? Review in a fresh reviewer role yourself and write
      `Review: PASS (<your model>, same model, fresh role)`.
-   - UNVERIFIED: starting a reviewer from a shell (`opencode run`) and the opencode
-     subagent mechanism. Never start claude, gemini, goose or codex for this.
+   - Or ask the user to run the review.
+   - UNVERIFIED: the opencode subagent mechanism and `--agent plan` (check with
+     `opencode run --help`). Never start claude, gemini, goose, codex or another opencode
+     for this unless the user names it.
 5. Use this prompt (fill in the goal):
    ```text
    Review the uncommitted change in this folder. Goal: <goal>.
