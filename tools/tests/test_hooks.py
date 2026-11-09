@@ -148,5 +148,22 @@ class TestPrePush(unittest.TestCase):
         self.assertFalse(self.remote_has("refs/heads/feature2"))
 
 
+@unittest.skipUnless(GIT, "needs git")
+class TestGitignore(unittest.TestCase):
+    """The repo .gitignore keeps local backups out of git (checked in a temp repo)."""
+
+    def test_settings_backup_is_ignored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run([GIT, "init", "-q", tmp], check=True)
+            shutil.copy(ROOT / ".gitignore", Path(tmp) / ".gitignore")
+            for name, ignored in (("settings.json.bak-20260101-000000-000000", True),
+                                  ("settings.json", True),
+                                  ("settings.json.example", False)):
+                with self.subTest(name=name):
+                    result = subprocess.run([GIT, "-C", tmp, "check-ignore", "-q", name],
+                                            capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0 if ignored else 1, result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
