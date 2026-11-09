@@ -142,7 +142,7 @@ AGENTS.md      the rules for every agent      CLAUDE.md / GEMINI.md  pointers to
 INSTALL.md     step-by-step install           kb/          the free model list
 tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
 data/          inventory schema and seed      doc/         architecture and accessibility pages
-proc/          procedures (auto-discovery, GitHub push, HTML pages)
+docs/procedures/  steps for review, commit, release audit, HTML docs, GitHub, orchestration
 projects/      your own projects, one folder each (not in this repo's git)
 ```
 

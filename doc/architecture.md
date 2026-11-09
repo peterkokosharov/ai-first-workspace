@@ -38,9 +38,8 @@ Self-contained, portable folder for AI-assisted software development.
 │   ├── schema.sql         # committed SQLite schema
 │   ├── seed.sql           # committed initial inventory data
 │   └── inventory.db       # local only, gitignored
-├── proc/
-│   ├── autodiscovery.md   # Rule 7 terminal procedure
-│   └── htmlcreate.md      # Mermaid HTML documentation procedure
+├── docs/
+│   └── procedures/        # step-by-step procedures (review, commit, HTML docs, ...)
 ├── tools/
 │   ├── __init__.py
 │   ├── secret.py          # portable secret tool over native stores

@@ -67,6 +67,26 @@ Or run everything at once (Linux and Git Bash on Windows; it picks `python3`,
 bash tools/bootstrap.sh
 ```
 
+### What auto-discovery checks
+
+Run `tools/autodiscovery.py` first on a new machine, and again whenever
+`tools/secret.py` or `data/inventory.db` is missing or does not work. It checks the
+OS, processor, RAM, Python, git, bash, opencode, node, npm, mermaid-cli (settings key
+`merman`), docker, docker-compose, the two tools `secret.py` and `inventory.py`, the
+secret store and `data/inventory.db`. Program names come from `settings.json` (copy of
+`settings.json.example`). The minimum is git, bash and Python; a GitHub token and
+e-mail are optional.
+
+| Exit code | Meaning | What to do next |
+|-----------|---------|-----------------|
+| 0 | OK, minimum met | Go on with the task |
+| 1 | Minimum not met (git, bash or Python missing, or a tool file missing) | Install the missing piece, run it again |
+| 2 | `data/inventory.db` missing | `python3 tools/inventory.py init`, run it again |
+| 3 | `data/inventory.db` has no tables | `python3 tools/inventory.py init`, run it again |
+
+`tools/secret.py` exit codes: 0 OK, 1 key not found, 2 store error, 3 usage error.
+Its default store choice (`auto`) never falls back to a plain-text file.
+
 ### Turn on the secret check (once per clone)
 
 ```bash
@@ -177,7 +197,7 @@ py -m unittest discover -s tools/tests -t . -v
 | bash | Git Bash on Windows | for shell scripts |
 | An agent | latest | Claude Code, Gemini CLI, opencode or goose |
 | Native credential store | KWallet, secret-tool, Keychain, WCM, TDE DCOP | for API keys |
-| node.js + npm | optional | only for `mermaid-cli` diagrams |
+| node.js + npm | optional | only to render diagrams (`docs/procedures/html-docs.md`) |
 
 ---
 
