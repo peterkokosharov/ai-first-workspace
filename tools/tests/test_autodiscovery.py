@@ -407,6 +407,19 @@ class TestSave(unittest.TestCase):
         self.assertIn("not saved", out)
         self.assertEqual(self.settings.read_text(encoding="utf-8"), "{broken")
 
+    def test_save_accepts_empty_object(self):
+        self.settings.write_text("{}\n", encoding="utf-8")
+        _, out = self.run_main(["--save"])
+        self.assertNotIn("not saved", out)
+        data = json.loads(self.settings.read_text(encoding="utf-8"))
+        self.assertIn("python", data["tools"])
+
+    def test_save_refuses_json_array(self):
+        self.settings.write_text("[]\n", encoding="utf-8")
+        _, out = self.run_main(["--save"])
+        self.assertIn("not saved", out)
+        self.assertEqual(self.settings.read_text(encoding="utf-8"), "[]\n")
+
     def test_save_twice_updates_and_keeps_role(self):
         self.run_main(["--save"])
         conn = sqlite3.connect(str(self.db))

@@ -239,8 +239,14 @@ def save_settings(paths: dict, settings: Path | None = None,
     example = SETTINGS_EXAMPLE if example is None else example
     source = settings if settings.is_file() else example
     data = workspace_settings.load(source) if source.is_file() else {}
-    if settings.is_file() and not data and settings.read_text(encoding="utf-8").strip():
-        raise ValueError(f"{settings} is not a JSON object; fix it by hand first")
+    if settings.is_file() and not data:
+        text = settings.read_text(encoding="utf-8").strip()
+        try:
+            valid = not text or isinstance(json.loads(text), dict)
+        except ValueError:
+            valid = False
+        if not valid:
+            raise ValueError(f"{settings} is not a JSON object; fix it by hand first")
     tools = data.get("tools")
     if not isinstance(tools, dict):
         tools = {}
