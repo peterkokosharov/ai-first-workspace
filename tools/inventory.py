@@ -19,7 +19,7 @@ Usage:
     python3 tools/inventory.py list TABLE   # list rows of a table
     python3 tools/inventory.py show TABLE ID # show one row
     python3 tools/inventory.py search TABLE COLUMN LIKE_STRING
-    python3 tools/inventory.py sql "SELECT ..."          # read-only SELECT only
+    python3 tools/inventory.py sql "SELECT ..."          # read-only (database opened read-only)
     python3 tools/inventory.py setting KEY [VALUE]       # read or write a setting
 
 Exit codes: 0 ok, 1 not found, 2 database error, 3 usage error.
@@ -77,6 +77,23 @@ def _connect() -> sqlite3.Connection:
         return conn
     except sqlite3.Error as exc:
         raise InventoryError(f"cannot open database {DB}: {exc}") from exc
+
+
+def _connect_read_only() -> sqlite3.Connection:
+    """Open the database read-only: SQLite URI ``mode=ro`` plus ``PRAGMA query_only``.
+
+    A statement that writes (also one hidden behind ``WITH ... DELETE``) fails here,
+    whatever text it starts with.
+    """
+    if not DB.is_file():
+        raise InventoryError(f"database not found: {DB}. Run: python3 tools/inventory.py init")
+    try:
+        conn = sqlite3.connect(DB.resolve().as_uri() + "?mode=ro", uri=True)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only = ON")
+        return conn
+    except sqlite3.Error as exc:
+        raise InventoryError(f"cannot open database {DB} read-only: {exc}") from exc
 
 
 def _read_sql_file(path: Path) -> str:
@@ -218,7 +235,7 @@ def cmd_sql(args) -> int:
     statement = args.statement.strip()
     if not _is_read_only(statement):
         raise UsageError("only read-only SELECT/WITH statements are allowed")
-    conn = _connect()
+    conn = _connect_read_only()
     try:
         cur = conn.execute(statement)
         rows = cur.fetchall()

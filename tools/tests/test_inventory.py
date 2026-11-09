@@ -122,6 +122,37 @@ class TestInventory(unittest.TestCase):
         result = _run(["sql", "UPDATE machines SET name='x' WHERE id=1"])
         self.assertEqual(result.returncode, 3)  # usage error
 
+    def _service_count(self):
+        conn = sqlite3.connect(str(self.db))
+        try:
+            return conn.execute("SELECT count(*) FROM services").fetchone()[0]
+        finally:
+            conn.close()
+
+    def test_sql_with_delete_fails_and_rows_survive(self):
+        _run(["init"])
+        before = self._service_count()
+        result = _run(["sql", "WITH x AS (SELECT 1) DELETE FROM services"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self._service_count(), before)
+
+    def test_sql_plain_writes_fail_and_rows_survive(self):
+        _run(["init"])
+        before = self._service_count()
+        for statement in ("DELETE FROM services",
+                          "UPDATE services SET name = 'x' WHERE id = 1",
+                          "INSERT INTO services (name) VALUES ('evil')"):
+            result = _run(["sql", statement])
+            self.assertNotEqual(result.returncode, 0, statement)
+        self.assertEqual(self._service_count(), before)
+        result = _run(["sql", "SELECT name FROM services WHERE id = 1"])
+        self.assertIn("github", result.stdout)
+
+    def test_sql_missing_db_is_an_error_and_creates_nothing(self):
+        result = _run(["sql", "SELECT 1"])
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(self.db.exists())
+
     def test_setting_read_write(self):
         _run(["init"])
         result = _run(["setting", "default_backend"])
