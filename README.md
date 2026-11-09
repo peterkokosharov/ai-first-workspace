@@ -138,8 +138,8 @@ a very long time or repeat themselves. Then:
 - The store is the operating system's own: Windows Credential Manager, macOS Keychain,
   GNOME Keyring (`secret-tool`), KWallet, or the TDE wallet (DCOP) on Q4OS.
   `tools/secret.py` picks it automatically and never falls back to a plain file.
-- `~/SECRETS` is only a temporary transfer file outside the project (for moving keys to
-  a new machine); delete it after import.
+- `~/SECRETS` is the deliberate backup made by `secret.py export` (key values in plain
+  text, outside the project). Move it to a flash drive; never put it into git.
 - On Q4OS/TDE the wallet must be enabled and opened once by hand before `secret.py` can
   use it (`dcop` lives in `/opt/trinity/bin`; `secret.py` finds it).
 

@@ -41,9 +41,11 @@ You need an API key for the provider you want to use. All keys are stored in you
 Set a key:
 
 ```bash
-python3 tools/secret.py --backend file set nvidia/personal/api_key
-# read value from prompt
+python3 tools/secret.py set nvidia/personal/api_key
+# the value is read from a prompt, never printed
 ```
+
+`--backend file` is only for headless machines without a keyring (own user, 0600 files in ~).
 
 Then test:
 
