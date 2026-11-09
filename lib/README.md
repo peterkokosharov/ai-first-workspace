@@ -5,7 +5,7 @@ travels with the archive, so the tools do not depend on a system-wide installati
 
 ## kikolib
 
-- Source: `~/kiko/packages/kikolib/kikolib`
+- Source: vendored from kikolib (the author's own MIT library)
 - Copied: 2026-11-07
 - License: MIT (the SPDX headers and author lines are kept in every file)
 - Author: Peter Kokosharov
