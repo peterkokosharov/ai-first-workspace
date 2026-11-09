@@ -6,11 +6,11 @@ This folder contains scraped information about NVIDIA NIM models that advertise 
 
 ```
 kb/
-├── free_endpoints_index.md   # Markdown table: 47 models found (45 unique + duplicates)
-├── models.xml                # XML: 23 models with id, full-model-name, url, python-code
-├── md/                       # Markdown export per model (92 files, includes duplicates)
-├── html/                     # Raw detail-page HTML (104 files, includes duplicates)
-└── config.yaml               # LiteLLM-compatible model list (7 verified working models)
+├── free_endpoints_index.md   # Markdown table of everything found by the scrape (includes duplicate rows)
+├── models.xml                # XML: the de-duplicated model list (source of truth; used by tools/setup_nvidia.py)
+├── md/                       # Markdown export per model
+├── html/                     # Raw detail-page HTML
+└── config.yaml               # OPTIONAL example for a LiteLLM proxy; nothing in tools/ reads it
 ```
 
 ## How the data was collected
@@ -53,7 +53,7 @@ python3 tools/ping_direct.py nvidia "hi"
 
 ## Free models (verified working)
 
-The following 23 models were scraped from build.nvidia.com and verified to answer on `https://integrate.api.nvidia.com/v1/chat/completions`:
+The models listed in `models.xml` (the source of truth; the table below is the same list) were scraped from build.nvidia.com and verified to answer on `https://integrate.api.nvidia.com/v1/chat/completions`:
 
 | # | Alias | Full name | Endpoint |
 |---|-------|-----------|----------|
