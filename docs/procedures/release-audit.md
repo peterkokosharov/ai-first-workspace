@@ -27,7 +27,7 @@ On Windows type `py` instead of `python3`.
    ```
 6. Save the answer in `out/audit-<YYYY-MM-DD>.md` (out/ is not in git).
 7. Any FAIL blocks the release. Fix it (review + commit), then audit again.
-8. All PASS: ask the user "Shall I create tag vX.Y.Z?".
-   Only a reply that starts with "да" or "yes" confirms it.
+8. All PASS: ask the user "Shall I create tag vX.Y.Z?". Wait for a confirmation (AGENTS.md).
 9. Create the tag locally: `git tag vX.Y.Z`.
-10. Do not push the tag. Tell the user it is ready: docs/procedures/github-deploy.md.
+10. Do not push the tag in this procedure. Tell the user it is ready to publish:
+    docs/procedures/github-deploy.md.

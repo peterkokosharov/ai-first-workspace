@@ -9,13 +9,13 @@ On Windows type `py` instead of `python3`.
 - **test-coder**: writes tests from the step goal, not from the code.
 - **qa**: runs the tests and reports pass or fail with the output.
 - **reviewer**: follows docs/procedures/step-review.md. Reads only.
-- **git-pusher**: prepares the push line and prints it. A human pushes.
+- **git-pusher**: pushes by docs/procedures/github-deploy.md, only after a confirmation.
 
 ## Brief for each role (keep it short)
 1. Goal of the step in one or two sentences.
 2. The files it may change (for qa and reviewer: none).
 3. The command that shows it is done (usually the test command).
-4. "Read AGENTS.md first. Do not push."
+4. "Read AGENTS.md first. Do not push." (Not for git-pusher.)
 
 ## Steps for orc
 1. Split the user's task into small steps. One step = one goal = one commit.
@@ -29,11 +29,12 @@ On Windows type `py` instead of `python3`.
 4. All OK: commit the step (docs/procedures/commit.md).
 5. Not OK and you cannot fix it:
    - Not committed yet: ask "Shall I undo the changes in <files>?".
-     After a reply that starts with "да" or "yes": `git restore <files>`.
+     After a confirmation (AGENTS.md): `git restore <files>`.
    - Already committed: ask "Shall I revert commit <hash>?".
-     After "да" or "yes": `git revert <hash>`.
-6. When all steps are committed, git-pusher follows docs/procedures/github-deploy.md
-   (agent steps only): it prints `git push origin <branch>` and asks the human to run it.
+     After a confirmation: `git revert <hash>`.
+6. When all steps are committed, git-pusher follows docs/procedures/github-deploy.md:
+   it shows the branch, the commits and the push command, and pushes only after a
+   confirmation.
 
 ## No subagents
 Most free setups have no subagents. Then one agent plays the roles in turn:

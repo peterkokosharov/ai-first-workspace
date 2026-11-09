@@ -9,10 +9,14 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 ## Orders and confirmation
 - Do only what the user asked. Start no other work on your own.
 - You may always read files in this folder. Running commands or writing files needs an order.
-- An order is a user message that names the action. When you ask "Shall I <action>?",
-  only a reply that starts with "да" or "yes" as its own word confirms it.
+- An order is a user message that names the action.
+- Inside an order you may run these without asking again: tools/inventory.py tables
+  and list, git status/diff/log, the test command, tools/secret_scan.py, and the
+  step-review and commit procedures.
+- Confirmation: when you ask "Shall I <action>?", only a reply that starts with
+  "да", "da" or "yes" as its own word confirms it.
 - Ask first, one action at a time: deleting or overwriting files, dropping data,
-  git revert, anything outside this folder. Never git push (a human pushes).
+  git revert, git push, anything outside this folder.
 - Unsure? Ask one yes/no question. Never guess.
 
 ## Secrets
@@ -23,9 +27,11 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - Never use "--backend file" unless the user orders exactly that.
 
 ## Git
-- Commit at each milestone (see procedure). Never push.
+- Local commit: make it yourself at each milestone (see procedure). Do not ask.
+- Push: only by docs/procedures/github-deploy.md, after a confirmation.
+  Never use --force or --force-with-lease.
 - Never commit data/inventory.db, settings.json, out/ or projects/.
-- If the pre-commit hook blocks a commit, remove the key. Never use --no-verify.
+- If a hook (pre-commit or pre-push) blocks, remove the key. Never use --no-verify.
 
 ## Where things are
 - On Windows type "py" instead of "python3".

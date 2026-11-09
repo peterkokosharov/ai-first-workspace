@@ -1,6 +1,7 @@
 # Commit at a milestone
 
-Goal: save finished work as a local git commit. A human pushes later.
+Goal: save finished work as a local git commit. Make it yourself at each milestone;
+do not ask the user. Pushing is a separate step: docs/procedures/github-deploy.md.
 
 ## A milestone is
 - The tests pass: `python3 -m unittest discover -s tools/tests -t . -v`
@@ -25,6 +26,6 @@ Goal: save finished work as a local git commit. A human pushes later.
 8. Tell the user: "Commit <hash> is ready. Publishing: docs/procedures/github-deploy.md".
 
 ## Never
-- Never `git push`. A human pushes.
+- Never push in this procedure. Pushing: docs/procedures/github-deploy.md.
 - Never rewrite history (`git commit --amend` on a pushed commit, `git rebase`, `git reset --hard`)
   without an order from the user.

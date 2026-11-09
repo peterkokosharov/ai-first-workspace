@@ -1,18 +1,25 @@
 # Publish to GitHub
 
-Goal: put local commits on GitHub. **The agent never pushes.** Steps marked
-HUMAN are done by the user. The agent may prepare and print the commands.
+Goal: put local commits on GitHub. The agent may push only after the user confirms
+(AGENTS.md, "Confirmation"). Steps marked HUMAN are done by the user only.
 
 ## Agent steps
 1. Run `git status`. It must say "nothing to commit, working tree clean".
    If not: follow docs/procedures/commit.md first.
 2. Run `git branch --show-current`. Note the branch name.
 3. Run `git remote -v`. Note where `origin` points.
-4. Run `git log --oneline origin/<branch>..HEAD` to list what will be published.
-   (If that fails, the branch is not on GitHub yet; say so.)
-5. Print the push line for the user, with the real branch name:
-   `git push origin <branch>`
-6. Stop. Wait for the user.
+4. Run `git log --oneline origin/<branch>..HEAD` to list what will be pushed.
+   If that fails, the branch is not on GitHub yet: run `git log --oneline` (all
+   commits will be pushed) and say so.
+5. Show the user: the branch, the list of commits, and the exact command
+   `git push origin <branch>` (with the real branch name; add `-u` if the branch
+   is not on GitHub yet).
+6. Ask: "Shall I run this push?" Stop and wait.
+7. Confirmed: run exactly the command you showed. Not confirmed: do not push.
+   The user may also run the command by hand (see below).
+8. If the pre-push hook blocks the push: it found a key. Remove it, commit again
+   (docs/procedures/commit.md), then start again at step 1.
+9. If git asks for a user name or password, stop: the HUMAN steps below are not done.
 
 ## HUMAN: once per clone
 1. A fresh clone points `origin` to the author's repository. Create your own empty
@@ -34,8 +41,8 @@ HUMAN are done by the user. The agent may prepare and print the commands.
 3. git uses this helper, not tools/secret.py. Do not store the PAT with secret.py
    for pushing; git never reads it from there.
 
-## HUMAN: push
-1. Run the line the agent printed: `git push origin <branch>`.
+## Push by hand (instead of agent steps 6-7)
+1. Run the line the agent showed: `git push origin <branch>`.
 2. When git asks: username = your GitHub user name, password = the PAT
    (not your GitHub login password).
-3. Tags are pushed only on purpose: `git push origin <tag>`.
+3. Tags are pushed only on purpose, the same way: `git push origin <tag>`.
