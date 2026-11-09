@@ -79,17 +79,6 @@ class SetupError(Exception):
         self.exit_code = exit_code
 
 
-def get_key_from_secret(key_path: str) -> str:
-    """Read a secret value from the OS secret store via tools/secret.py (auto backend)."""
-    try:
-        return opencode_config.get_secret(key_path)
-    except opencode_config.ConfigError as exc:
-        raise SetupError(str(exc), exc.exit_code) from exc
-
-
-get_key_from_kwallet = get_key_from_secret  # old name, kept for compatibility
-
-
 def load_config() -> dict:
     """Load the existing OpenCode config or return a minimal one."""
     try:
@@ -137,10 +126,10 @@ def configure_provider(provider: str, dry_run: bool = False,
 
     # 1. The key must exist in the OS secret store (the launcher reads it later).
     try:
-        get_key_from_secret(key_path)
-    except SetupError as exc:
+        opencode_config.get_secret(key_path)
+    except opencode_config.ConfigError as exc:
         print(f"setup_providers: {exc}")
-        return exc.exit_code
+        return getattr(exc, "exit_code", 1)
 
     # 2. Before cleaning: which other keys are in the store (names only)? A literal
     #    key whose path is not there is kept in the config, never dropped.

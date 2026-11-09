@@ -200,7 +200,7 @@ class TestLegacyCleanup(unittest.TestCase):
             path.write_text(json.dumps(old), encoding="utf-8")
             out = io.StringIO()
             with mock.patch.object(setup_providers, "CONFIG_FILE", path), \
-                    mock.patch.object(setup_providers, "get_key_from_secret", return_value="x"), \
+                    mock.patch.object(oc, "get_secret", return_value="x"), \
                     mock.patch.object(oc, "stored_key_paths", return_value=None), \
                     mock.patch.object(oc, "warn_plaintext_keys", return_value=0), \
                     redirect_stdout(out):
@@ -216,7 +216,7 @@ class TestLegacyCleanup(unittest.TestCase):
             path = Path(tmp) / "opencode.json"
             path.write_text('{"theme": "t"}', encoding="utf-8")
             with mock.patch.object(setup_providers, "CONFIG_FILE", path), \
-                    mock.patch.object(setup_providers, "get_key_from_secret", return_value="x"), \
+                    mock.patch.object(oc, "get_secret", return_value="x"), \
                     mock.patch.object(oc, "stored_key_paths", return_value=set()), \
                     mock.patch.object(oc, "warn_plaintext_keys", return_value=0), \
                     redirect_stdout(io.StringIO()):
@@ -268,7 +268,7 @@ class TestLegacyCleanup(unittest.TestCase):
 
             with mock.patch.object(setup_nvidia, "CONFIG_FILE", path), \
                     mock.patch.object(oc, "stored_key_paths", side_effect=stored), \
-                    mock.patch.object(setup_nvidia, "get_key_from_secret",
+                    mock.patch.object(oc, "get_secret",
                                       side_effect=AssertionError("no value read")), \
                     mock.patch.object(sys, "stderr", io.StringIO()), redirect_stdout(out):
                 self.assertEqual(setup_nvidia.main([]), 0)
@@ -288,7 +288,7 @@ class TestLegacyCleanup(unittest.TestCase):
             path.write_text(json.dumps(old), encoding="utf-8")
             out = io.StringIO()
             with mock.patch.object(setup_providers, "CONFIG_FILE", path), \
-                    mock.patch.object(setup_providers, "get_key_from_secret", return_value="x"), \
+                    mock.patch.object(oc, "get_secret", return_value="x"), \
                     mock.patch.object(oc, "stored_key_paths", return_value=set()), \
                     mock.patch.object(oc, "warn_plaintext_keys", return_value=0), \
                     redirect_stdout(out):
@@ -402,6 +402,51 @@ class TestPlaintextKeyWarnings(unittest.TestCase):
             self.assertNotIn(FAKE_KEY, out.getvalue())
             if os.name == "posix":
                 self.assertEqual(saved.stat().st_mode & 0o777, 0o600)
+
+
+class TestSetupProvidersMain(unittest.TestCase):
+    def test_missing_provider_returns_error(self):
+        with mock.patch.object(sys, "stderr", io.StringIO()):
+            try:
+                code = setup_providers.main([])
+            except SystemExit as e:
+                code = e.code
+            self.assertEqual(code, 2)
+
+    def test_unknown_provider_returns_error(self):
+        with mock.patch.object(sys, "stderr", io.StringIO()):
+            try:
+                code = setup_providers.main(["nonexistent"])
+            except SystemExit as e:
+                code = e.code
+            self.assertEqual(code, 2)
+
+    def test_dry_run_gemini(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "opencode.json"
+            path.write_text("{}", encoding="utf-8")
+            out = io.StringIO()
+            with mock.patch.object(setup_providers, "CONFIG_FILE", path), \
+                    mock.patch.object(oc, "get_secret", return_value="x"), \
+                    mock.patch.object(oc, "stored_key_paths", return_value=set()), \
+                    mock.patch.object(oc, "warn_plaintext_keys", return_value=0), \
+                    redirect_stdout(out):
+                code = setup_providers.main(["gemini", "--dry-run"])
+            self.assertEqual(code, 0)
+            self.assertIn("dry-run", out.getvalue())
+
+    def test_main_returns_ok_for_known_provider(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "opencode.json"
+            path.write_text("{}", encoding="utf-8")
+            out = io.StringIO()
+            with mock.patch.object(setup_providers, "CONFIG_FILE", path), \
+                    mock.patch.object(oc, "get_secret", return_value="x"), \
+                    mock.patch.object(oc, "stored_key_paths", return_value=set()), \
+                    mock.patch.object(oc, "warn_plaintext_keys", return_value=0), \
+                    redirect_stdout(out):
+                code = setup_providers.main(["gemini"])
+            self.assertEqual(code, 0)
 
 
 class TestLauncher(unittest.TestCase):

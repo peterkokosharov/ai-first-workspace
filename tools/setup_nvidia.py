@@ -87,14 +87,6 @@ def build_models(models: list[dict]) -> dict[str, dict]:
     return {m["alias"]: {"modelID": m["api_id"], "name": m["full_name"]} for m in models}
 
 
-def get_key_from_secret(key_path: str) -> str:
-    """Read a secret value from the OS secret store via tools/secret.py (auto backend)."""
-    try:
-        return opencode_config.get_secret(key_path)
-    except opencode_config.ConfigError as exc:
-        raise RuntimeError(str(exc)) from exc
-
-
 def update_config(config: dict, models: list[dict], notes: list[str] | None = None,
                   stored=(), redact_foreign: bool = False,
                   warnings: list[str] | None = None) -> dict:

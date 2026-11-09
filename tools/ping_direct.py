@@ -105,17 +105,6 @@ class PingError(Exception):
         self.exit_code = exit_code
 
 
-def get_key_from_secret(key_path: str) -> str:
-    """Read a secret value from the OS secret store via tools/secret.py (auto backend)."""
-    try:
-        return opencode_config.get_secret(key_path)
-    except opencode_config.ConfigError as exc:
-        raise PingError(str(exc), exc.exit_code) from exc
-
-
-get_key_from_kwallet = get_key_from_secret  # old name, kept for compatibility
-
-
 def build_gemini_body(message: str) -> dict:
     return {
         "contents": [{"parts": [{"text": message}]}],
@@ -152,10 +141,10 @@ def ping_provider(provider: str, message: str, model_slug: str | None = None) ->
 
     # 1. Get key from the OS secret store.
     try:
-        api_key = get_key_from_secret(info["key_path"])
-    except PingError as exc:
+        api_key = opencode_config.get_secret(info["key_path"])
+    except opencode_config.ConfigError as exc:
         print(f"ping_direct: {exc}")
-        return exc.exit_code
+        return getattr(exc, "exit_code", 1)
 
     # 2. Build request.
     endpoint = info["base_url"] or PROVIDER_ENDPOINTS[provider]

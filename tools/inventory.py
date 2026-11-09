@@ -57,6 +57,14 @@ SEED = DATA / "seed.sql"
 
 READ_ONLY_PREFIX = re.compile(r"\s*(SELECT|WITH)\b", re.IGNORECASE)
 
+# Keywords that indicate a write operation (checked after stripping comments).
+_WRITE_KEYWORDS = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|REPLACE|ATTACH|DETACH|PRAGMA)\b",
+    re.IGNORECASE,
+)
+# Strip SQL comments: -- line comments and /* */ block comments.
+_COMMENT_RE = re.compile(r"(--[^\n]*|/\*.*?\*/)", re.DOTALL)
+
 
 class InventoryError(Exception):
     exit_code = EXIT_DB
@@ -134,7 +142,16 @@ def _fmt_row(row: sqlite3.Row) -> str:
 
 
 def _is_read_only(statement: str) -> bool:
-    return bool(READ_ONLY_PREFIX.match(statement))
+    """True only if ``statement`` is a read-only SELECT or WITH query.
+
+    Strips SQL comments first, then checks the leading keyword and rejects any
+    write keyword anywhere in the statement. The database connection is also
+    opened read-only (``mode=ro``) as a second line of defence.
+    """
+    cleaned = _COMMENT_RE.sub(" ", statement).strip()
+    if not READ_ONLY_PREFIX.match(cleaned):
+        return False
+    return _WRITE_KEYWORDS.search(cleaned) is None
 
 
 def _print_table(columns: list[str], rows, max_width: int | None = None) -> None:

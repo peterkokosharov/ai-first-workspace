@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -414,8 +415,14 @@ def report_cleaned(notes: list[str], dry_run: bool = False, out=None,
               "to opencode.", file=out)
 
 
+_SECRET_KEY_NAMES = frozenset({"apikey", "api_key", "api-key", "token", "secret",
+                               "password", "passwd", "credential", "auth_token",
+                               "access_token", "private_key"})
+
+
 def _is_key_name(name: str) -> bool:
-    return name.replace("_", "").replace("-", "").lower() == "apikey"
+    normalized = name.replace("_", "").replace("-", "").lower()
+    return normalized in _SECRET_KEY_NAMES or normalized == "apikey"
 
 
 def _is_literal(value: object) -> bool:
@@ -423,6 +430,22 @@ def _is_literal(value: object) -> bool:
         return False
     text = value.strip()
     return bool(text) and text != REDACTED and not text.startswith(("{env:", "${"))
+
+
+# Known secret value patterns (mirrors tools/secret_scan.py RULES).
+_SECRET_VALUE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"nvapi-[A-Za-z0-9_-]{20,}"),
+    re.compile(r"\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}"),
+    re.compile(r"\bghp_[A-Za-z0-9]{30,}"),
+    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}"),
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    re.compile(r"\bAIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])"),
+)
+
+
+def _looks_like_secret(value: str) -> bool:
+    """True if ``value`` matches a known secret pattern (regardless of key name)."""
+    return any(p.search(value) for p in _SECRET_VALUE_PATTERNS)
 
 
 def find_plaintext_keys(data: object, prefix: str = "") -> list[str]:
@@ -435,7 +458,8 @@ def find_plaintext_keys(data: object, prefix: str = "") -> list[str]:
     if isinstance(data, dict):
         for name, value in data.items():
             where = f"{prefix}.{name}" if prefix else str(name)
-            if _is_key_name(str(name)) and _is_literal(value):
+            if isinstance(value, str) and _is_literal(value) and (
+                    _is_key_name(str(name)) or _looks_like_secret(value)):
                 found.append(where)
             else:
                 found.extend(find_plaintext_keys(value, where))
@@ -451,7 +475,8 @@ def _redact(data: object, only: set[str] | None = None, prefix: str = "") -> Non
     if isinstance(data, dict):
         for name, value in data.items():
             where = f"{prefix}.{name}" if prefix else str(name)
-            if _is_key_name(str(name)) and _is_literal(value):
+            if isinstance(value, str) and _is_literal(value) and (
+                    _is_key_name(str(name)) or _looks_like_secret(value)):
                 if only is None or where in only:
                     data[name] = REDACTED
             else:
