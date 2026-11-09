@@ -48,7 +48,7 @@ Self-contained, portable folder for AI-assisted software development.
 │   ├── ping.py            # model ping via OpenCode
 │   ├── ping_direct.py     # direct HTTP ping to providers (keys from the OS secret store)
 │   ├── setup_providers.py # configure OpenCode providers (keys from the OS secret store)
-│   └── tests/             # functional tests (57 tests, all pass)
+│   └── tests/             # functional tests (unit tests)
 │       ├── __init__.py
 │       ├── secret.py
 │       ├── inventory.py
@@ -251,7 +251,7 @@ konsole — user@host: ~/ai-first-workspace
  ─────────────────────────────────────────────────────────────────────
  > python3 -m unittest discover -s tools/tests -t . -v
 
- █  Ran 57 tests in 6.7s
+ █  Ran NN tests in N.Ns
  █  OK (skipped=1)
  █  ✓ All functional tests pass
 
