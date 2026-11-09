@@ -4,7 +4,7 @@
 # Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Portable secret tool: one interface over native credential stores.
 
-The tool stores secrets under stable key paths: ``provider/scope/kind``.
+The tool stores secrets under stable key paths: ``<name>/<name>/kind`` (e.g. ``nvidia/personal/api_key`` or ``personal/my-project/github_token``).
 The native store of the operating system is primary.  A plain ``KEY_PATH | value``
 export file is supported, but it is a temporary transfer/backup file, not a second
 source of truth.
@@ -114,7 +114,7 @@ class ExportFormatError(BackendError):
 # --------------------------------------------------------------------------------------
 
 def validate_path(path: str) -> str:
-    """Validate and return a key path (``provider/scope/kind``)."""
+    """Validate and return a key path (two or more parts, e.g. ``nvidia/personal/api_key``)."""
     if not isinstance(path, str) or not path:
         raise UsageError("key path is empty")
     if len(path) > MAX_PATH:
