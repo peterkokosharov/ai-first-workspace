@@ -55,6 +55,12 @@ class TestWorkspaceSettings(unittest.TestCase):
             self.assertEqual(ws.git_settings({}),
                              {"remote_url": "", "remote_user": "", "token_key": ""})
 
+    def test_file_with_bom_is_read(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "settings.json"
+            path.write_bytes(b"\xef\xbb\xbf" + b'{"tools": {"git": "my-git"}}\n')
+            self.assertEqual(ws.load(path), {"tools": {"git": "my-git"}})
+
 
 if __name__ == "__main__":
     unittest.main()

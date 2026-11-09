@@ -48,7 +48,7 @@ def load(path: Path | None = None) -> dict:
     if path is None:
         path = SETTINGS if SETTINGS.is_file() else SETTINGS_EXAMPLE
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, UnicodeDecodeError, ValueError):
         return {}
     return data if isinstance(data, dict) else {}

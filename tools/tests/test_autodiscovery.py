@@ -414,6 +414,21 @@ class TestSave(unittest.TestCase):
         data = json.loads(self.settings.read_text(encoding="utf-8"))
         self.assertIn("python", data["tools"])
 
+    def test_save_reads_bom_and_writes_without_bom(self):
+        self.settings.write_bytes(b"\xef\xbb\xbf" + b'{"remote": {"origin": "x"}}\n')
+        _, out = self.run_main(["--save"])
+        self.assertNotIn("not saved", out)
+        raw = self.settings.read_bytes()
+        self.assertFalse(raw.startswith(b"\xef\xbb\xbf"))
+        data = json.loads(raw.decode("utf-8"))
+        self.assertEqual(data["remote"], {"origin": "x"})
+        self.assertIn("python", data["tools"])
+
+    def test_save_accepts_empty_object_with_bom(self):
+        self.settings.write_bytes(b"\xef\xbb\xbf{}\n")
+        _, out = self.run_main(["--save"])
+        self.assertNotIn("not saved", out)
+
     def test_save_refuses_json_array(self):
         self.settings.write_text("[]\n", encoding="utf-8")
         _, out = self.run_main(["--save"])

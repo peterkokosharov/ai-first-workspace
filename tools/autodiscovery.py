@@ -240,7 +240,7 @@ def save_settings(paths: dict, settings: Path | None = None,
     source = settings if settings.is_file() else example
     data = workspace_settings.load(source) if source.is_file() else {}
     if settings.is_file() and not data:
-        text = settings.read_text(encoding="utf-8").strip()
+        text = settings.read_text(encoding="utf-8-sig").strip()
         try:
             valid = not text or isinstance(json.loads(text), dict)
         except ValueError:
