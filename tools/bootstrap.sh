@@ -78,8 +78,8 @@ $PY tools/autodiscovery.py
 echo
 echo "[3/5] Secret setup"
 echo "  Run: $PY tools/secret.py setup"
-echo "  Then: $PY tools/secret.py --backend auto set <key_path>"
-echo "  Example: $PY tools/secret.py --backend auto set nvidia/personal/api_key"
+echo "  Then: $PY tools/secret.py set <key_path>"
+echo "  Example: $PY tools/secret.py set nvidia/personal/api_key"
 
 echo
 echo "[4/5] Running test suite..."
