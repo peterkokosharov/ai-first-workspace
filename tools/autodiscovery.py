@@ -137,9 +137,12 @@ def check_git() -> bool:
 
 
 def is_wsl_stub(path: str) -> bool:
-    """True for Windows' own ``System32\\bash.exe`` (starts WSL, not Git Bash)."""
+    """True for Windows' own ``System32\\bash.exe`` or the WSL app alias
+    ``...\\Microsoft\\WindowsApps\\bash.exe`` (both start WSL, not Git Bash)."""
     parts = [p.lower() for p in Path(path.replace("\\", "/")).parts]
-    return parts[-1:] == ["bash.exe"] and "system32" in parts
+    if parts[-1:] != ["bash.exe"]:
+        return False
+    return "system32" in parts or parts[-3:-1] == ["microsoft", "windowsapps"]
 
 
 def git_bash_candidates() -> list[str]:

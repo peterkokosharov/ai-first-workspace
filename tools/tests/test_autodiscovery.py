@@ -315,6 +315,17 @@ class TestFindBash(unittest.TestCase):
         self.assertFalse(ad.is_wsl_stub(r"C:\Program Files\Git\bin\bash.exe"))
         self.assertFalse(ad.is_wsl_stub("/usr/bin/bash"))
 
+    def test_windowsapps_alias_is_stub(self):
+        self.assertTrue(ad.is_wsl_stub(
+            r"C:\Users\me\AppData\Local\Microsoft\WindowsApps\bash.exe"))
+        self.assertTrue(ad.is_wsl_stub(
+            "c:/users/me/appdata/local/MICROSOFT/WINDOWSAPPS/Bash.EXE"))
+        self.assertFalse(ad.is_wsl_stub(r"C:\Tools\WindowsApps\bash.exe"))
+        found = ad.find_bash(
+            "bash", candidates=[],
+            which=lambda n: r"C:\Users\me\AppData\Local\Microsoft\WindowsApps\bash.exe")
+        self.assertIsNone(found)
+
     def test_wsl_stub_skipped_for_git_bash(self):
         with tempfile.TemporaryDirectory() as tmp:
             git_bash = Path(tmp) / "Git" / "bin" / "bash.exe"
