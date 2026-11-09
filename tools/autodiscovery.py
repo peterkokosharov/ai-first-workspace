@@ -214,7 +214,8 @@ def resolve_tools(commands: dict, which=shutil.which) -> dict:
 
     ``commands`` is ``load_settings()``. Programs not found are left out (their
     settings stay as they are); merman is a command line, not one program, and is
-    not resolved.
+    not resolved. Paths are made absolute but symlinks are kept (a snap
+    ``/snap/bin/node`` must stay that, not become ``/usr/bin/snap``).
     """
     found: dict[str, str] = {}
     python = commands.get("python", "auto")
@@ -224,7 +225,7 @@ def resolve_tools(commands: dict, which=shutil.which) -> dict:
     for name in ("git", "node", "opencode", "docker"):
         command = commands.get(name, name)
         found[name] = command if Path(command).is_file() else (which(command) or "")
-    return {name: str(Path(path).resolve()) for name, path in found.items() if path}
+    return {name: os.path.abspath(path) for name, path in found.items() if path}
 
 
 def save_settings(paths: dict, settings: Path | None = None,

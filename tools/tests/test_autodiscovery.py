@@ -338,6 +338,31 @@ class TestFindBash(unittest.TestCase):
         self.assertIn("missing: bash", out.getvalue())
 
 
+class TestResolveTools(unittest.TestCase):
+    def test_symlink_is_kept_not_followed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "real-snap"
+            target.write_text("", encoding="utf-8")
+            link = Path(tmp) / "node"
+            try:
+                link.symlink_to(target)
+            except (OSError, NotImplementedError):
+                self.skipTest("cannot create symlinks here")
+            found = ad.resolve_tools({"node": "node", "git": "missing-git-xyz",
+                                      "opencode": "missing-oc-xyz",
+                                      "docker": "missing-docker-xyz"},
+                                     which=lambda n: str(link) if n == "node" else None)
+        self.assertEqual(found["node"], os.path.abspath(str(link)))
+        self.assertNotIn("git", found)
+
+    def test_which_result_is_kept_as_is(self):
+        fake = os.path.abspath(os.path.join("snap", "bin", "node"))
+        with mock.patch.object(Path, "resolve", side_effect=AssertionError("resolved")):
+            found = ad.resolve_tools({"node": "node"},
+                                     which=lambda n: fake if n == "node" else None)
+        self.assertEqual(found["node"], fake)
+
+
 class TestSave(unittest.TestCase):
     """--save with a temp settings.json and a temp inventory DB."""
 
@@ -379,7 +404,7 @@ class TestSave(unittest.TestCase):
     def test_save_writes_tools_and_machine(self):
         code, out = self.run_main(["--save"])
         data = json.loads(self.settings.read_text(encoding="utf-8"))
-        self.assertEqual(data["tools"]["python"], str(Path(sys.executable).resolve()))
+        self.assertEqual(data["tools"]["python"], os.path.abspath(sys.executable))
         self.assertEqual(data["git"]["token_key"], "personal/my-project/github_token")
         rows = self.machines()
         self.assertEqual(len(rows), 1)
