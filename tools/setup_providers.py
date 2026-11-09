@@ -13,7 +13,9 @@ The API key is NOT written to the config. Start opencode with
 ``tools/run_opencode.py``: it reads the keys through ``tools/secret.py`` (Windows
 Credential Manager, KWallet, GNOME Keyring, ...) and sets the variables for the
 opencode process only. Plaintext keys that older versions wrote into the config are
-removed (or redacted) on the next run; the tool lists where (never a value).
+removed on the next run once that key is in the OS store (otherwise kept, with the
+``secret.py set`` command to run); keys of other providers are only reported unless
+``--redact-foreign`` is given. The tool lists where (never a value).
 
 Safe to re-run: the old config is copied unchanged to
 ``<file>.bak-YYYYMMDD-HHMMSS-ffffff`` (mode 600 on POSIX; delete it once its keys are in
@@ -103,16 +105,18 @@ def save_config(config: dict, dry_run: bool = False) -> None:
         raise SetupError(str(exc)) from exc
 
 
-def update_config(config: dict, provider: str, notes: list[str] | None = None) -> dict:
+def update_config(config: dict, provider: str, notes: list[str] | None = None,
+                  stored=(), redact_foreign: bool = False,
+                  warnings: list[str] | None = None) -> dict:
     """Add/update ``provider`` in ``config`` (no key, only the variable name).
 
     First removes what older versions of the setup tools wrote (a literal
-    ``settings.apiKey`` in ``providers.<provider>``, old per-model NVIDIA entries) and
-    redacts any other literal key; see ``opencode_config.clean_legacy``. A native
-    provider (no base URL, e.g. openrouter) is only cleaned, not written. Changes are
-    appended to ``notes`` (locations only).
+    ``settings.apiKey`` in a managed provider entry, old per-model NVIDIA entries), but
+    only for keys whose path is in ``stored``; see ``opencode_config.clean_legacy``. A
+    native provider (no base URL, e.g. openrouter) is only cleaned, not written.
+    Changes are appended to ``notes``, kept keys to ``warnings`` (locations only).
     """
-    cleaned = opencode_config.clean_legacy(config)
+    cleaned = opencode_config.clean_legacy(config, (), stored, redact_foreign, warnings)
     if notes is not None:
         notes.extend(cleaned)
     if opencode_config.PROVIDERS[provider]["base_url"] is not None:
@@ -120,7 +124,8 @@ def update_config(config: dict, provider: str, notes: list[str] | None = None) -
     return config
 
 
-def configure_provider(provider: str, dry_run: bool = False) -> int:
+def configure_provider(provider: str, dry_run: bool = False,
+                       redact_foreign: bool = False) -> int:
     if provider not in KEY_PATHS:
         print(f"setup_providers: unknown provider '{provider}'")
         print(f"known providers: {', '.join(sorted(KEY_PATHS))}")
@@ -136,19 +141,29 @@ def configure_provider(provider: str, dry_run: bool = False) -> int:
         print(f"setup_providers: {exc}")
         return exc.exit_code
 
+    # 2. Before cleaning: which other keys are in the store (names only)? A literal
+    #    key whose path is not there is kept in the config, never dropped.
+    stored = opencode_config.stored_key_paths()
+    if stored is None:
+        print("setup_providers: note: cannot list the OS secret store; other plaintext "
+              "keys in the config are kept.")
+        stored = set()
+    stored.add(key_path)
+
     opencode_config.warn_plaintext_keys(CONFIG_FILE)
     native = spec["base_url"] is None
 
-    # 2. Load, clean legacy keys, update, save (old file backed up).
+    # 3. Load, clean legacy keys, update, save (old file backed up).
     notes: list[str] = []
+    warnings: list[str] = []
     try:
-        config = update_config(load_config(), provider, notes)
+        config = update_config(load_config(), provider, notes, stored, redact_foreign, warnings)
         if not native or notes:
             save_config(config, dry_run=dry_run)
     except SetupError as exc:
         print(f"setup_providers: {exc}")
         return exc.exit_code
-    opencode_config.report_cleaned(notes, dry_run=dry_run)
+    opencode_config.report_cleaned(notes, dry_run=dry_run, warnings=warnings)
 
     if native:
         print(f"setup_providers: '{provider}' is built into opencode; no provider entry written.")
@@ -181,9 +196,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--dry-run", action="store_true",
                         help="print what would change; write nothing")
+    parser.add_argument("--redact-foreign", action="store_true",
+                        help="also replace literal keys of providers these tools do not "
+                             "manage with a placeholder (default: only warn)")
     args = parser.parse_args(argv)
 
-    return configure_provider(args.provider, dry_run=args.dry_run)
+    return configure_provider(args.provider, dry_run=args.dry_run,
+                              redact_foreign=args.redact_foreign)
 
 
 if __name__ == "__main__":

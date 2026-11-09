@@ -28,6 +28,7 @@ import setup_nvidia  # noqa: E402
 import setup_providers  # noqa: E402
 
 FAKE_KEY = "nvapi-" + "Zz9" * 12
+NVIDIA_STORED = {"nvidia/personal/api_key"}
 
 
 class TestNvidiaConfigStructure(unittest.TestCase):
@@ -56,7 +57,7 @@ class TestNvidiaConfigStructure(unittest.TestCase):
 
     def test_old_literal_key_and_apibase_removed_from_entry(self):
         old = {"providers": {"nvidia": {"settings": {"apiKey": FAKE_KEY, "apiBase": "x"}}}}
-        config = setup_nvidia.update_config(old, self.models)
+        config = setup_nvidia.update_config(old, self.models, stored=NVIDIA_STORED)
         self.assertNotIn(FAKE_KEY, json.dumps(config))
         self.assertEqual(config["providers"]["nvidia"]["settings"],
                          {"baseURL": "https://integrate.api.nvidia.com/v1"})
@@ -80,30 +81,95 @@ class TestLegacyCleanup(unittest.TestCase):
 
     def test_old_per_alias_entries_removed(self):
         notes = []
-        config = setup_nvidia.update_config(old_nvidia_config(self.aliases[:3]), self.models, notes)
+        config = setup_nvidia.update_config(old_nvidia_config(self.aliases[:3]), self.models, notes,
+                                            stored=NVIDIA_STORED)
         self.assertEqual(list(config["providers"]), ["nvidia"])
         self.assertNotIn(FAKE_KEY, json.dumps(config))
         self.assertEqual(oc.find_plaintext_keys(config), [])
         self.assertEqual(config["theme"], "t")
         self.assertEqual(len(notes), 3)
-        self.assertTrue(all("plaintext key" in n for n in notes))
+        self.assertTrue(all("already in the OS store" in n for n in notes))
         self.assertNotIn(FAKE_KEY, "".join(notes))
 
     def test_old_entry_found_by_api_base_even_if_alias_unknown(self):
         old = old_nvidia_config(["model-gone-from-xml"])
-        config = setup_nvidia.update_config(old, self.models)
+        config = setup_nvidia.update_config(old, self.models, stored=NVIDIA_STORED)
         self.assertNotIn("model-gone-from-xml", config["providers"])
         self.assertNotIn(FAKE_KEY, json.dumps(config))
 
-    def test_unrelated_entry_kept_but_literal_key_redacted(self):
+    def test_only_the_exact_old_endpoint_marks_a_legacy_entry(self):
+        config = {"providers": {"mine": {"settings": {
+            "apiBase": "https://integrate.api.nvidia.com/v1", "apiKey": "{env:MINE}"}}}}
+        self.assertEqual(oc.clean_legacy(config, stored=NVIDIA_STORED), [])
+        self.assertIn("mine", config["providers"])
+
+    def test_legacy_key_not_in_store_is_kept_with_set_command(self):
+        old = old_nvidia_config(self.aliases[:2])
+        notes, warnings = [], []
+        config = setup_nvidia.update_config(old, self.models, notes, stored=set(),
+                                            warnings=warnings)
+        self.assertEqual(notes, [])
+        for alias in self.aliases[:2]:
+            self.assertEqual(config["providers"][alias]["settings"]["apiKey"], FAKE_KEY)
+        self.assertEqual(len(warnings), 2)
+        for warning in warnings:
+            self.assertIn("python3 tools/secret.py set nvidia/personal/api_key", warning)
+            self.assertNotIn(FAKE_KEY, warning)
+
+    def test_managed_key_not_in_store_is_kept(self):
+        old = {"providers": {"gemini": {"settings": {"apiKey": FAKE_KEY}}}}
+        warnings = []
+        config = setup_nvidia.update_config(old, self.models, stored=NVIDIA_STORED,
+                                            warnings=warnings)
+        self.assertEqual(config["providers"]["gemini"]["settings"]["apiKey"], FAKE_KEY)
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("secret.py set gemini/personal/api_key", warnings[0])
+
+    def test_nvidia_entry_key_kept_through_merge_when_not_stored(self):
+        old = {"providers": {"nvidia": {"settings": {"apiKey": FAKE_KEY}}}}
+        warnings = []
+        config = setup_nvidia.update_config(old, self.models, stored=set(), warnings=warnings)
+        self.assertEqual(config["providers"]["nvidia"]["settings"]["apiKey"], FAKE_KEY)
+        self.assertEqual(config["providers"]["nvidia"]["env"], ["NVIDIA_API_KEY"])
+        self.assertEqual(len(warnings), 1)
+
+    def test_non_dict_providers_or_entries_are_left_alone(self):
+        for providers in ([], "x", None, 3):
+            with self.subTest(providers=providers):
+                config = {"providers": providers}
+                self.assertEqual(oc.clean_legacy(config, self.aliases, NVIDIA_STORED), [])
+                self.assertEqual(config, {"providers": providers})
+        config = {"providers": {self.aliases[0]: "text", "gemini": ["a"], "x": None}}
+        self.assertEqual(oc.clean_legacy(config, self.aliases, NVIDIA_STORED), [])
+        self.assertEqual(config["providers"],
+                         {self.aliases[0]: "text", "gemini": ["a"], "x": None})
+
+    def test_foreign_key_kept_and_warned_by_default(self):
         config = {"providers": {"mine": {"settings": {"apiKey": FAKE_KEY, "baseURL": "https://x"},
                                          "models": {"m": {"modelID": "m", "name": "M"}}}}}
-        notes = []
-        setup_nvidia.update_config(config, self.models, notes)
-        self.assertIn("mine", config["providers"])
+        notes, warnings = [], []
+        setup_nvidia.update_config(config, self.models, notes, stored=NVIDIA_STORED,
+                                   warnings=warnings)
+        self.assertEqual(config["providers"]["mine"]["settings"]["apiKey"], FAKE_KEY)
+        self.assertEqual(notes, [])
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("providers.mine.settings.apiKey", warnings[0])
+        self.assertIn("--redact-foreign", warnings[0])
+        self.assertNotIn(FAKE_KEY, warnings[0])
+
+    def test_foreign_key_redacted_only_with_flag(self):
+        config = {"providers": {"mine": {"settings": {"apiKey": FAKE_KEY, "baseURL": "https://x"}},
+                                "gemini": {"settings": {"apiKey": FAKE_KEY}}}}
+        notes, warnings = [], []
+        setup_nvidia.update_config(config, self.models, notes, stored=NVIDIA_STORED,
+                                   redact_foreign=True, warnings=warnings)
         self.assertEqual(config["providers"]["mine"]["settings"]["apiKey"], oc.REDACTED)
         self.assertEqual(config["providers"]["mine"]["settings"]["baseURL"], "https://x")
-        self.assertEqual(notes, ["providers.mine.settings.apiKey (plaintext key) redacted"])
+        # A managed key that is not in the store is not "foreign": still kept.
+        self.assertEqual(config["providers"]["gemini"]["settings"]["apiKey"], FAKE_KEY)
+        self.assertEqual(len(notes), 1)
+        self.assertIn("providers.mine.settings.apiKey", notes[0])
+        self.assertEqual(len(warnings), 1)
 
     def test_env_reference_is_not_touched(self):
         config = {"providers": {"mine": {"settings": {"apiKey": "{env:MINE_API_KEY}"}}}}
@@ -115,9 +181,11 @@ class TestLegacyCleanup(unittest.TestCase):
         old = {"providers": {"gemini": {"settings": {"apiKey": FAKE_KEY}, "models": {
             "gemini-3.8-flash": {"modelID": "gemini/gemini-3.8-flash", "name": "Gemini 3.8 Flash"}}}}}
         notes = []
-        config = setup_providers.update_config(old, "gemini", notes)
+        config = setup_providers.update_config(old, "gemini", notes,
+                                               stored={"gemini/personal/api_key"})
         self.assertNotIn(FAKE_KEY, json.dumps(config))
-        self.assertEqual(notes, ["providers.gemini.settings.apiKey (plaintext key) removed"])
+        self.assertEqual(notes, ["providers.gemini.settings.apiKey (plaintext key, already in "
+                                 "the OS store) removed"])
         self.assertEqual(config["providers"]["gemini"]["env"], ["GEMINI_API_KEY"])
 
     def test_native_provider_old_key_removed_and_file_written(self):
@@ -128,6 +196,7 @@ class TestLegacyCleanup(unittest.TestCase):
             out = io.StringIO()
             with mock.patch.object(setup_providers, "CONFIG_FILE", path), \
                     mock.patch.object(setup_providers, "get_key_from_secret", return_value="x"), \
+                    mock.patch.object(oc, "stored_key_paths", return_value=None), \
                     mock.patch.object(oc, "warn_plaintext_keys", return_value=0), \
                     redirect_stdout(out):
                 code = setup_providers.configure_provider("openrouter")
@@ -143,6 +212,7 @@ class TestLegacyCleanup(unittest.TestCase):
             path.write_text('{"theme": "t"}', encoding="utf-8")
             with mock.patch.object(setup_providers, "CONFIG_FILE", path), \
                     mock.patch.object(setup_providers, "get_key_from_secret", return_value="x"), \
+                    mock.patch.object(oc, "stored_key_paths", return_value=set()), \
                     mock.patch.object(oc, "warn_plaintext_keys", return_value=0), \
                     redirect_stdout(io.StringIO()):
                 self.assertEqual(setup_providers.configure_provider("openrouter"), 0)
@@ -156,7 +226,7 @@ class TestLegacyCleanup(unittest.TestCase):
             out = io.StringIO()
             with mock.patch.object(setup_nvidia, "CONFIG_FILE", path), \
                     mock.patch.object(sys, "stderr", io.StringIO()), redirect_stdout(out):
-                setup_nvidia.write_opencode_config(self.models)
+                setup_nvidia.write_opencode_config(self.models, stored=NVIDIA_STORED)
             backups = list(Path(tmp).glob("opencode.json.bak-*"))
             self.assertEqual(len(list(Path(tmp).iterdir())), 2)  # config + one backup
             self.assertEqual(backups[0].read_text(encoding="utf-8"), body)  # exact copy
@@ -174,9 +244,74 @@ class TestLegacyCleanup(unittest.TestCase):
             out = io.StringIO()
             with mock.patch.object(setup_nvidia, "CONFIG_FILE", path), \
                     mock.patch.object(sys, "stderr", io.StringIO()), redirect_stdout(out):
-                setup_nvidia.write_opencode_config(self.models, dry_run=True)
+                setup_nvidia.write_opencode_config(self.models, dry_run=True,
+                                                   stored=NVIDIA_STORED)
             self.assertEqual(path.read_text(encoding="utf-8"), body)
             self.assertIn("would clean:", out.getvalue())
+
+    def test_setup_nvidia_main_checks_store_before_cleaning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "opencode.json"
+            body = json.dumps(old_nvidia_config(self.aliases[:1]))
+            path.write_text(body, encoding="utf-8")
+            out = io.StringIO()
+            calls = []
+
+            def stored():
+                calls.append("listed")
+                return set()
+
+            with mock.patch.object(setup_nvidia, "CONFIG_FILE", path), \
+                    mock.patch.object(oc, "stored_key_paths", side_effect=stored), \
+                    mock.patch.object(setup_nvidia, "get_key_from_secret",
+                                      side_effect=AssertionError("no value read")), \
+                    mock.patch.object(sys, "stderr", io.StringIO()), redirect_stdout(out):
+                self.assertEqual(setup_nvidia.main([]), 0)
+            self.assertEqual(calls, ["listed"])
+            text = out.getvalue()
+            self.assertLess(text.index("not in the OS secret store"), text.index("warning:"))
+            self.assertIn("python3 tools/secret.py set nvidia/personal/api_key", text)
+            self.assertNotIn(FAKE_KEY, text)
+            # Key not stored: it stays in the config; the backup is an exact copy.
+            self.assertIn(FAKE_KEY, path.read_text(encoding="utf-8"))
+
+    def test_setup_providers_keeps_other_unstored_keys(self):
+        old = {"providers": {"nvidia": {"settings": {"apiKey": FAKE_KEY}},
+                             "gemini": {"settings": {"apiKey": FAKE_KEY}}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "opencode.json"
+            path.write_text(json.dumps(old), encoding="utf-8")
+            out = io.StringIO()
+            with mock.patch.object(setup_providers, "CONFIG_FILE", path), \
+                    mock.patch.object(setup_providers, "get_key_from_secret", return_value="x"), \
+                    mock.patch.object(oc, "stored_key_paths", return_value=set()), \
+                    mock.patch.object(oc, "warn_plaintext_keys", return_value=0), \
+                    redirect_stdout(out):
+                self.assertEqual(setup_providers.configure_provider("gemini"), 0)
+            providers = json.loads(path.read_text(encoding="utf-8"))["providers"]
+            self.assertNotIn("apiKey", providers["gemini"]["settings"])  # checked: stored
+            self.assertEqual(providers["nvidia"]["settings"]["apiKey"], FAKE_KEY)  # not stored
+            self.assertIn("secret.py set nvidia/personal/api_key", out.getvalue())
+            self.assertNotIn(FAKE_KEY, out.getvalue())
+
+
+class TestStoredKeyPaths(unittest.TestCase):
+    def test_lists_names_only(self):
+        result = mock.Mock(returncode=0, stdout='["a/b/c", "nvidia/personal/api_key"]')
+        with mock.patch.object(oc.subprocess, "run", return_value=result) as run:
+            self.assertEqual(oc.stored_key_paths(), {"a/b/c", "nvidia/personal/api_key"})
+        argv = run.call_args.args[0]
+        self.assertEqual(argv[-2:], ["list", "--json"])
+        self.assertNotIn("get", argv)
+
+    def test_failure_means_unknown(self):
+        for result in (mock.Mock(returncode=2, stdout=""), mock.Mock(returncode=0, stdout="x"),
+                       mock.Mock(returncode=0, stdout='{"a": 1}')):
+            with self.subTest(result=result), \
+                    mock.patch.object(oc.subprocess, "run", return_value=result):
+                self.assertIsNone(oc.stored_key_paths())
+        with mock.patch.object(oc.subprocess, "run", side_effect=OSError("gone")):
+            self.assertIsNone(oc.stored_key_paths())
 
 
 class TestProvidersConfigStructure(unittest.TestCase):

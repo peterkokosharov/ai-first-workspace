@@ -13,8 +13,10 @@ The API key is NOT written to the config. The entry only names the variable
 ``NVIDIA_API_KEY``; start opencode with ``tools/run_opencode.py``, which reads the key
 from the OS secret store and sets that variable for the opencode process only.
 Entries that older versions of this tool wrote (one ``providers.<model-alias>`` per
-model, with the real key in ``settings.apiKey``) are removed, and any other literal key
-in the config is redacted; the tool lists what it removed (never a value).
+model, with the real key in ``settings.apiKey``) are removed once the NVIDIA key is in
+the OS store; until then they are kept and the tool prints the ``secret.py set``
+command to run. Literal keys of other providers are only reported (``--redact-foreign``
+replaces them with a placeholder). Locations are listed, never a value.
 
 Safe to re-run: the old config is copied unchanged to
 ``<file>.bak-YYYYMMDD-HHMMSS-ffffff`` (mode 600 on POSIX; delete it once its keys are in
@@ -92,28 +94,37 @@ def get_key_from_secret(key_path: str) -> str:
         raise RuntimeError(str(exc)) from exc
 
 
-def update_config(config: dict, models: list[dict], notes: list[str] | None = None) -> dict:
+def update_config(config: dict, models: list[dict], notes: list[str] | None = None,
+                  stored=(), redact_foreign: bool = False,
+                  warnings: list[str] | None = None) -> dict:
     """Merge the NVIDIA provider with ``models`` into ``config`` (no key); return config.
 
     First removes what older versions of this tool wrote: one ``providers.<alias>``
-    entry per model with the real key in ``settings.apiKey`` (see
-    ``opencode_config.clean_legacy``); any other literal key is redacted. What was
-    removed is appended to ``notes`` (locations only).
+    entry per model with the real key in ``settings.apiKey``, but only for keys whose
+    path is in ``stored`` (see ``opencode_config.clean_legacy``). What was removed is
+    appended to ``notes``, what was kept to ``warnings`` (locations only).
     """
-    cleaned = opencode_config.clean_legacy(config, [m["alias"] for m in models])
+    cleaned = opencode_config.clean_legacy(config, [m["alias"] for m in models], stored,
+                                           redact_foreign, warnings)
     if notes is not None:
         notes.extend(cleaned)
     opencode_config.merge_provider(config, PROVIDER_ID, build_models(models))
     return config
 
 
-def write_opencode_config(models: list[dict], dry_run: bool = False) -> None:
-    """Merge the NVIDIA provider into the OpenCode config (old file backed up)."""
+def write_opencode_config(models: list[dict], dry_run: bool = False, stored=(),
+                          redact_foreign: bool = False) -> None:
+    """Merge the NVIDIA provider into the OpenCode config (old file backed up).
+
+    ``stored``: key paths already in the OS store; only their literal copies are removed.
+    """
     opencode_config.warn_plaintext_keys(CONFIG_FILE)
     notes: list[str] = []
-    config = update_config(opencode_config.load_json(CONFIG_FILE, {}), models, notes)
+    warnings: list[str] = []
+    config = update_config(opencode_config.load_json(CONFIG_FILE, {}), models, notes,
+                           stored, redact_foreign, warnings)
     opencode_config.write_json(CONFIG_FILE, config, dry_run=dry_run)
-    opencode_config.report_cleaned(notes, dry_run=dry_run)
+    opencode_config.report_cleaned(notes, dry_run=dry_run, warnings=warnings)
     verb = "would write" if dry_run else "wrote"
     print(f"{verb} {CONFIG_FILE} with {len(models)} model(s) under providers.{PROVIDER_ID}")
 
@@ -123,23 +134,31 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(prog="setup_nvidia.py", description=__doc__.splitlines()[0])
     parser.add_argument("--dry-run", action="store_true", help="print what would change; write nothing")
+    parser.add_argument("--redact-foreign", action="store_true",
+                        help="also replace literal keys of providers these tools do not "
+                             "manage with a placeholder (default: only warn)")
     args = parser.parse_args(argv)
     models = parse_models(KB_XML)
     if not models:
         print(f"no models found in {KB_XML}")
         return 1
 
+    # Before cleaning: which keys are already in the OS store (names only, no value read)?
+    # A literal key whose path is not there is kept in the config, never dropped.
+    stored = opencode_config.stored_key_paths()
+    if stored is None:
+        print("note: cannot list the OS secret store; plaintext keys in the config are kept.")
+        stored = set()
+    if KEY_PATH not in stored:
+        print(f"note: the NVIDIA key ({KEY_PATH}) is not in the OS secret store; the launcher "
+              f"needs it. Store it first: {opencode_config.set_command(KEY_PATH)}")
+
     try:
-        write_opencode_config(models, dry_run=args.dry_run)
+        write_opencode_config(models, dry_run=args.dry_run, stored=stored,
+                              redact_foreign=args.redact_foreign)
     except opencode_config.ConfigError as exc:
         print(f"error: {exc}")
         return 1
-
-    # The key is not needed for the config; only check that the launcher will find it.
-    try:
-        get_key_from_secret(KEY_PATH)
-    except RuntimeError as exc:
-        print(f"note: {exc}")
     print()
     print("Next: start opencode with the launcher; it passes the key from the OS secret")
     print("store to the opencode process only:  python3 tools/run_opencode.py")

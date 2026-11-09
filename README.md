@@ -97,7 +97,11 @@ DeepSeek, Groq, Mistral, OpenRouter): `python3 tools/setup_providers.py <name>`.
 If an old config (or one of its `.bak-*` copies, or `./opencode.json` in the current
 folder) still contains a key in plain text, the tools warn and show where, never the
 value. The setup tools remove the entries that older versions wrote (one per model) and
-redact other literal keys in the config they write; old `.bak-*` files you delete by hand.
+literal keys of the providers they manage, but only once that key is in the OS secret
+store; until then the key stays and the tool prints the command that stores it
+(`python3 tools/secret.py set <path>`, which asks for the value). Keys of other providers
+are only reported; `--redact-foreign` replaces them with a placeholder. Old `.bak-*`
+files you delete by hand.
 
 The keys live in opencode's environment, so programs that opencode starts (shell
 commands, agent tools) can read them too. An agent must never print environment

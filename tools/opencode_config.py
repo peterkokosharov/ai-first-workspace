@@ -18,9 +18,12 @@
 * ``find_plaintext_keys()`` / ``warn_plaintext_keys()`` report literal keys left in an
   old config, its backups or a project ``./opencode.json(c)`` (locations only, never
   values).
-* ``clean_legacy()`` removes what older versions of the setup tools wrote (one
-  ``providers.<model-alias>`` entry per NVIDIA model with a literal ``apiKey``) and
-  redacts any other literal key before the config is written again.
+* ``stored_key_paths()`` lists the key paths in the OS store (names only, via
+  ``secret.py list``); ``clean_legacy()`` removes what older versions of the setup
+  tools wrote (one ``providers.<model-alias>`` entry per NVIDIA model with a literal
+  ``apiKey``, a literal ``apiKey`` in a provider entry these tools manage) only when
+  that key is already in the OS store. Keys of other providers are left alone unless
+  ``redact_foreign`` is asked for; everything kept is reported as a warning.
 
 Nothing here needs administrator rights or changes anything outside the user's home.
 """
@@ -220,6 +223,33 @@ def get_secret(key_path: str, timeout: int = 15) -> str:
     return value
 
 
+def stored_key_paths(timeout: int = 15) -> set[str] | None:
+    """Key paths present in the OS store, via ``tools/secret.py --backend auto list
+    --json`` (names only, no value is read). None if the store cannot be listed."""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-I", str(SECRET_TOOL), "--backend", "auto", "list", "--json"],
+            capture_output=True, text=True, timeout=timeout,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return None
+    if result.returncode != 0:
+        return None
+    try:
+        names = json.loads(result.stdout)
+    except ValueError:
+        return None
+    if not isinstance(names, list):
+        return None
+    return {name for name in names if isinstance(name, str)}
+
+
+def set_command(key_path: str) -> str:
+    """The command that stores ``key_path``; secret.py reads the value from a hidden
+    prompt or stdin, never from the command line."""
+    return f"python3 tools/secret.py set {key_path}"
+
+
 # ---------------------------------------------------------------------------
 # Providers (schema: "providers" in https://opencode.ai/config.json, read 2026-11-09;
 # the older "provider" key is marked deprecated there)
@@ -250,9 +280,8 @@ PROVIDERS: dict[str, dict] = {
                    "env": "OPENROUTER_API_KEY", "base_url": None},
 }
 
-#: Settings that older versions of the setup tools wrote: ``apiBase`` is not in the
-#: schema, and ``apiKey`` must never hold a literal key.
-_STALE_SETTINGS = ("apiKey", "apiBase")
+#: Setting that older versions of the setup tools wrote and that is not in the schema.
+_STALE_SETTINGS = ("apiBase",)
 
 
 def merge_provider(config: dict, provider_id: str, models: Mapping[str, dict]) -> dict:
@@ -260,7 +289,9 @@ def merge_provider(config: dict, provider_id: str, models: Mapping[str, dict]) -
 
     The entry gets ``name``, ``env`` (the variable NAME, never the key), ``package`` and
     ``settings.baseURL``; ``models`` are merged in (models already there are kept).
-    ``apiKey`` / old ``apiBase`` settings of this entry are removed.
+    An old ``apiBase`` and an ``apiKey`` that is not a literal key (e.g. an
+    ``{env:...}`` reference) are removed; a literal ``apiKey`` is left for
+    ``clean_legacy`` to decide (it is kept while the key is not in the OS store).
     """
     spec = PROVIDERS[provider_id]
     if spec["base_url"] is None:
@@ -274,64 +305,107 @@ def merge_provider(config: dict, provider_id: str, models: Mapping[str, dict]) -
     settings = entry.setdefault("settings", {})
     for stale in _STALE_SETTINGS:
         settings.pop(stale, None)
+    if "apiKey" in settings and not _is_literal(settings["apiKey"]):
+        del settings["apiKey"]
     settings["baseURL"] = spec["base_url"]
     entry.setdefault("models", {}).update(models)
     return entry
 
 
-#: Endpoint the old setup_nvidia.py wrote as ``settings.apiBase`` of every per-model entry.
-LEGACY_NVIDIA_API_BASE = "https://integrate.api.nvidia.com"
+#: Endpoint the old setup_nvidia.py (commit 78d4c37) wrote as ``settings.apiBase`` of
+#: every per-model entry.
+LEGACY_NVIDIA_API_BASE = "https://integrate.api.nvidia.com/v1/chat/completions"
 
 
-def clean_legacy(config: dict, legacy_aliases=()) -> list[str]:
-    """Remove legacy entries and literal keys from ``config`` in place.
+def clean_legacy(config: dict, legacy_aliases=(), stored=(), redact_foreign: bool = False,
+                 warnings: list[str] | None = None) -> list[str]:
+    """Remove legacy entries and literal keys from ``config`` in place, safely.
 
-    * ``providers.<id>`` with ``id`` not in ``PROVIDERS`` is removed when ``id`` is one
-      of ``legacy_aliases`` (the model aliases the old setup_nvidia.py used as provider
-      ids) or its ``settings.apiBase`` points at the NVIDIA endpoint: the old tools
-      wrote such entries with the real key in ``settings.apiKey``.
-    * In ``providers.<id>`` with ``id`` in ``PROVIDERS`` a literal ``settings.apiKey`` is
-      removed (old setup_providers.py shape); the variable named in ``env`` replaces it.
-    * Any other literal key anywhere in ``config`` is replaced by ``REDACTED``.
+    ``stored`` holds the key paths already in the OS store (``stored_key_paths()``).
+    A literal key is only removed when its key path is in ``stored``, so the config
+    is never the last place a key was and is now gone.
 
-    Returns one line per change (locations only, never values).
+    * ``providers.<id>`` with ``id`` not in ``PROVIDERS`` is a legacy NVIDIA entry when
+      ``id`` is one of ``legacy_aliases`` (the model aliases the old setup_nvidia.py
+      used as provider ids) or its ``settings.apiBase`` is exactly the old NVIDIA
+      endpoint. It is removed if it holds no literal key or the NVIDIA key is stored.
+    * In ``providers.<id>`` with ``id`` in ``PROVIDERS`` a literal ``settings.apiKey``
+      (old setup_providers.py shape) is removed if that provider's key is stored; the
+      variable named in ``env`` replaces it.
+    * Every other literal key belongs to something these tools do not manage: it is
+      kept, unless ``redact_foreign`` is true, then it is replaced by ``REDACTED``.
+
+    Returns one line per change; every key left in place adds a line to ``warnings``
+    (locations and the ``secret.py set`` command only, never values).
     """
     notes: list[str] = []
+    warnings = [] if warnings is None else warnings
+    stored = set(stored or ())
     aliases = set(legacy_aliases)
+    kept: set[str] = set()
+
+    def keep(places: list[str], key_path: str) -> None:
+        for place in places:
+            kept.add(place)
+            warnings.append(f"{place} holds a plaintext key that is not in the OS secret "
+                            f"store yet; kept. Store it (the value is asked for, not "
+                            f"typed on the command line): {set_command(key_path)} "
+                            "-- then run this tool again.")
+
     providers = config.get("providers")
     if isinstance(providers, dict):
         for pid in list(providers):
             entry = providers[pid]
-            settings = entry.get("settings") if isinstance(entry, dict) else None
+            if not isinstance(entry, dict):
+                continue
+            settings = entry.get("settings")
             settings = settings if isinstance(settings, dict) else {}
             if pid in PROVIDERS:
                 if _is_literal(settings.get("apiKey")):
+                    place = f"providers.{pid}.settings.apiKey"
+                    if PROVIDERS[pid]["key_path"] not in stored:
+                        keep([place], PROVIDERS[pid]["key_path"])
+                        continue
                     del settings["apiKey"]
-                    notes.append(f"providers.{pid}.settings.apiKey (plaintext key) removed")
+                    notes.append(f"{place} (plaintext key, already in the OS store) removed")
                     rest = [v for k, v in entry.items() if k != "settings" and v]
                     if PROVIDERS[pid]["base_url"] is None and not settings and not rest:
                         del providers[pid]  # native provider: the entry held only the key
                 continue
             api_base = settings.get("apiBase")
-            old_nvidia = isinstance(api_base, str) and api_base.startswith(LEGACY_NVIDIA_API_BASE)
+            old_nvidia = (isinstance(api_base, str)
+                          and api_base.rstrip("/") == LEGACY_NVIDIA_API_BASE)
             if pid in aliases or old_nvidia:
-                has_key = bool(find_plaintext_keys(entry))
+                places = find_plaintext_keys(entry, f"providers.{pid}")
+                key_path = PROVIDERS["nvidia"]["key_path"]
+                if places and key_path not in stored:
+                    keep(places, key_path)
+                    continue
                 del providers[pid]
                 notes.append(f"providers.{pid} (legacy per-model entry"
-                             f"{', held a plaintext key' if has_key else ''}) removed")
-    for place in find_plaintext_keys(config):
-        notes.append(f"{place} (plaintext key) redacted")
-    _redact(config)
+                             f"{', its key is already in the OS store' if places else ''}) removed")
+    foreign = [place for place in find_plaintext_keys(config) if place not in kept]
+    if redact_foreign:
+        _redact(config, only=set(foreign))
+        notes.extend(f"{place} (plaintext key of a provider these tools do not manage) "
+                     "redacted" for place in foreign)
+    else:
+        warnings.extend(f"{place} holds a plaintext key these tools do not manage; kept. "
+                        "Move it to the OS secret store yourself, or run again with "
+                        "--redact-foreign to replace it with a placeholder." for place in foreign)
     return notes
 
 
-def report_cleaned(notes: list[str], dry_run: bool = False, out=None) -> None:
-    """Print what ``clean_legacy`` changed (never a value)."""
+def report_cleaned(notes: list[str], dry_run: bool = False, out=None,
+                   warnings: list[str] = ()) -> None:
+    """Print what ``clean_legacy`` changed and what it kept (never a value)."""
     out = sys.stdout if out is None else out
     verb = "would clean" if dry_run else "cleaned"
     for note in notes:
         print(f"{verb}: {note}", file=out)
-    if notes:
+    for warning in warnings:
+        print(f"warning: {warning}", file=out)
+    if notes or warnings:
         print("  Keys belong only in the OS secret store; tools/run_opencode.py passes them "
               "to opencode.", file=out)
 
@@ -367,16 +441,20 @@ def find_plaintext_keys(data: object, prefix: str = "") -> list[str]:
     return found
 
 
-def _redact(data: object) -> None:
+def _redact(data: object, only: set[str] | None = None, prefix: str = "") -> None:
+    """Replace literal keys by ``REDACTED`` (only at the dotted places in ``only``, if
+    given; the places are spelled as ``find_plaintext_keys`` spells them)."""
     if isinstance(data, dict):
         for name, value in data.items():
+            where = f"{prefix}.{name}" if prefix else str(name)
             if _is_key_name(str(name)) and _is_literal(value):
-                data[name] = REDACTED
+                if only is None or where in only:
+                    data[name] = REDACTED
             else:
-                _redact(value)
+                _redact(value, only, where)
     elif isinstance(data, list):
-        for value in data:
-            _redact(value)
+        for index, value in enumerate(data):
+            _redact(value, only, f"{prefix}[{index}]")
 
 
 def warn_plaintext_keys(path: Path, out=None, project_dir: Path | None = None) -> int:

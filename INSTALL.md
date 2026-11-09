@@ -151,8 +151,11 @@ python3 tools/run_opencode.py      # Windows (Git Bash): py tools/run_opencode.p
 
 If an old config, one of its `.bak-*` copies or `./opencode.json` in the current folder
 still holds a key in plain text, the tools warn and show where (never the value). The
-setup tools remove entries older versions wrote and redact literal keys in the config
-they write; delete old `.bak-*` files by hand.
+setup tools remove entries older versions wrote and literal keys of the providers they
+manage only once that key is in the OS secret store; otherwise they keep it and print
+`python3 tools/secret.py set <path>` to run first. Keys of other providers are only
+reported (`--redact-foreign` replaces them with a placeholder). Delete old `.bak-*` files
+by hand once the keys are stored.
 
 The keys are in opencode's environment: programs opencode starts can read them. An agent
 must never print environment variables (`env`, `set`, `printenv`, `echo $..._API_KEY`).
