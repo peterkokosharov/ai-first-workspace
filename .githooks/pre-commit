@@ -1,0 +1,14 @@
+#!/bin/sh
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
+# Pre-commit hook: refuse commits that contain API keys or tokens.
+# Enable once per clone:  git config core.hooksPath .githooks
+root=$(git rev-parse --show-toplevel) || exit 1
+for py in python3 python "py -3"; do
+    if $py -c "import sys; sys.exit(sys.version_info < (3, 9))" >/dev/null 2>&1; then
+        exec $py -I "$root/tools/secret_scan.py"
+    fi
+done
+echo "pre-commit: Python 3 not found, secret scan skipped" >&2
+exit 0
