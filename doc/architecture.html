@@ -106,8 +106,7 @@
 │       ├── test_secret.py
 │       ├── test_inventory.py
 │       └── test_autodiscovery.py
-├── in/                    # empty (task.md removed from tracking)
-├── out/                   # audit reports from external models
+├── out/                   # reports and test output, not versioned
 ├── .tmp/                  # temporary files, not versioned
 └── .gitignore
 </pre>
@@ -127,9 +126,9 @@
 <img src="diagrams/db-schema.svg" alt="Inventory database schema — ER diagram" style="max-width: 100%; height: auto;">
 </div>
 
-<h2>5. Auto-Discovery Procedure (Rule 7)</h2>
+<h2>5. Auto-Discovery Procedure</h2>
 <div class="diagram-container">
-<img src="diagrams/autodiscovery.svg" alt="Auto-discovery procedure — Rule 7 terminal flow" style="max-width: 100%; height: auto;">
+<img src="diagrams/autodiscovery.svg" alt="Auto-discovery procedure — terminal flow" style="max-width: 100%; height: auto;">
 </div>
 
 <h2>6. OpenCode Desktop — Visual Concept</h2>
@@ -204,7 +203,7 @@ litellm_model: nvidia/nemotron-ultra</pre>
 <ul>
   <li><strong>OpenCode provider configuration:</strong> Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use <code>tools/setup_providers.py</code> to add them with keys from KWallet.</li>
   <li><strong>Live DCOP test:</strong> Run <code>SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v</code> after opening the KWallet.</li>
-  <li><strong>External audit:</strong> Send <code>in/task.md</code> (local, not tracked) to external models (beam-free, flint-40b-free) and collect reports in <code>out/</code>.</li>
+  <li><strong>External audit:</strong> before a release, follow <code>docs/procedures/release-audit.md</code>; reports go to <code>out/</code>.</li>
   <li><strong>Git remote:</strong> No <code>origin</code> configured yet. Add remote and push when ready.</li>
 </ul>
 

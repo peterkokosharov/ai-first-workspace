@@ -56,8 +56,7 @@ Self-contained, portable folder for AI-assisted software development.
 │       ├── test_secret.py
 │       ├── test_inventory.py
 │       └── test_autodiscovery.py
-├── in/                    # empty (task.md removed from tracking)
-├── out/                   # audit reports from external models
+├── out/                   # reports and test output, not versioned
 ├── .tmp/                  # temporary files, not versioned
 └── .gitignore
 ```
@@ -185,7 +184,7 @@ erDiagram
     }
 ```
 
-## 5. Auto-Discovery Procedure (Rule 7)
+## 5. Auto-Discovery Procedure
 
 ```mermaid
 flowchart TD
@@ -263,5 +262,5 @@ konsole — user@host: ~/ai-first-workspace
 
 - **OpenCode provider configuration:** Gemini, NVIDIA, DeepSeek, Mistral providers are not yet configured in OpenCode. Use `tools/setup_providers.py` to add them with keys from KWallet.
 - **Live DCOP test:** Run `SECRET_LIVE_TESTS=1 python3 -m unittest discover -s tools/tests -t . -v` after opening the KWallet.
-- **External audit:** Send `in/task.md` (local, not tracked) to external models (beam-free, flint-40b-free) and collect reports in `out/`.
+- **External audit:** before a release, follow `docs/procedures/release-audit.md`; reports go to `out/`.
 - **Git remote:** No `origin` configured yet. Add remote and push when ready.

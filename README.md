@@ -27,7 +27,7 @@ model list lives in [`kb/`](kb/README.md); it was collected from build.nvidia.co
 
 ## Start on Windows (3 steps)
 
-1. Install **Python 3** from python.org (it brings the `py` launcher) and **Git for
+1. Install **Python 3.10 or newer** from python.org (it brings the `py` launcher) and **Git for
    Windows** (it brings Git Bash). Install **opencode** (https://opencode.ai).
 2. Get this folder (`git clone https://github.com/peterkokosharov/ai-first-workspace.git`
    or unzip it), open **Git Bash** in it and run:
@@ -49,7 +49,7 @@ model list lives in [`kb/`](kb/README.md); it was collected from build.nvidia.co
 Target: Linux Mint (Cinnamon), which keeps keys in GNOME Keyring through `secret-tool`
 (package `libsecret-tools`, usually already there). Tested so far on Q4OS (TDE, KWallet).
 
-1. Make sure `python3` and `git` are installed (`python3 --version`, `git --version`).
+1. Make sure `python3` (3.10 or newer) and `git` are installed (`python3 --version`, `git --version`).
    Install **opencode** (https://opencode.ai).
 2. Get this folder and run in it:
    ```bash
@@ -77,8 +77,6 @@ opencode is the default because it is free. The others also work with this folde
 | goose | tested | `AGENTS.md` |
 | Claude Code | tested (needs a paid plan) | `CLAUDE.md` (which points to `AGENTS.md`) |
 | Codex CLI | not tested | `AGENTS.md` |
-
-The rex runtime only partly works with this folder.
 
 ## Connect opencode to the NVIDIA models (optional)
 
