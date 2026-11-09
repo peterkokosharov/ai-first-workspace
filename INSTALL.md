@@ -50,16 +50,38 @@ python3 tools/inventory.py init
 python3 -m unittest discover -s tools/tests -t . -v
 ```
 
+On Windows (Git Bash) the same with the `py` launcher:
+
+```bash
+py tools/autodiscovery.py
+py tools/inventory.py init
+py -m unittest discover -s tools/tests -t . -v
+```
+
+Or run everything at once (Linux and Git Bash on Windows; it picks `python3`,
+`python` or `py` itself and also turns on the secret check below):
+
+```bash
+bash tools/bootstrap.sh
+```
+
 ### Turn on the secret check (once per clone)
 
 ```bash
 git config core.hooksPath .githooks
 ```
 
-From then on every `git commit` runs `tools/secret_scan.py`, which refuses a commit
-that contains an API key or token (NVIDIA `nvapi-…`, `sk-…`, GitHub `ghp_…` /
-`github_pat_…`, AWS `AKIA…`, Google/Gemini `AIza…`, or a literal `api_key: <value>`). The value itself is
-never printed. Scan the whole tree by hand with `python3 tools/secret_scan.py --all`.
+`tools/bootstrap.sh` does this for you when the folder is a git repo (running it again
+changes nothing). From then on every `git commit` runs `tools/secret_scan.py`, which
+refuses a commit that contains an API key or token (NVIDIA `nvapi-…`, `sk-…`, GitHub
+`ghp_…` / `github_pat_…`, AWS `AKIA…`, Google/Gemini `AIza…`, or a literal
+`api_key: <value>`). The value itself is never printed. Scan the whole tree by hand with
+`python3 tools/secret_scan.py --all`.
+
+**Note:** if no Python 3 is found when you commit, the hook prints
+`pre-commit: Python 3 not found, secret scan skipped` and lets the commit through
+(exit 0), so a machine without Python can still commit. On such a machine the check
+does not protect you; install Python or scan by hand before you push.
 
 ---
 
@@ -123,6 +145,18 @@ python3 tools/inventory.py init
 git config core.hooksPath .githooks
 python3 tools/secret.py set nvidia/personal/api_key
 python3 -m unittest discover -s tools/tests -t . -v
+```
+
+Windows (Git Bash), same steps with `py`:
+
+```bash
+git clone https://github.com/peterkokosharov/ai-first-workspace.git
+cd ai-first-workspace
+py tools/autodiscovery.py
+py tools/inventory.py init
+git config core.hooksPath .githooks
+py tools/secret.py set nvidia/personal/api_key
+py -m unittest discover -s tools/tests -t . -v
 ```
 
 ---

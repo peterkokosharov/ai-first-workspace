@@ -16,7 +16,8 @@ the models run in the cloud on free tiers.
   (Windows Credential Manager, KWallet, GNOME Keyring), never in a file in this folder.
 - A list of free models you can use (`kb/`), plus small tools to check your machine,
   store keys and connect opencode to the models.
-- A secret check that stops you from committing a key by accident.
+- A secret check that stops you from committing a key by accident (a git hook; it
+  needs Python: without Python it only warns and lets the commit through).
 
 Models, all free: opencode's own free models (no key needed), about 20 **free NVIDIA
 models** (build.nvidia.com, free account and key), and optionally the free plans of
