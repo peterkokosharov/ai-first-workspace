@@ -52,10 +52,10 @@ model lab (`projects/models/`) owns them, in its `paths.kb` folder.
 - `seed.sql` — committed initial inventory data
 - `inventory.db` — local, gitignored, recreated by `init`
 
-### Documentation (`doc/`, `docs/`)
-- `doc/architecture.md` + `architecture.html`
-- `doc/accessibility.html`
-- `doc/diagrams/` — 10 Mermaid diagrams (SVG rendered)
+### Documentation (`docs/design/`, `docs/procedures/`)
+- `docs/design/architecture.md` + `architecture.html`
+- `docs/design/accessibility.html`
+- `docs/design/diagrams/` — 10 Mermaid diagrams (SVG rendered)
 - `docs/procedures/` — 6 procedure files
 - `INSTALL.md` — comprehensive install guide
 - `README.md` — project overview

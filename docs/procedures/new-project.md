@@ -30,10 +30,10 @@ enters the core's history.
    ```
 2. Write `projects/<name>/AGENTS.md` before anything else. It is the project's whole rule
    set and the first file every agent reads. Start from the core's `AGENTS.md` and keep
-   only what that project needs: what the project is, the boundary (own `doc/`, own
+   only what that project needs: what the project is, the boundary (own `docs/`, own
    `tools/`, own history), language, orders and confirmation, secrets, git, working style.
 3. Create what the project needs and nothing more:
-   - `doc/` — plans, setup pages, decisions;
+   - `docs/` — plans, setup pages, decisions;
    - `tools/` — only the tools this project uses, standard library only, plus `tools/tests/`;
    - the three glue files that reach the core: `tools/core.py`, `tools/secret.py` and a
      `tools/__init__.py` that calls `core.install()`. Copy them from the core's template,

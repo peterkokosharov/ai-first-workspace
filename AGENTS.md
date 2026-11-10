@@ -75,7 +75,7 @@ Read this whole file first. A line "Doing X -> file" means: read that file befor
   `list <table>`. Check there before asking the user. Missing database: `inventory.py init`.
 - The free model list ships in `data/models.xml`; a fresher one in the folder named by
   `paths.kb` in the local `settings.json` (a model lab, for example) takes its place.
-  `doc/` architecture pages. `out/` reports and audits (not in git).
+  `docs/design/` architecture pages. `out/` reports and audits (not in git).
 - `projects/<name>/` one folder per user project, its own git repository and its own
   `AGENTS.md`. It runs on this core: `tools/core.py`, `tools/secret.py` and
   `tools/__init__.py` are the glue (template: `templates/project/tools/`); a project

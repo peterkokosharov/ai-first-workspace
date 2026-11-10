@@ -164,9 +164,9 @@ opencode на Windows; ако вашият opencode чете друга папк
 
 ```text
 AGENTS.md      the rules for every agent      CLAUDE.md / GEMINI.md  pointers to AGENTS.md
-INSTALL.md     step-by-step install           doc/         architecture and accessibility pages
+INSTALL.md     step-by-step install           docs/design/ architecture and accessibility pages
 tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
-data/          inventory schema and seed      doc/         architecture and accessibility pages
+data/          inventory schema and seed      docs/design/ architecture and accessibility pages
 docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub,
                   orchestration, new project
 .claude/       Claude Code skills          .opencode/   opencode commands (both point to docs/procedures/)
@@ -195,7 +195,7 @@ names“.
 ## Проекти
 
 Собствената ви работа отива в `projects/<name>/`, по една папка на проект, и всяка папка е
-своe собствено git репо: корен в нея, собствен `AGENTS.md`, собствен `doc/`, `tools/` и
+своe собствено git репо: корен в нея, собствен `AGENTS.md`, собствен `docs/`, `tools/` и
 собствена история. `projects/` е gitignore-ната тук, така че това репо никога не следи
 работа за клиент и историята му не носи имена на чужда работа.
 

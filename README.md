@@ -155,9 +155,9 @@ a very long time or repeat themselves. Then:
 
 ```text
 AGENTS.md      the rules for every agent      CLAUDE.md / GEMINI.md  pointers to AGENTS.md
-INSTALL.md     step-by-step install           doc/         architecture and accessibility pages
+INSTALL.md     step-by-step install           docs/design/ architecture and accessibility pages
 tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
-data/          inventory schema and seed      doc/         architecture and accessibility pages
+data/          inventory schema and seed      docs/design/ architecture and accessibility pages
 docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub, orchestration, new project
 .claude/       Claude Code skills          .opencode/   opencode commands (both point to docs/procedures/)
 out/           reports and audits (not in git)
@@ -183,7 +183,7 @@ GitHub steps. An older `runtime` section is still read. Key names: see INSTALL.m
 ## Projects
 
 Your own work goes in `projects/<name>/`, one folder per project, and each folder is its
-own git repository: root at that folder, its own `AGENTS.md`, its own `doc/`, `tools/` and
+own git repository: root at that folder, its own `AGENTS.md`, its own `docs/`, `tools/` and
 its own history. `projects/` is gitignored here, so this repository never tracks client
 work and its history never carries another business's names.
 

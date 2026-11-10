@@ -168,7 +168,7 @@ class TestInventory(unittest.TestCase):
 
     def test_add_project_custom_path_must_stay_under_projects(self):
         _run(["init"])
-        result = _run(["add-project", "paperwork", "--path", "doc/paperwork"])
+        result = _run(["add-project", "paperwork", "--path", "docs/paperwork"])
         self.assertEqual(result.returncode, 3)
         self.assertIn("projects/", result.stderr)
         result = _run(["add-project", "paperwork", "--path", "projects/paperwork"])
