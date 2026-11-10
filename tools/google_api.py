@@ -32,13 +32,15 @@ Examples:
     python3 tools/google_api.py call calendar v3 events.list \
         --param calendarId=primary --param maxResults=5
     python3 tools/google_api.py call drive v3 files.list \
-        --param q="name contains 'ТЕЛК'"
+        --param q="name contains 'invoice'"
     python3 tools/google_api.py call gmail v1 users.messages.send --body @mail.json
+        # (needs: auth --scopes ...,https://www.googleapis.com/auth/gmail.send)
 
 Notes:
-    * ``--param`` always becomes a query parameter; a GET/DELETE uses only those.
+    * ``--param`` fills the ``{name}`` / ``{+name}`` parts of the method path; every other
+      ``--param`` becomes a query parameter.
     * ``--body`` takes inline JSON or ``@file.json`` and is the JSON request body.
-    * Media upload (files) is not part of the generic call; see tools/gdrive.py.
+    * Media upload (files) is not part of the generic call; not supported by this tool.
     * A refresh token from an OAuth app still in "Testing" expires after 7 days;
       publish the app to make it permanent.
 
@@ -52,6 +54,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 import sys
 import time
@@ -81,13 +84,14 @@ KEY_CLIENT_SECRET = "google/personal/oauth_client_secret"
 KEY_REFRESH = "google/personal/refresh_token"
 KEY_SCOPES = "google/personal/scopes"
 
+# Read-only by default; widen only with ``auth --scopes``.
 DEFAULT_SCOPES = [
     "openid",
     "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/gmail.modify",
-    "https://www.googleapis.com/auth/calendar",
-    "https://www.googleapis.com/auth/drive",
-    "https://www.googleapis.com/auth/tasks",
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/calendar.readonly",
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/tasks.readonly",
 ]
 
 CACHE_TTL = 7 * 24 * 3600  # discovery documents change rarely
@@ -275,7 +279,7 @@ def wait_for_code(port: int, timeout: int) -> dict:
     finally:
         server.server_close()
     if not _CallbackHandler.captured:
-        raise GoogleError(f"no consent within {timeout}s", EXIT_NOT_CONFIGURED)
+        raise NotConfigured(f"no consent within {timeout}s")
     return dict(_CallbackHandler.captured)
 
 
@@ -285,7 +289,7 @@ def token_request(payload: dict) -> dict:
         raise GoogleError("token endpoint returned no JSON")
     if "error" in parsed:
         description = parsed.get("error_description") or parsed["error"]
-        raise GoogleError(f"token error: {description}", EXIT_NOT_CONFIGURED)
+        raise NotConfigured(f"token error: {description}")
     return parsed
 
 
@@ -374,23 +378,20 @@ def build_request(document: dict, method: str, params: dict, body: dict | None):
     path = spec.get("path", "")
 
     query = {}
-    remaining = dict(params)
-    for name in list(remaining):
-        if "{" + name + "}" in path:
-            path = path.replace("{" + name + "}", urllib.parse.quote(str(remaining.pop(name)), safe=""))
+    for name, value in params.items():
+        text = str(value)
+        if "{+" + name + "}" in path:
+            path = path.replace("{+" + name + "}", urllib.parse.quote(text, safe="/"))
+        elif "{" + name + "}" in path:
+            path = path.replace("{" + name + "}", urllib.parse.quote(text, safe=""))
         else:
-            query[name] = remaining.pop(name)
+            query[name] = value
 
-    # Parameters the method declares as query-only must not go into the body.
-    declared = spec.get("parameters", {})
-    for name in list(remaining):
-        if declared.get(name, {}).get("location") == "query":
-            query[name] = remaining.pop(name)
+    missing = re.search(r"\{\+?([^}]+)\}", path)
+    if missing:
+        raise UsageError(f"missing path parameter: {missing.group(1)}")
 
-    payload = None
-    if http_method in ("POST", "PUT", "PATCH"):
-        payload = {**{k: v for k, v in remaining.items()}, **(body or {})}
-        remaining = {}
+    payload = body if http_method in ("POST", "PUT", "PATCH") else None
 
     base = document.get("baseUrl")
     if not base:
@@ -433,7 +434,7 @@ def cmd_auth(args, backend) -> int:
     print(f"Waiting up to {args.timeout}s for the browser to come back to {redirect_uri} ...")
     captured = wait_for_code(port, args.timeout)
     if captured.get("error"):
-        raise GoogleError(f"consent failed: {captured['error']}", EXIT_NOT_CONFIGURED)
+        raise NotConfigured(f"consent failed: {captured['error']}")
     if captured.get("state") != state:
         raise UsageError("state mismatch in the OAuth callback")
     code = captured.get("code")
@@ -450,10 +451,9 @@ def cmd_auth(args, backend) -> int:
     })
     refresh_token = tokens.get("refresh_token")
     if not refresh_token:
-        raise GoogleError(
+        raise NotConfigured(
             "Google returned no refresh_token; revoke the old grant at "
-            "myaccount.google.com/permissions and run auth again",
-            EXIT_NOT_CONFIGURED,
+            "myaccount.google.com/permissions and run auth again"
         )
 
     backend.set(KEY_REFRESH, refresh_token)
@@ -500,12 +500,19 @@ def cmd_logout(args, backend) -> int:
         sys.path.insert(0, str(TOOLS_DIR))
     import secret  # noqa: E402
 
+    failed = []
     for key in (KEY_REFRESH, KEY_SCOPES):
         try:
             backend.delete(secret.validate_path(key))
             print(f"deleted {key}")
         except secret.NotFoundError:
             print(f"already absent {key}")
+        except secret.BackendError as exc:
+            failed.append(f"{key} ({exc})")
+    if failed:
+        raise GoogleError(
+            "cannot delete " + ", ".join(failed) + "; remove by hand in the secret store"
+        )
     return EXIT_OK
 
 
@@ -533,7 +540,13 @@ def cmd_apis(args, backend) -> int:
 def _load_body(value: str | None) -> dict | None:
     if not value:
         return None
-    text = Path(value[1:]).read_text(encoding="utf-8") if value.startswith("@") else value
+    if value.startswith("@"):
+        try:
+            text = Path(value[1:]).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            raise UsageError(f"cannot read --body file {value[1:]}: {exc}") from None
+    else:
+        text = value
     try:
         data = json.loads(text)
     except ValueError as exc:
@@ -561,7 +574,10 @@ def cmd_call(args, backend) -> int:
         "utf-8", "replace"
     )
     if args.out:
-        Path(args.out).write_text(text, encoding="utf-8")
+        try:
+            Path(args.out).write_text(text, encoding="utf-8")
+        except OSError as exc:
+            raise GoogleError(f"cannot write {args.out}: {exc}") from None
         print(f"written {args.out} ({len(text)} bytes)")
     else:
         print(text)
@@ -584,7 +600,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_auth = sub.add_parser("auth", help="run the OAuth consent flow and store the refresh token")
-    p_auth.add_argument("--scopes", help="comma-separated scopes (default: the four workspace APIs)")
+    p_auth.add_argument("--scopes", help="comma-separated scopes (default: read-only mail, calendar, drive, tasks)")
     p_auth.add_argument("--port", type=int, default=0, help="loopback port (0 = any free port)")
     p_auth.add_argument("--timeout", type=int, default=300, help="seconds to wait for consent")
     p_auth.add_argument("--login-hint", help="pre-select an account in the browser")
