@@ -9,8 +9,9 @@ travels with the archive, so the tools do not depend on a system-wide installati
 - Copied: 2026-11-07
 - License: MIT (the SPDX headers and author lines are kept in every file)
 - Author: Peter Kokosharov
-- Included: the Python package and its `README.md`.
-- Excluded: `__pycache__`, `.pyc`, Debian packaging and build artifacts.
+- Included: only the modules `tools/secret.py` uses (`factory.py`, `keystore.py`, `__init__.py`).
+- Excluded: every other upstream module, `__pycache__`, `.pyc`, packaging and build artifacts.
+- Status: temporary copy; will be replaced by the installed kikolib package.
 
 `tools/secret.py` imports two modules from this copy:
 

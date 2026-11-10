@@ -29,8 +29,7 @@ Models, all free: opencode's own free models (no key needed), about 20 **free NV
 models** (build.nvidia.com, free account and key), and optionally the free plans of
 Gemini and ChatGPT (they have tight daily limits). No paid provider is needed. A
 small list of them ships in `data/models.xml` (collected from build.nvidia.com on
-2026-11-08, so it ages: models come and go). A fresher list built with `tools/robota.py`
-and `tools/gen_models_xml.py` can live in a folder named by `paths.kb` in `settings.json`;
+2026-11-08, so it ages: models come and go). A fresher list built with `tools/gen_models_xml.py` can live in a folder named by `paths.kb` in `settings.json`;
 when that folder has a `models.xml`, it is used instead.
 
 ## Start on Windows (3 steps)
@@ -168,7 +167,7 @@ Tools: `secret.py` (keys), `inventory.py` (local SQLite list of machines, servic
 providers, models, keys and projects), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test a model),
 `setup_nvidia.py` / `setup_providers.py` / `opencode_config.py` (connect opencode to providers),
 `run_opencode.py` (start opencode with the keys from the OS store),
-`robota.py` + `gen_models_xml.py` (refresh the model list), `secret_scan.py` (the commit and push check),
+`gen_models_xml.py` (refresh the model list), `secret_scan.py` (the commit and push check),
 `bundle.py` (the core plus one project in a single folder, for handover).
 
 Run the tests: `python3 -m unittest discover -s tools/tests -t . -v` (`py` on Windows).

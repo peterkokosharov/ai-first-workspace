@@ -32,8 +32,7 @@
 20 **безплатни модела на NVIDIA** (build.nvidia.com, безплатен акаунт и ключ), и по избор
 безплатните планове на Gemini и ChatGPT (те имат строги дневни лимити). Платен доставчик
 не е нужен. Малък списък се доставя в `data/models.xml` (събран от build.nvidia.com на 2026-11-08,
-тоест остарява: модели идват и си отиват). По-пресен списък, построен с `tools/robota.py` и
-`tools/gen_models_xml.py`, може да стои в папката от `paths.kb` в `settings.json`; ако тя
+тоест остарява: модели идват и си отиват). По-пресен списък, построен с `tools/gen_models_xml.py`, може да стои в папката от `paths.kb` в `settings.json`; ако тя
 има `models.xml`, използва се той.
 
 ## Начало на Windows (3 стъпки)
@@ -179,7 +178,7 @@ projects/      your own projects, one folder each (not in this repo's git)
 компютъра), `ping.py` / `ping_direct.py` (проба на модел), `setup_nvidia.py` /
 `setup_providers.py` / `opencode_config.py` (свързване на opencode с доставчици),
 `run_opencode.py` (стартира opencode с ключовете от хранилището на операционната система),
-`robota.py` + `gen_models_xml.py` (обновяване на списъка с модели), `secret_scan.py` (проверката при
+`gen_models_xml.py` (обновяване на списъка с модели), `secret_scan.py` (проверката при
 комит и push), `bundle.py` (ядрото плюс един проект в една папка, за предаване).
 
 Пускане на тестовете: `python3 -m unittest discover -s tools/tests -t . -v` (`py` на
