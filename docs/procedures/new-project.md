@@ -36,9 +36,10 @@ enters the core's history.
    - `doc/` — plans, setup pages, decisions;
    - `tools/` — only the tools this project uses, standard library only, plus `tools/tests/`;
    - the three glue files that reach the core: `tools/core.py`, `tools/secret.py` and a
-     `tools/__init__.py` that calls `core.install()`. Copy them from the `tools/` of a
-     project that already runs; they are the same in every project and hold no project
-     code;
+     `tools/__init__.py` that calls `core.install()`. Copy them from the core's template,
+     `templates/project/tools/` (`cp templates/project/tools/*.py projects/<name>/tools/`
+     from the core root, after creating `tools/`); they are the same in every project and
+     hold no project code;
    - `.gitignore` — at least `.tmp/`, `__pycache__/`, `*.pyc`, `*.pyo`, plus whatever the
      project writes.
 4. Run the project's own tests from its own folder:
