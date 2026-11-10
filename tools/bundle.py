@@ -115,8 +115,11 @@ def _copy_core(root: Path, target: Path) -> None:
         shutil.copy2(source, destination)
 
 
-def _ignore_project(_directory: str, names: list[str]) -> set[str]:
-    return {name for name in names if name in PROJECT_SKIP or name.endswith(".pyc")}
+def _ignore_project(directory: str, names: list[str]) -> set[str]:
+    skip = {name for name in names if name in PROJECT_SKIP or name.endswith(".pyc")}
+    if ".git" in names and (Path(directory) / ".git").is_file():
+        skip.add(".git")  # a gitfile points outside the bundle: never ship it
+    return skip
 
 
 def _gitdirs(repo_git: Path) -> list[Path]:
@@ -177,7 +180,7 @@ def _check_name(name: str) -> str:
     return name
 
 
-def _check_out(root: Path, target: Path) -> None:
+def _check_out(root: Path, target: Path, project: Path | None = None) -> None:
     """Refuse a target that the copy would run into."""
     if target == root:
         raise ValueError(f"--out must not be the workspace root itself: {target}")
@@ -187,6 +190,10 @@ def _check_out(root: Path, target: Path) -> None:
         raise ValueError(f"--out must not contain the workspace (--force would delete it): {target}")
     if _inside(target, root) and not _inside(target, root / "out"):
         raise ValueError(f"--out must be outside {root} or under its out/: {target}")
+    if project is not None:
+        real = Path(project).resolve()  # projects/<name> may be a link to a real repository
+        if _inside(target, real) or _inside(real, target):
+            raise ValueError(f"--out must not overlap the project's real folder {real}: {target}")
 
 
 def build(root: Path, name: str, out: Path, *, force: bool = False,
@@ -199,7 +206,7 @@ def build(root: Path, name: str, out: Path, *, force: bool = False,
         raise FileNotFoundError(f"no project folder: {project}")
 
     target = (Path(out).resolve() / name)
-    _check_out(root, target)
+    _check_out(root, target, project)
     if target.exists():
         if not force:
             raise FileExistsError(f"{target} exists; pass --force to replace it")
@@ -251,6 +258,9 @@ def check(target: Path) -> list[str]:
         else:
             problems.append(f"{path}:{number}: possible {rule} (value hidden)")
     for repo in sorted((target / "projects").glob("*/.git")):
+        if repo.is_file():
+            problems.append(f"{repo.relative_to(target).as_posix()} is a link file")
+            continue
         if not repo.is_dir():
             continue
         for gitdir in _gitdirs(repo):

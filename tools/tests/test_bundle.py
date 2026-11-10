@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -174,6 +175,55 @@ class TestBuild(unittest.TestCase):
                 bundle._check_out(root, root / "projects" / "demo")
             self.assertTrue((root / "AGENTS.md").is_file())
             self.assertTrue((root / "projects" / "demo" / "AGENTS.md").is_file())
+
+    def _link(self, link: Path, real: Path) -> bool:
+        """Make ``link`` point at ``real``; False when neither a symlink nor a junction works."""
+        try:
+            link.symlink_to(real, target_is_directory=True)
+            return True
+        except (OSError, NotImplementedError):
+            pass
+        if sys.platform == "win32":
+            done = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(real)],
+                                  capture_output=True)
+            return done.returncode == 0 and link.exists()
+        return False
+
+    def test_refuses_an_out_under_a_linked_projects_real_folder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            real = Path(tmp) / "real-demo"
+            write(real / "AGENTS.md", "# project rules\n")
+            if not self._link(root / "projects" / "demo", real):
+                self.skipTest("neither symlinks nor junctions can be made here")
+            try:
+                with self.assertRaises(ValueError):
+                    bundle.build(root, "demo", real / "out", force=True, run_tests=False)
+                self.assertTrue((real / "AGENTS.md").is_file())
+                self.assertFalse((real / "out").exists())
+            finally:
+                try:
+                    (root / "projects" / "demo").unlink()
+                except OSError:
+                    (root / "projects" / "demo").rmdir()  # junction
+
+    def test_a_gitfile_is_not_shipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            git_entry = root / "projects" / "demo" / ".git"
+            _remove = [p for p in sorted(git_entry.rglob("*"), reverse=True)]
+            for p in _remove:
+                p.unlink() if p.is_file() else p.rmdir()
+            git_entry.rmdir()
+            write(git_entry, "gitdir: ../../elsewhere\n")
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            self.assertFalse((target / "projects" / "demo" / ".git").exists())
+            write(target / "projects" / "demo" / ".git", "gitdir: ../../elsewhere\n")
+            problems = bundle.check(target)
+            self.assertEqual(problems, ["projects/demo/.git is a link file"])
 
 
 class TestCheck(unittest.TestCase):
