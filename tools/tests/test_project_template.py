@@ -162,6 +162,25 @@ class TestLinkedProject(unittest.TestCase):
         found = self.core.install(self.link)
         self.assertEqual((found.path, found.origin), (self.ws, "parent"))
 
+    def test_bash_cd_into_the_link_needs_the_settings_pointer(self):
+        bash = shutil.which("bash")
+        if not bash:
+            self.skipTest("bash is not on PATH")
+        shutil.copy(TEMPLATE / "core.py", self.repo / "tools" / "core.py")
+        probe = "\n".join([
+            "import importlib.util, pathlib",
+            "here = pathlib.Path(__file__).parent",
+            "spec = importlib.util.spec_from_file_location('c', here / 'core.py')",
+            "module = importlib.util.module_from_spec(spec)",
+            "spec.loader.exec_module(module)",
+            "module.install()", ""])
+        (self.repo / "tools" / "probe.py").write_text(probe, encoding="utf-8")
+        command = "cd '%s' && '%s' tools/probe.py" % (
+            self.link.as_posix(), Path(sys.executable).as_posix())
+        done = subprocess.run([bash, "-c", command], capture_output=True, text=True)
+        self.assertNotEqual(done.returncode, 0, "bash keeps the link path: nothing to document")
+        self.assertIn("no core found", done.stderr)
+
     def test_real_script_launches_use_the_settings_pointer(self):
         shutil.copy(TEMPLATE / "core.py", self.repo / "tools" / "core.py")
         probe = "\n".join([

@@ -40,7 +40,8 @@ enters the core's history.
      `templates/project/tools/` (`cp templates/project/tools/*.py projects/<name>/tools/`
      from the core root, after creating `tools/`); they are the same in every project and
      hold no project code;
-   - `.gitignore` — at least `.tmp/`, `__pycache__/`, `*.pyc`, `*.pyo`, plus whatever the
+   - `.gitignore` — at least `.tmp/`, `__pycache__/`, `*.pyc`, `*.pyo`, `settings.json` (it may hold this machine's
+     absolute core path), plus whatever the
      project writes.
 4. Run the project's own tests from its own folder:
    ```bash
@@ -64,7 +65,9 @@ environment variable, then the project's `settings.json` (`"core"`), then upward
 (`parent`) from the path as given, links not resolved, to the first folder that holds both
 `AGENTS.md` and `tools/secret.py`, and last (`parent-real`) the same walk on the resolved
 path. So a repo kept outside and reached as `<core>/projects/X` (a junction or symlink)
-finds the core; started from its real path it needs `CORE` or `"core"`. The `vendor/` copy is
+finds the core; started from its real path it needs `CORE` or `"core"`. A junction launch
+from cmd, Explorer or an absolute path works by itself; in Git Bash, as on Linux and macOS,
+the current folder is physical, so set `"core"` in `settings.json` or set `CORE`. The `vendor/` copy is
 optional, and `tools/bundle.py` does not make one: a bundle carries the whole core
 instead. Bundling a project that has its own `vendor/` core is refused.
 

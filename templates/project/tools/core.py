@@ -14,10 +14,10 @@ Same file in every project; it holds no project code.  Copied from
 4. ``parent``  -- the first folder above the project that holds ``AGENTS.md`` and
    ``tools/secret.py``, walking the path as given (absolute, links NOT resolved), so a
    project reached through ``core/projects/X`` (a junction or symlink to a repo kept
-   elsewhere) finds the core.  On Windows a junction launch works by itself.  On Linux
-   and macOS the current folder is physical, so a relative launch inside a symlinked
-   project needs the ``"core"`` key (3) in that project's ``settings.json``;
-   ``tools/link.py`` will write it, until then set it by hand or set ``CORE``;
+   elsewhere) finds the core.  A junction launch from cmd, Explorer or an absolute path
+   works by itself.  In Git Bash, as on Linux and macOS, the current folder is physical,
+   so set ``"core"`` in settings.json (3) or set ``CORE``; ``tools/link.py`` will write
+   the key, until then set it by hand;
 5. ``parent-real`` -- the same walk on the resolved path: the given path goes through a
    link and the core is above the link's target.
 

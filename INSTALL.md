@@ -228,14 +228,15 @@ mklink /J projects %USERPROFILE%\repos
 ```
 
 A project reached through the link finds the core by walking up the path as you typed
-it (links are not resolved); on Windows a junction launch works by itself. Order:
-`vendor/`, `CORE`, `settings.json`, upward walk on the given path, upward walk on the
-resolved path (`docs/procedures/new-project.md`). The link's own location wins (a
-workspace above it is trusted as the core), and `CORE` must be an absolute path.
+it (links are not resolved). A junction launch from cmd, Explorer or an absolute path
+works by itself. In Git Bash, as on Linux and macOS, the current folder is physical, so
+set `"core"` in `settings.json` or set `CORE`. Order: `vendor/`, `CORE`, `settings.json`,
+upward walk on the given path, upward walk on the resolved path
+(`docs/procedures/new-project.md`). The link's own location wins (a workspace above it is
+trusted as the core), and `CORE` must be an absolute path.
 
-Started from the real path (for example `C:\repos\X`), or on Linux and macOS with a
-relative launch inside a symlinked project (the current folder is then physical), the
-walk cannot see the link: set `"core": "<path to the workspace>"` in the project's
+Started from the real path (for example `C:\repos\X`) or from a physical current folder
+(Git Bash, Linux, macOS) the walk cannot see the link: set `"core": "<path to the workspace>"` in the project's
 `settings.json` or set `CORE`. `tools/link.py` will write that key for you; until then
 set it by hand.
 
