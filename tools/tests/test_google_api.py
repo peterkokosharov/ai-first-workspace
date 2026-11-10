@@ -106,6 +106,13 @@ class BuildRequestTests(unittest.TestCase):
         _, _, payload = g.build_request(DOC, "items.get", {"id": "1"}, {"title": "t"})
         self.assertIsNone(payload)
 
+    def test_missing_path_param(self):
+        with self.assertRaises(g.UsageError) as ctx:
+            g.build_request(DOC, "items.get", {}, None)
+        self.assertIn("missing path parameter: id", str(ctx.exception))
+        with self.assertRaises(g.UsageError):
+            g.build_request(DOC, "items.export", {}, None)
+
     def test_root_url_fallback(self):
         doc = {"rootUrl": "https://r.test/", "servicePath": "api/",
                "methods": {"ping": {"httpMethod": "GET", "path": "ping"}}}
@@ -146,6 +153,12 @@ class ErrorDetailTests(unittest.TestCase):
 
 class AuthTests(unittest.TestCase):
     CREDS = {g.KEY_CLIENT_ID: "id", g.KEY_CLIENT_SECRET: "sec"}
+
+    def setUp(self):
+        patcher = mock.patch.object(g, "HTTPServer")
+        server = patcher.start()
+        server.return_value.server_address = ("127.0.0.1", 1)
+        self.addCleanup(patcher.stop)
 
     def _args(self):
         return argparse.Namespace(scopes=None, port=0, timeout=1, login_hint=None,
@@ -236,7 +249,7 @@ class ExitCodeTests(unittest.TestCase):
 
     def test_missing_secret_exits_1_without_tuple(self):
         with mock.patch.object(g, "discovery_document", return_value=DOC):
-            code, err = self._main(["call", "api", "v1", "items.get"], FakeBackend())
+            code, err = self._main(["call", "api", "v1", "items.get", "--param", "id=1"], FakeBackend())
         self.assertEqual(code, g.EXIT_NOT_CONFIGURED)
         self.assertNotIn("('", err)
 
@@ -290,6 +303,8 @@ class LogoutTests(unittest.TestCase):
         with self.assertRaises(g.GoogleError) as ctx:
             g.cmd_logout(argparse.Namespace(), backend)
         self.assertIn("by hand", str(ctx.exception))
+        self.assertIn(g.KEY_REFRESH, str(ctx.exception))
+        self.assertIn(g.KEY_SCOPES, str(ctx.exception))
         self.assertEqual(ctx.exception.exit_code, g.EXIT_API)
 
 

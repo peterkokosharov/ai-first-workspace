@@ -34,6 +34,7 @@ Examples:
     python3 tools/google_api.py call drive v3 files.list \
         --param q="name contains 'invoice'"
     python3 tools/google_api.py call gmail v1 users.messages.send --body @mail.json
+        # (needs: auth --scopes ...,https://www.googleapis.com/auth/gmail.send)
 
 Notes:
     * ``--param`` fills the ``{name}`` / ``{+name}`` parts of the method path; every other
@@ -53,6 +54,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import secrets
 import sys
 import time
@@ -385,6 +387,10 @@ def build_request(document: dict, method: str, params: dict, body: dict | None):
         else:
             query[name] = value
 
+    missing = re.search(r"\{\+?([^}]+)\}", path)
+    if missing:
+        raise UsageError(f"missing path parameter: {missing.group(1)}")
+
     payload = body if http_method in ("POST", "PUT", "PATCH") else None
 
     base = document.get("baseUrl")
@@ -494,6 +500,7 @@ def cmd_logout(args, backend) -> int:
         sys.path.insert(0, str(TOOLS_DIR))
     import secret  # noqa: E402
 
+    failed = []
     for key in (KEY_REFRESH, KEY_SCOPES):
         try:
             backend.delete(secret.validate_path(key))
@@ -501,9 +508,11 @@ def cmd_logout(args, backend) -> int:
         except secret.NotFoundError:
             print(f"already absent {key}")
         except secret.BackendError as exc:
-            raise GoogleError(
-                f"cannot delete {key}: {exc}; remove it by hand in the secret store"
-            ) from None
+            failed.append(f"{key} ({exc})")
+    if failed:
+        raise GoogleError(
+            "cannot delete " + ", ".join(failed) + "; remove by hand in the secret store"
+        )
     return EXIT_OK
 
 
