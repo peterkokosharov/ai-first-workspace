@@ -157,7 +157,7 @@ a very long time or repeat themselves. Then:
 AGENTS.md      the rules for every agent      CLAUDE.md / GEMINI.md  pointers to AGENTS.md
 INSTALL.md     step-by-step install           docs/design/ architecture and accessibility pages
 tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
-data/          inventory schema and seed      docs/design/ architecture and accessibility pages
+data/          inventory schema and seed
 docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub, orchestration, new project
 .claude/       Claude Code skills          .opencode/   opencode commands (both point to docs/procedures/)
 out/           reports and audits (not in git)

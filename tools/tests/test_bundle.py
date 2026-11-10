@@ -250,6 +250,19 @@ class TestCheck(unittest.TestCase):
             self.assertEqual(bundle.check(target),
                              ["nested git repository: projects/demo/sub/.git"])
 
+    def test_a_nested_git_file_is_reported_but_lookalikes_are_not(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "b"
+            demo = target / "projects" / "demo"
+            demo.mkdir(parents=True)
+            git(demo, "init", "-q")
+            write(demo / ".github" / "workflows" / "ci.yml")
+            write(demo / ".gitignore", "out/\n")
+            commit_all(demo, "first")
+            write(demo / "sub" / ".git", "gitdir: ../elsewhere\n")
+            self.assertEqual(bundle.check(target),
+                             ["nested git repository: projects/demo/sub/.git"])
+
     def test_a_secret_in_the_bundled_core_is_reported(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "b"

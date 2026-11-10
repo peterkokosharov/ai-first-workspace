@@ -8,7 +8,7 @@ Mermaid source plus a committed SVG. On Windows type `py` instead of `python3`.
 - Never publish or upload a page to any hosted service (the agent host's page or artifact
   publishing tools, gists, pastebins, cloud docs) unless the user explicitly asks for it in
   that conversation.
-- After building, open the local file yourself: Windows `start "" doc\<page>.html`,
+- After building, open the local file yourself: Windows `start "" docs\design\<page>.html`,
   Git Bash `cmd //c start "" "docs/design/<page>.html"`, macOS `open docs/design/<page>.html`,
   Linux `xdg-open docs/design/<page>.html`.
 - A diagram shows the current code. Parts that are only planned are marked "planned".
