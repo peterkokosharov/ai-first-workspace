@@ -23,16 +23,18 @@
 - Сигурно място за ключове за API: ключът остава в собственото хранилище на операционната
   система (Windows Credential Manager, KWallet, GNOME Keyring), никога във файл в тази
   папка.
-- Списък с безплатни модели, които може да ползвате (`kb/`), плюс малки инструменти за
-  проверка на компютъра, за съхраняване на ключове и за свързване на opencode с моделите.
+- Малки инструменти, които събират безплатните модели на NVIDIA и свързват opencode
+  с тях, плюс проверка на компютъра.
 - Проверка за ключове, която не ви позволява да комитнете ключ по невнимание (git hook;
   иска Python: без Python само предупреждава и пуска комита).
 
 Модели, всички безплатни: собствените безплатни модели на opencode (не искат ключ), около
 20 **безплатни модела на NVIDIA** (build.nvidia.com, безплатен акаунт и ключ), и по избор
 безплатните планове на Gemini и ChatGPT (те имат строги дневни лимити). Платен доставчик
-не е нужен. Списъкът с модели е в [`kb/`](kb/README.md); събран е от build.nvidia.com с
-`tools/robota.py` на 2026-11-08, тоест остарява: модели идват и си отиват.
+не е нужен. Списъкът с модели се строи от `tools/robota.py` и `tools/gen_models_xml.py`
+в папката, зададена с `paths.kb` в `settings.json` (празно значи `kb/` до инструментите);
+в това работно пространство той е в моделната лаборатория, `projects/models/kb/`. Събран е
+от build.nvidia.com на 2026-11-08, тоест остарява: модели идват и си отиват.
 
 ## Начало на Windows (3 стъпки)
 
@@ -162,7 +164,7 @@ opencode на Windows; ако вашият opencode чете друга папк
 
 ```text
 AGENTS.md      the rules for every agent      CLAUDE.md / GEMINI.md  pointers to AGENTS.md
-INSTALL.md     step-by-step install           kb/          the free model list
+INSTALL.md     step-by-step install           doc/         architecture and accessibility pages
 tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
 data/          inventory schema and seed      doc/         architecture and accessibility pages
 docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub,
@@ -177,7 +179,7 @@ projects/      your own projects, one folder each (not in this repo's git)
 компютъра), `ping.py` / `ping_direct.py` (проба на модел), `setup_nvidia.py` /
 `setup_providers.py` / `opencode_config.py` (свързване на opencode с доставчици),
 `run_opencode.py` (стартира opencode с ключовете от хранилището на операционната система),
-`robota.py` + `gen_models_xml.py` (обновяване на `kb/`), `secret_scan.py` (проверката при
+`robota.py` + `gen_models_xml.py` (обновяване на списъка с модели), `secret_scan.py` (проверката при
 комит и push), `bundle.py` (ядрото плюс един проект в една папка, за предаване).
 
 Пускане на тестовете: `python3 -m unittest discover -s tools/tests -t . -v` (`py` на

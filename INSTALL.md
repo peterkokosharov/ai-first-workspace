@@ -145,8 +145,9 @@ does not protect you; install Python or scan by hand before you push.
 
 ## 4. Add your AI provider key
 
-The main provider is NVIDIA (free account at build.nvidia.com, about 20 free models,
-see `kb/`). Gemini and ChatGPT free plans are optional and have tight limits.
+The main provider is NVIDIA (free account at build.nvidia.com, about 20 free models;
+the list is built by `tools/robota.py` into `paths.kb` from `settings.json`, `kb/` by
+default). Gemini and ChatGPT free plans are optional and have tight limits.
 
 ```bash
 # NVIDIA (free)

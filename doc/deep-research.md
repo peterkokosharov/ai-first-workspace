@@ -25,10 +25,10 @@
 | `autodiscovery.py` | Machine discovery (OS, RAM, CPU, Python, git, bash, node, docker, opencode, etc.) | ✅ |
 | `ping.py` | Ping model via OpenCode, verify against inventory DB | ✅ |
 | `ping_direct.py` | Ping LLM providers directly via HTTP (gemini, nvidia, deepseek, mistral) | ✅ |
-| `setup_nvidia.py` | Configure OpenCode providers with free NVIDIA models from `kb/models.xml` | ✅ |
+| `setup_nvidia.py` | Configure OpenCode providers with free NVIDIA models from `paths.kb` | ✅ |
 | `setup_providers.py` | Configure OpenCode providers from keys in inventory | ✅ |
 | `robota.py` | Scrape build.nvidia.com for free-endpoint models | ✅ |
-| `gen_models_xml.py` | Generate `kb/models.xml` from scraped index | ✅ |
+| `gen_models_xml.py` | Generate `models.xml` in `paths.kb` from the scraped index | ✅ |
 | `opencode_config.py` | Shared helpers for OpenCode config manipulation | ✅ |
 | `run_opencode.py` | Start OpenCode with keys from OS secret store | ❌ no tests |
 | `secret_scan.py` | Git hook: refuse commits/pushes containing API keys | ✅ |
@@ -38,7 +38,8 @@
 ### Vendored Library (`lib/kikolib/`)
 14 modules: keystore, factory, http_client, server, sse, tokens, retry, config, dotenv, posix_utils, native_utils, yaml_lite, tomlwrite, websocket
 
-### Knowledge Base (`kb/`)
+### Knowledge Base (`paths.kb`, the model lab's `kb/`)
+Not part of the core: the model lab (`projects/models/`) owns the collected pages.
 - `models.xml` — 23 free NVIDIA models scraped from build.nvidia.com
 - `free_endpoints_index.md` — index of free endpoints
 - `md/` and `html/` — 23 files each (Markdown + raw HTML per model)

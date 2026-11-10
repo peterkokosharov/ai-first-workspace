@@ -72,7 +72,9 @@ Read this whole file first. A line "Doing X -> file" means: read that file befor
   `tools/<name>.py`; do not run a tool only to see its help.
 - Machines, providers, models, key names: `py tools/inventory.py tables`, then
   `list <table>`. Check there before asking the user. Missing database: `inventory.py init`.
-- `kb/` free model list. `doc/` architecture pages. `out/` reports and audits (not in git).
+- The free model list lives in the model lab, `projects/models/kb/`; the local
+  `settings.json` points at it with `paths.kb` (empty = `kb/` next to `tools/`).
+  `doc/` architecture pages. `out/` reports and audits (not in git).
 - `projects/<name>/` one folder per user project, its own git repository and its own
   `AGENTS.md`. It runs on this core: `tools/core.py`, `tools/secret.py` and
   `tools/__init__.py` are the glue, and `google_api.py` is a copy of the core's original

@@ -20,16 +20,18 @@ the models run in the cloud on free tiers.
 - Rules the agent follows (`AGENTS.md`), so every agent behaves the same way.
 - A safe place for API keys: the key stays in the operating system's own secret store
   (Windows Credential Manager, KWallet, GNOME Keyring), never in a file in this folder.
-- A list of free models you can use (`kb/`), plus small tools to check your machine,
-  store keys and connect opencode to the models.
+- Small Python tools that collect the free NVIDIA models and connect opencode to
+  them, plus a check of your machine.
 - A secret check that stops you from committing a key by accident (a git hook; it
   needs Python: without Python it only warns and lets the commit through).
 
 Models, all free: opencode's own free models (no key needed), about 20 **free NVIDIA
 models** (build.nvidia.com, free account and key), and optionally the free plans of
 Gemini and ChatGPT (they have tight daily limits). No paid provider is needed. The
-model list lives in [`kb/`](kb/README.md); it was collected from build.nvidia.com with
-`tools/robota.py` on 2026-11-08, so it ages: models come and go.
+model list is built with `tools/robota.py` and `tools/gen_models_xml.py` into the
+folder named by `paths.kb` in `settings.json` (empty means `kb/` next to the tools); in
+this workspace it lives in the model lab, `projects/models/kb/`. It was collected from
+build.nvidia.com on 2026-11-08, so it ages: models come and go.
 
 ## Start on Windows (3 steps)
 
@@ -153,7 +155,7 @@ a very long time or repeat themselves. Then:
 
 ```text
 AGENTS.md      the rules for every agent      CLAUDE.md / GEMINI.md  pointers to AGENTS.md
-INSTALL.md     step-by-step install           kb/          the free model list
+INSTALL.md     step-by-step install           doc/         architecture and accessibility pages
 tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
 data/          inventory schema and seed      doc/         architecture and accessibility pages
 docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub, orchestration, new project
@@ -166,7 +168,7 @@ Tools: `secret.py` (keys), `inventory.py` (local SQLite list of machines, servic
 providers, models, keys and projects), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test a model),
 `setup_nvidia.py` / `setup_providers.py` / `opencode_config.py` (connect opencode to providers),
 `run_opencode.py` (start opencode with the keys from the OS store),
-`robota.py` + `gen_models_xml.py` (refresh `kb/`), `secret_scan.py` (the commit and push check),
+`robota.py` + `gen_models_xml.py` (refresh the model list), `secret_scan.py` (the commit and push check),
 `bundle.py` (the core plus one project in a single folder, for handover).
 
 Run the tests: `python3 -m unittest discover -s tools/tests -t . -v` (`py` on Windows).

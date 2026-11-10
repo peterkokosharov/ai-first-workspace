@@ -2,7 +2,9 @@
 # Copyright (c) 2026 Peter Kokosharov
 # SPDX-License-Identifier: MIT
 # Author: Peter Kokosharov <peter.kokosharov@gmail.com>
-"""Generate kb/models.xml from kb/free_endpoints_index.md.
+"""Generate models.xml from free_endpoints_index.md in the model list folder.
+
+The folder is ``paths.kb`` from settings.json (empty = ``kb/`` next to this file).
 
 Each <model> element contains:
   id        - model alias
@@ -14,11 +16,17 @@ Each <model> element contains:
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-INDEX = ROOT / "kb" / "free_endpoints_index.md"
-OUT = ROOT / "kb" / "models.xml"
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
+import workspace_settings  # noqa: E402  (shared helper next to this file)
+
+KB = workspace_settings.kb_dir()
+INDEX = KB / "free_endpoints_index.md"
+OUT = KB / "models.xml"
 
 ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 

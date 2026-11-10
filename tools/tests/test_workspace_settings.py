@@ -55,6 +55,22 @@ class TestWorkspaceSettings(unittest.TestCase):
             self.assertEqual(ws.git_settings({}),
                              {"remote_url": "", "remote_user": "", "token_key": ""})
 
+    def test_kb_dir_defaults_to_kb_next_to_tools(self):
+        self.assertEqual(ws.kb_dir({}), ws.ROOT / "kb")
+        self.assertEqual(ws.kb_dir({"paths": {"kb": "   "}}), ws.ROOT / "kb")
+        self.assertEqual(ws.kb_dir({"paths": {"kb": None}}), ws.ROOT / "kb")
+        self.assertEqual(ws.kb_dir({"paths": "nonsense"}), ws.ROOT / "kb")
+
+    def test_kb_dir_reads_relative_and_absolute_paths(self):
+        self.assertEqual(ws.kb_dir({"paths": {"kb": "projects/models/kb"}}),
+                         ws.ROOT / "projects" / "models" / "kb")
+        absolute = Path(tempfile.gettempdir()) / "kb"
+        self.assertEqual(ws.kb_dir({"paths": {"kb": str(absolute)}}), absolute)
+
+    def test_example_has_a_paths_section(self):
+        data = ws.load(ws.SETTINGS_EXAMPLE)
+        self.assertEqual(data["paths"], {"kb": ""})
+
     def test_file_with_bom_is_read(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "settings.json"

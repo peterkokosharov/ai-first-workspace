@@ -2,7 +2,9 @@
 # Copyright (c) 2026 Peter Kokosharov
 # SPDX-License-Identifier: MIT
 # Author: Peter Kokosharov <peter.kokosharov@gmail.com>
-"""Configure OpenCode for all free NVIDIA models in kb/models.xml.
+"""Configure OpenCode for all free NVIDIA models in the model list (models.xml).
+
+The folder is ``paths.kb`` from settings.json (empty = ``kb/`` next to this file).
 
 Writes ONE provider ``nvidia`` with all models into OpenCode's global config
 (``~/.config/opencode`` by default; see ``opencode_config.config_file()``), in the
@@ -38,7 +40,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import opencode_config  # noqa: E402  (shared helpers next to this file)
-KB_XML = ROOT / "kb" / "models.xml"
+import workspace_settings  # noqa: E402
+KB_XML = workspace_settings.kb_dir() / "models.xml"
 INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(ROOT / "data" / "inventory.db")))
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 PROVIDER_ID = "nvidia"
@@ -52,7 +55,7 @@ CONFIG_DIR = CONFIG_FILE.parent
 
 
 def parse_models(xml_path: Path) -> list[dict]:
-    """Parse kb/models.xml into a list of {alias, full_alias, full_name, api_id}.
+    """Parse models.xml into a list of {alias, full_alias, full_name, api_id}.
 
     ``api_id`` is the model id the NVIDIA API expects (``"model": "vendor/name"`` in
     the sample code of each entry); without sample code it falls back to

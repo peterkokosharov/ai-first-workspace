@@ -12,5 +12,8 @@
     "opencode": "",
     "merman": "",
     "docker": ""
+  },
+  "paths": {
+    "kb": ""
   }
 }

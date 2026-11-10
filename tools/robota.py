@@ -8,8 +8,10 @@ Walks the listing pages (?page=1..N), finds model cards that advertise a
 ``free endpoint`` (usable with a free NVIDIA_API_KEY), visits each model's
 detail page, and writes:
 
-  kb/html/<page>-<slug>.html   -- raw detail-page HTML
-  kb/md/<slug>.md              -- extracted alias, full name, endpoint
+  <kb>/html/<page>-<slug>.html   -- raw detail-page HTML
+  <kb>/md/<slug>.md              -- extracted alias, full name, endpoint
+
+``<kb>`` is ``paths.kb`` from settings.json (empty = ``kb/`` next to this file).
 
 Skips models that are not LLMs or that carry a notice such as
 "API access for this model is not available yet" /
@@ -30,8 +32,11 @@ ROOT = Path(__file__).resolve().parents[1]
 LIB = ROOT / "lib"
 if str(LIB) not in sys.path:
     sys.path.insert(0, str(LIB))
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
 
 from kikolib.http_client import client, HttpError  # noqa: E402
+import workspace_settings  # noqa: E402  (shared helper next to this file)
 
 BASE = "https://build.nvidia.com"
 LISTING_URL = BASE + "/models?page={page}"
@@ -40,7 +45,7 @@ LISTING_URL = BASE + "/models?page={page}"
 # folder layout
 # ---------------------------------------------------------------------------
 
-KB = ROOT / "kb"
+KB = workspace_settings.kb_dir()
 KB_HTML = KB / "html"
 KB_MD = KB / "md"
 
@@ -343,7 +348,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="robota.py",
-        description="Scrape build.nvidia.com models with free endpoints into kb/.",
+        description="Scrape build.nvidia.com models with free endpoints into the model list folder.",
     )
     parser.add_argument(
         "--pages",
@@ -381,7 +386,7 @@ def main(argv: list[str] | None = None) -> int:
             total += 1
 
     write_index(entries)
-    print(f"[robota] done. {total} model(s) written to kb/md/ and kb/html/")
+    print(f"[robota] done. {total} model(s) written to {KB_MD} and {KB_HTML}")
     return 0
 
 

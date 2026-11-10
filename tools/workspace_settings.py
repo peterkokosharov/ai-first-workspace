@@ -13,6 +13,9 @@ template and is read when ``settings.json`` is missing. Sections:
   and ``token_key``, the inventory name of the GitHub token this repo uses (the
   token itself is kept by git's credential helper, not by tools/secret.py).
 * ``runtime``: older name of ``tools``; still read. A non-empty ``tools`` value wins.
+* ``paths``: folders that are not part of the core's code. ``kb`` is the folder with
+  the model pages and ``models.xml``; empty means ``kb/`` next to ``tools/``. The model
+  lab keeps it in its own project, so a local settings file points there.
 
 Nothing here writes a file.
 """
@@ -82,6 +85,20 @@ def all_commands(data: dict | None = None) -> dict:
     for section in ("runtime", "tools"):
         names += [n for n in _section(data, section) if n not in names]
     return {name: tool_command(name, data) for name in names}
+
+
+def kb_dir(data: dict | None = None) -> Path:
+    """Folder that holds the model pages, the endpoint index and ``models.xml``.
+
+    ``paths.kb`` from the settings file, relative to the workspace root; empty or
+    missing means ``kb/`` next to ``tools/``.  The folder is not created here.
+    """
+    data = load() if data is None else data
+    value = _section(data, "paths").get("kb")
+    if not isinstance(value, str) or not value.strip():
+        return ROOT / "kb"
+    path = Path(value.strip()).expanduser()
+    return path if path.is_absolute() else ROOT / path
 
 
 def git_settings(data: dict | None = None) -> dict:
