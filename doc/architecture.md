@@ -180,7 +180,24 @@ erDiagram
         int machine_id FK
         text status
     }
+
+    projects {
+        int id PK
+        text name
+        text title
+        text kind
+        text path
+        int repo
+        text status
+        text notes
+    }
 ```
+
+The `projects` table stands alone: one row per folder under `projects/`, no foreign keys.
+It records the folder, whether that folder is its own git repository (`repo`), and its
+state. The folder itself — its documents, its tools and its own history — is not tracked
+by this repository: see `docs/procedures/new-project.md`. Add a row with
+`python3 tools/inventory.py add-project <name> --title "<human name>" --kind <kind>`.
 
 ## 5. Auto-Discovery Procedure
 

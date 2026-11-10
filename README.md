@@ -156,8 +156,8 @@ out/           reports and audits (not in git)
 projects/      your own projects, one folder each (not in this repo's git)
 ```
 
-Tools: `secret.py` (keys), `inventory.py` (local SQLite list of machines, providers,
-models), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test a model),
+Tools: `secret.py` (keys), `inventory.py` (local SQLite list of machines, services,
+providers, models, keys and projects), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test a model),
 `setup_nvidia.py` / `setup_providers.py` / `opencode_config.py` (connect opencode to providers),
 `run_opencode.py` (start opencode with the keys from the OS store),
 `robota.py` + `gen_models_xml.py` (refresh `kb/`), `secret_scan.py` (the commit and push check).
