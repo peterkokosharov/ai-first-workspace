@@ -1,5 +1,11 @@
 # AI-first workspace
 
+**Say hello first.** Open this folder with opencode and write one word in the chat —
+`hi`, `здр`, `привет` — in your own language, and ask in the same line how to work with
+this thing. The agent answers in the language you write in.
+
+*Other languages: [Български](README-bg.md).*
+
 **What it is:** a ready-made folder for writing a program (or a book) together with an
 AI agent, for **$0**. Download the folder, open it with **opencode** and its free
 models, and the agent finds its rules, tools and model list inside. Copy the folder to
@@ -160,7 +166,8 @@ Tools: `secret.py` (keys), `inventory.py` (local SQLite list of machines, servic
 providers, models, keys and projects), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test a model),
 `setup_nvidia.py` / `setup_providers.py` / `opencode_config.py` (connect opencode to providers),
 `run_opencode.py` (start opencode with the keys from the OS store),
-`robota.py` + `gen_models_xml.py` (refresh `kb/`), `secret_scan.py` (the commit and push check).
+`robota.py` + `gen_models_xml.py` (refresh `kb/`), `secret_scan.py` (the commit and push check),
+`bundle.py` (the core plus one project in a single folder, for handover).
 
 Run the tests: `python3 -m unittest discover -s tools/tests -t . -v` (`py` on Windows).
 
@@ -180,12 +187,13 @@ work and its history never carries another business's names.
 
 That is deliberate:
 
-- a project can be copied out, handed over or sold as a bundle — its rules, documents,
-  tools, tests and history travel with it;
+- a project can be copied out, handed over or sold as a bundle:
+  `py tools/bundle.py <name>` puts the core and the project into one folder and runs the
+  project's tests inside it;
 - it can be pushed to its own remote (a client's GitHub organisation) without touching this
   repository, and this repository can be pushed without publishing the project;
-- this workspace still works if a project is deleted, and a project still works when this
-  folder is not there. When both are present, this folder is a helper, never a dependency.
+- this workspace still works if a project is deleted. A project does need the core at
+  runtime — it is the framework — and the bundle carries the core with it.
 
 Record a project in the local list with `py tools/inventory.py add-project <name>`. The
 whole procedure, including what must be checked before a folder is handed over:

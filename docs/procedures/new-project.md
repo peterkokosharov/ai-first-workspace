@@ -1,8 +1,8 @@
 # Start a project under projects/
 
 Goal: add a project as its own folder with its own git repository, so that it can be
-copied, handed over or sold on its own, and so that one client's work never enters the
-core's history.
+copied, handed over or sold together with the core, and so that one client's work never
+enters the core's history.
 
 ## Why a project has its own repository
 
@@ -14,9 +14,9 @@ core's history.
 - `projects/` is gitignored in the core (`.gitignore`, line `/projects`), so the core never
   tracks a project. Every project folder is its own repository, root at that folder, and
   its history belongs to the project alone.
-- The dependency runs one way only. The project must work when the core is absent; the
-  core must work when the project is absent. When both are present the core is a helper,
-  never a dependency.
+- The dependency runs one way only: the core never needs a project, and a project does
+  need the core at runtime. Handing a project over means handing over the core with it;
+  `tools/bundle.py` does exactly that in one folder.
 - One step, one commit, inside the project's own repository. The core's commits never
   describe project work.
 
@@ -35,6 +35,10 @@ core's history.
 3. Create what the project needs and nothing more:
    - `doc/` — plans, setup pages, decisions;
    - `tools/` — only the tools this project uses, standard library only, plus `tools/tests/`;
+   - the three glue files that reach the core: `tools/core.py`, `tools/secret.py` and a
+     `tools/__init__.py` that calls `core.install()`. Copy them from the `tools/` of a
+     project that already runs; they are the same in every project and hold no project
+     code;
    - `.gitignore` — at least `.tmp/`, `__pycache__/`, `*.pyc`, `*.pyo`, plus whatever the
      project writes.
 4. Run the project's own tests from its own folder:
@@ -50,13 +54,26 @@ core's history.
    This writes only `data/inventory.db` (gitignored). It commits nothing.
 6. Commit inside the project, by file name, following `docs/procedures/commit.md`.
 
-## Copying a core tool into a project
+## The core is the runtime
 
-If a project needs one of the core's tools, copy the file into the project's `tools/`,
-give it tests there, and write one line in the project's `doc/` saying where the copy came
-from and that the core's copy is the original. Keep the two identical while they are
-identical; when the project changes its copy, record why. Never import from the parent:
-`import` across the boundary breaks the handover.
+A project runs on the core. `tools/core.py` in the project finds it, and
+`tools/__init__.py` registers the core's secret store as the module `secret`, which
+`google_api.py` imports. Search order: `<project>/vendor/` first, then the `CORE`
+environment variable, then the project's `settings.json` (`"core"`), then upwards to the
+first folder that holds both `AGENTS.md` and `tools/secret.py`. The `vendor/` copy is
+optional, and `tools/bundle.py` does not make one: a bundle carries the whole core
+instead.
+
+Three rules follow:
+
+- Do not copy a core tool into a project so that it starts. If a project needs one more
+  shared tool, put that tool in the core and let the project reach it. The only exception
+  is the three glue files above: they are the border, not a copy of a tool.
+- Do copy the whole runtime at handover: `py tools/bundle.py <name>` in the core builds
+  one folder with the core and the project, and runs the project's tests inside it.
+- If a project holds a copy of a core tool (`google_api.py` is one), the core's copy is
+  the original. Change the core first, copy the file over, and let the project's test
+  fail when the two differ (line endings aside: git rewrites them on checkout).
 
 ## Never
 
@@ -73,17 +90,23 @@ identical; when the project changes its copy, record why. Never import from the 
 
 - Push a project to its own remote by `docs/procedures/github-deploy.md`, after the
   owner's confirmation. Pushing the core never publishes a project.
-- Handing over or selling: copy the folder. It must contain its rules, its documents, its
-  tools, its tests and its history. Check before it leaves:
-  - `git log` shows the history and `git status` is clean;
-  - `py -m unittest discover -s tools/tests -t .` passes in the copied folder alone;
-  - no path points outside the folder, no `import` of a parent package, no secret inside.
+- Handing over or selling: build a bundle from the core, `py tools/bundle.py <name>`
+  (writes `out/bundles/<name>/`; `--force` replaces it). The bundle holds the core and
+  the project, and never `data/inventory.db`, `settings.json` or the core's own git
+  history. Check before it leaves:
+  - the script printed `tests:` and then `OK`;
+  - the project inside the bundle reaches the bundle's own core (`tools/bundle.py`
+    refuses to build one that reaches another);
+  - `git log` in the bundle's project shows its history and `git status` is clean;
+  - `LICENSE` (MIT) is at the top of the bundle;
+  - no secret inside.
 
 ## Checklist
 
 - [ ] `projects/<name>/AGENTS.md` exists and names the boundary.
 - [ ] `git init -b main` done inside the folder, first commit made.
 - [ ] `.gitignore` covers `.tmp/`, `__pycache__/` and what the project writes.
-- [ ] The project's tests pass from its own folder, with no parent present.
+- [ ] The project's tests pass inside the bundle (`tools/bundle.py` prints `tests:` and `OK`).
 - [ ] A row for it exists in the local database (`add-project`).
-- [ ] No secret, no excluded client material, no import from the core.
+- [ ] No secret, no excluded client material, no local file (`inventory.db`,
+      `settings.json`) in the bundle.

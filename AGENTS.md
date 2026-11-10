@@ -4,7 +4,8 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 ## Language
 - The user may write Bulgarian in Latin letters. Do not correct or comment on it.
 - Reply in Bulgarian, Cyrillic letters. (Other users: put your own language here.)
-- Every file, code comment and commit message is in English.
+- Every file, code comment and commit message is in English, except `README-bg.md`,
+  which is the Bulgarian translation of `README.md` and stays in sync with it.
 
 ## Orders and confirmation
 - Do only what the user asked. Start no other work on your own.
