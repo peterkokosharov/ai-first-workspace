@@ -78,8 +78,8 @@ Read this whole file first. A line "Doing X -> file" means: read that file befor
   `doc/` architecture pages. `out/` reports and audits (not in git).
 - `projects/<name>/` one folder per user project, its own git repository and its own
   `AGENTS.md`. It runs on this core: `tools/core.py`, `tools/secret.py` and
-  `tools/__init__.py` are the glue, and `google_api.py` is a copy of the core's original
-  (change the core, copy it over, never the reverse). Read the project's rules before
+  `tools/__init__.py` are the glue (template: `templates/project/tools/`); a project
+  imports core tools through it and never holds a copy of one. Read the project's rules before
   touching it; this file does not govern it. New project: docs/procedures/new-project.md.
 - Only free-tier models. No paid provider and no paid key without an explicit order.
 
