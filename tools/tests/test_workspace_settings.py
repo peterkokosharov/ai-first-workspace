@@ -78,5 +78,43 @@ class TestWorkspaceSettings(unittest.TestCase):
             self.assertEqual(ws.load(path), {"tools": {"git": "my-git"}})
 
 
+class TestShippedModelList(unittest.TestCase):
+    """A fresh clone has no kb/ and an empty paths.kb: the core's own list is used."""
+
+    def test_fresh_settings_use_the_shipped_list(self):
+        self.assertEqual(ws.models_xml({}), ws.ROOT / "data" / "models.xml")
+        self.assertEqual(ws.models_xml({"paths": {"kb": ""}}), ws.ROOT / "data" / "models.xml")
+
+    def test_setup_nvidia_finds_models_with_fresh_settings(self):
+        import io
+        from contextlib import redirect_stdout
+        from unittest import mock
+        import opencode_config
+        import setup_nvidia
+        with tempfile.TemporaryDirectory() as tmp:
+            config = Path(tmp) / "opencode.json"
+            out = io.StringIO()
+            with (mock.patch.object(ws, "load", return_value={}),
+                  mock.patch.object(setup_nvidia, "CONFIG_FILE", config),
+                  mock.patch.object(opencode_config, "stored_key_paths",
+                                    return_value=set()),
+                  redirect_stdout(out)):
+                code = setup_nvidia.main(["--dry-run"])
+            self.assertEqual(code, 0, out.getvalue())
+            self.assertIn("model(s) under providers.nvidia", out.getvalue())
+            self.assertFalse(config.exists())
+        models = setup_nvidia.parse_models(ws.ROOT / "data" / "models.xml")
+        self.assertGreaterEqual(len(models), 20)
+        self.assertTrue(all("/" in m["api_id"] for m in models))
+
+    def test_a_models_xml_in_paths_kb_wins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "models.xml").write_text("<models/>", encoding="utf-8")
+            self.assertEqual(ws.models_xml({"paths": {"kb": tmp}}), Path(tmp) / "models.xml")
+            empty = Path(tmp) / "none"
+            self.assertEqual(ws.models_xml({"paths": {"kb": str(empty)}}),
+                             ws.ROOT / "data" / "models.xml")
+
+
 if __name__ == "__main__":
     unittest.main()

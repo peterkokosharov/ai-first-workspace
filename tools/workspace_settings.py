@@ -14,8 +14,9 @@ template and is read when ``settings.json`` is missing. Sections:
   token itself is kept by git's credential helper, not by tools/secret.py).
 * ``runtime``: older name of ``tools``; still read. A non-empty ``tools`` value wins.
 * ``paths``: folders that are not part of the core's code. ``kb`` is the folder with
-  the model pages and ``models.xml``; empty means ``kb/`` next to ``tools/``. The model
-  lab keeps it in its own project, so a local settings file points there.
+  the model pages and ``models.xml``; empty means ``kb/`` next to ``tools/``. A model
+  lab may keep a fresher ``models.xml`` there; without one the core's ``data/models.xml``
+  is used.
 
 Nothing here writes a file.
 """
@@ -99,6 +100,17 @@ def kb_dir(data: dict | None = None) -> Path:
         return ROOT / "kb"
     path = Path(value.strip()).expanduser()
     return path if path.is_absolute() else ROOT / path
+
+
+def models_xml(data: dict | None = None) -> Path:
+    """The model list ``tools/setup_nvidia.py`` reads.
+
+    ``models.xml`` in ``kb_dir()`` (a model lab overrides the list through
+    ``paths.kb``) when that file exists; otherwise the small list shipped in the
+    core, ``data/models.xml``.
+    """
+    own = kb_dir(data) / "models.xml"
+    return own if own.is_file() else ROOT / "data" / "models.xml"
 
 
 def git_settings(data: dict | None = None) -> dict:

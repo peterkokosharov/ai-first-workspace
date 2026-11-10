@@ -27,11 +27,11 @@ the models run in the cloud on free tiers.
 
 Models, all free: opencode's own free models (no key needed), about 20 **free NVIDIA
 models** (build.nvidia.com, free account and key), and optionally the free plans of
-Gemini and ChatGPT (they have tight daily limits). No paid provider is needed. The
-model list is built with `tools/robota.py` and `tools/gen_models_xml.py` into the
-folder named by `paths.kb` in `settings.json` (empty means `kb/` next to the tools); in
-this workspace it lives in the model lab, `projects/models/kb/`. It was collected from
-build.nvidia.com on 2026-11-08, so it ages: models come and go.
+Gemini and ChatGPT (they have tight daily limits). No paid provider is needed. A
+small list of them ships in `data/models.xml` (collected from build.nvidia.com on
+2026-11-08, so it ages: models come and go). A fresher list built with `tools/robota.py`
+and `tools/gen_models_xml.py` can live in a folder named by `paths.kb` in `settings.json`;
+when that folder has a `models.xml`, it is used instead.
 
 ## Start on Windows (3 steps)
 

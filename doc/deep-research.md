@@ -25,7 +25,7 @@
 | `autodiscovery.py` | Machine discovery (OS, RAM, CPU, Python, git, bash, node, docker, opencode, etc.) | ✅ |
 | `ping.py` | Ping model via OpenCode, verify against inventory DB | ✅ |
 | `ping_direct.py` | Ping LLM providers directly via HTTP (gemini, nvidia, deepseek, mistral) | ✅ |
-| `setup_nvidia.py` | Configure OpenCode providers with free NVIDIA models from `paths.kb` | ✅ |
+| `setup_nvidia.py` | Configure OpenCode providers with free NVIDIA models from `data/models.xml` (or `paths.kb/models.xml`) | ✅ |
 | `setup_providers.py` | Configure OpenCode providers from keys in inventory | ✅ |
 | `robota.py` | Scrape build.nvidia.com for free-endpoint models | ✅ |
 | `gen_models_xml.py` | Generate `models.xml` in `paths.kb` from the scraped index | ✅ |
@@ -38,8 +38,10 @@
 ### Vendored Library (`lib/kikolib/`)
 14 modules: keystore, factory, http_client, server, sse, tokens, retry, config, dotenv, posix_utils, native_utils, yaml_lite, tomlwrite, websocket
 
-### Knowledge Base (`paths.kb`, the model lab's `kb/`)
-Not part of the core: the model lab (`projects/models/`) owns the collected pages.
+### Model list and Knowledge Base
+The core ships `data/models.xml` (23 free NVIDIA models, data only). A `models.xml` in the
+folder `paths.kb` overrides it. The collected pages below are not part of the core: the
+model lab (`projects/models/`) owns them, in its `paths.kb` folder.
 - `models.xml` — 23 free NVIDIA models scraped from build.nvidia.com
 - `free_endpoints_index.md` — index of free endpoints
 - `md/` and `html/` — 23 files each (Markdown + raw HTML per model)

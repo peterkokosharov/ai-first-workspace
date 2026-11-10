@@ -36,9 +36,10 @@ enters the core's history.
    - `doc/` — plans, setup pages, decisions;
    - `tools/` — only the tools this project uses, standard library only, plus `tools/tests/`;
    - the three glue files that reach the core: `tools/core.py`, `tools/secret.py` and a
-     `tools/__init__.py` that calls `core.install()`. Copy them from the `tools/` of a
-     project that already runs; they are the same in every project and hold no project
-     code;
+     `tools/__init__.py` that calls `core.install()`. Copy them from the core's template,
+     `templates/project/tools/` (`cp templates/project/tools/*.py projects/<name>/tools/`
+     from the core root, after creating `tools/`); they are the same in every project and
+     hold no project code;
    - `.gitignore` — at least `.tmp/`, `__pycache__/`, `*.pyc`, `*.pyo`, plus whatever the
      project writes.
 4. Run the project's own tests from its own folder:
@@ -66,14 +67,12 @@ instead.
 
 Three rules follow:
 
-- Do not copy a core tool into a project so that it starts. If a project needs one more
-  shared tool, put that tool in the core and let the project reach it. The only exception
-  is the three glue files above: they are the border, not a copy of a tool.
+- Do not copy a core tool into a project so that it starts. A project imports core tools
+  through the glue (`import secret`, or a core tool by its name once `tools/__init__.py`
+  has run). If a project needs one more shared tool, put that tool in the core and let
+  the project reach it. The three glue files above are the border, not a copy of a tool.
 - Do copy the whole runtime at handover: `py tools/bundle.py <name>` in the core builds
   one folder with the core and the project, and runs the project's tests inside it.
-- If a project holds a copy of a core tool (`google_api.py` is one), the core's copy is
-  the original. Change the core first, copy the file over, and let the project's test
-  fail when the two differ (line endings aside: git rewrites them on checkout).
 
 ## Never
 

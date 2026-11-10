@@ -4,7 +4,8 @@
 # Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Configure OpenCode for all free NVIDIA models in the model list (models.xml).
 
-The folder is ``paths.kb`` from settings.json (empty = ``kb/`` next to this file).
+The list is ``models.xml`` in the folder ``paths.kb`` from settings.json when that file
+exists, else the list shipped in the core, ``data/models.xml``.
 
 Writes ONE provider ``nvidia`` with all models into OpenCode's global config
 (``~/.config/opencode`` by default; see ``opencode_config.config_file()``), in the
@@ -41,7 +42,6 @@ if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import opencode_config  # noqa: E402  (shared helpers next to this file)
 import workspace_settings  # noqa: E402
-KB_XML = workspace_settings.kb_dir() / "models.xml"
 INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(ROOT / "data" / "inventory.db")))
 SECRET_TOOL = ROOT / "tools" / "secret.py"
 PROVIDER_ID = "nvidia"
@@ -57,8 +57,8 @@ CONFIG_DIR = CONFIG_FILE.parent
 def parse_models(xml_path: Path) -> list[dict]:
     """Parse models.xml into a list of {alias, full_alias, full_name, api_id}.
 
-    ``api_id`` is the model id the NVIDIA API expects (``"model": "vendor/name"`` in
-    the sample code of each entry); without sample code it falls back to
+    ``api_id`` is the model id the NVIDIA API expects (``<api-id>``, or ``"model": "vendor/name"`` in
+    the sample code of the entry); without sample code it falls back to
     ``nvidia/<alias>``.
     """
     text = xml_path.read_text(encoding="utf-8")
@@ -73,13 +73,14 @@ def parse_models(xml_path: Path) -> list[dict]:
             continue
         alias = full_alias.split("/")[-1]
         long_name = re.search(r"<full-model-name>([^<]+)</full-model-name>", inner)
-        api_match = re.search(r'"model"\s*:\s*"([^"]+)"', inner)
+        api_match = (re.search(r"<api-id>([^<]+)</api-id>", inner)
+                     or re.search(r'"model"\s*:\s*"([^"]+)"', inner))
         models.append(
             {
                 "alias": alias,
                 "full_alias": full_alias,
                 "full_name": (long_name or name_match).group(1).strip(),
-                "api_id": api_match.group(1) if api_match else f"nvidia/{alias}",
+                "api_id": api_match.group(1).strip() if api_match else f"nvidia/{alias}",
             }
         )
     return models
@@ -134,9 +135,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="also replace literal keys of providers these tools do not "
                              "manage with a placeholder (default: only warn)")
     args = parser.parse_args(argv)
-    models = parse_models(KB_XML)
+    xml_path = workspace_settings.models_xml()
+    models = parse_models(xml_path) if xml_path.is_file() else []
     if not models:
-        print(f"no models found in {KB_XML}")
+        print(f"no models found in {xml_path}")
         return 1
 
     # Before cleaning: which keys are already in the OS store (names only, no value read)?
