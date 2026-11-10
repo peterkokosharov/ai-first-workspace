@@ -3,6 +3,16 @@
 Goal: each doc page is one Markdown source plus one HTML page; each diagram is a
 Mermaid source plus a committed SVG. On Windows type `py` instead of `python3`.
 
+## Rules
+- A page is a local file only: `doc/<page>.html` next to `doc/<page>.md`, committed with the change.
+- Never publish or upload a page to any hosted service (the agent host's page or artifact
+  publishing tools, gists, pastebins, cloud docs) unless the user explicitly asks for it in
+  that conversation.
+- After building, open the local file yourself: Windows `start "" doc\<page>.html`,
+  Git Bash `cmd //c start "" "doc/<page>.html"`, macOS `open doc/<page>.html`,
+  Linux `xdg-open doc/<page>.html`.
+- A diagram shows the current code. Parts that are only planned are marked "planned".
+
 ## Files
 - `doc/<page>.md` is the source. `doc/<page>.html` is the page people open.
   Today: `doc/architecture.md` -> `doc/architecture.html`.
@@ -41,7 +51,7 @@ Mermaid source plus a committed SVG. On Windows type `py` instead of `python3`.
 
 ## View
 - Open the `.html` file in your browser (double-click it in the file manager).
-- Or serve the folder: `python3 -m http.server 8080 -d doc`,
+- Or serve the folder: `python3 -m http.server 8080 --bind 127.0.0.1 -d doc`,
   then open http://localhost:8080/architecture.html. Stop it with Ctrl+C.
 
 ## Commit
