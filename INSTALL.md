@@ -227,12 +227,17 @@ ln -s ~/repos projects
 mklink /J projects %USERPROFILE%\repos
 ```
 
-A project reached through the link finds the core by walking up the path as you typed it
-(links are not resolved). Started from the real path (for example `C:\repos\X`) it cannot,
-so set the `CORE` environment variable or `"core": "<path to the workspace>"` in the
-project's `settings.json`. Order: `vendor/`, `CORE`, `settings.json`, upward walk on the
-given path, upward walk on the resolved path (`docs/procedures/new-project.md`). The link's own location wins (a workspace above it is
-trusted as the core), and `CORE` must be an absolute path.
+A project reached through the link finds the core by walking up the path as you typed
+it (links are not resolved); on Windows a junction launch works by itself. Order:
+`vendor/`, `CORE`, `settings.json`, upward walk on the given path, upward walk on the
+resolved path (`docs/procedures/new-project.md`). The link's own location wins (a
+workspace above it is trusted as the core), and `CORE` must be an absolute path.
+
+Started from the real path (for example `C:\repos\X`), or on Linux and macOS with a
+relative launch inside a symlinked project (the current folder is then physical), the
+walk cannot see the link: set `"core": "<path to the workspace>"` in the project's
+`settings.json` or set `CORE`. `tools/link.py` will write that key for you; until then
+set it by hand.
 
 The workspace rules (`AGENTS.md`) are the base; a project's own `AGENTS.md` only adds to
 them. `secret_scan.py --all` and the tests do not follow the link.

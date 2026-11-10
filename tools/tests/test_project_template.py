@@ -162,18 +162,25 @@ class TestLinkedProject(unittest.TestCase):
         found = self.core.install(self.link)
         self.assertEqual((found.path, found.origin), (self.ws, "parent"))
 
-    def test_relative_launch_with_pwd_keeps_the_link(self):
-        # POSIX getcwd() is physical; $PWD still names the link. On Windows no PWD logic is needed.
-        code = ("import importlib.util as u, pathlib; "
-                "s = u.spec_from_file_location('c', %r); m = u.module_from_spec(s); "
-                "s.loader.exec_module(m); f = m.find(pathlib.Path('.'), {'PWD': %r}); "
-                "print(f.origin, f.path)") % (str(TEMPLATE / "core.py"), str(self.link))
-        done = subprocess.run([sys.executable, "-I", "-c", code], cwd=self.link,
-                              env=dict(os.environ, PWD=str(self.link)),
-                              capture_output=True, text=True)
-        self.assertEqual(done.returncode, 0, done.stderr)
-        self.assertEqual(done.stdout.split(" ", 1)[0], "parent")
-        self.assertEqual(Path(done.stdout.split(" ", 1)[1].strip()), self.ws)
+    def test_real_script_launches_use_the_settings_pointer(self):
+        shutil.copy(TEMPLATE / "core.py", self.repo / "tools" / "core.py")
+        probe = "\n".join([
+            "import importlib.util, pathlib",
+            "here = pathlib.Path(__file__).parent",
+            "spec = importlib.util.spec_from_file_location('c', here / 'core.py')",
+            "module = importlib.util.module_from_spec(spec)",
+            "spec.loader.exec_module(module)",
+            "found = module.install()",
+            "print(found.origin, found.path)", ""])
+        (self.repo / "tools" / "probe.py").write_text(probe, encoding="utf-8")
+        (self.repo / "settings.json").write_text(
+            __import__("json").dumps({"core": str(self.ws)}), encoding="utf-8")
+        for cwd, script in ((self.link, "tools/probe.py"), (self.link / "tools", "probe.py")):
+            done = subprocess.run([sys.executable, "-I", script], cwd=cwd,
+                                  capture_output=True, text=True)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            origin, path = done.stdout.strip().split(" ", 1)
+            self.assertEqual((origin, Path(path)), ("settings", self.ws))
 
     def test_a_plain_folder_inside_the_core_is_found_by_parent(self):
         plain = self.ws / "projects" / "plain"

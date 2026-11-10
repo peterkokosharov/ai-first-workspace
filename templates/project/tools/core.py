@@ -14,9 +14,10 @@ Same file in every project; it holds no project code.  Copied from
 4. ``parent``  -- the first folder above the project that holds ``AGENTS.md`` and
    ``tools/secret.py``, walking the path as given (absolute, links NOT resolved), so a
    project reached through ``core/projects/X`` (a junction or symlink to a repo kept
-   elsewhere) finds the core;
-   On POSIX the current folder is physical, so for a relative path the walk is also made
-   under ``$PWD`` when ``$PWD`` is the same folder as the current one;
+   elsewhere) finds the core.  On Windows a junction launch works by itself.  On Linux
+   and macOS the current folder is physical, so a relative launch inside a symlinked
+   project needs the ``"core"`` key (3) in that project's ``settings.json``;
+   ``tools/link.py`` will write it, until then set it by hand or set ``CORE``;
 5. ``parent-real`` -- the same walk on the resolved path: the given path goes through a
    link and the core is above the link's target.
 
@@ -50,49 +51,39 @@ def _is_core(path: Path) -> bool:
     return (path / "tools" / "secret.py").is_file()
 
 
+def _resolve(path: Path) -> Path:
+    """``path.resolve()``; a link loop (RuntimeError before Python 3.13) leaves it as is."""
+    try:
+        return path.resolve()
+    except (OSError, RuntimeError):
+        return Path(os.path.abspath(path))
+
+
 def find(root: Path, environ=None) -> Found | None:
     """The core reached from the project folder ``root``, or None."""
     given = Path(os.path.abspath(root))   # lexical: links stay as they were typed
-    root = given.resolve()
+    root = _resolve(given)
     environ = os.environ if environ is None else environ
     vendor = root / "vendor"
     if _is_core(vendor):
         return Found(vendor, "vendor")
     value = (environ.get("CORE") or "").strip()
     if value and _is_core(Path(value).expanduser()):
-        return Found(Path(value).expanduser().resolve(), "CORE")
+        return Found(_resolve(Path(value).expanduser()), "CORE")
     try:
         data = json.loads((root / "settings.json").read_text(encoding="utf-8-sig"))
         value = str(data.get("core") or "").strip() if isinstance(data, dict) else ""
     except (OSError, ValueError):
         value = ""
     if value:
-        path = (root / Path(value).expanduser()).resolve()
+        path = _resolve(root / Path(value).expanduser())
         if _is_core(path):
             return Found(path, "settings")
-    starts = [("parent", given)]
-    pwd = _pwd_path(given, environ)
-    if pwd is not None:
-        starts.append(("parent", pwd))
-    starts.append(("parent-real", root))
-    for origin, start in starts:
+    for origin, start in (("parent", given), ("parent-real", root)):
         for parent in start.parents:
             if (parent / "AGENTS.md").is_file() and _is_core(parent):
-                return Found(parent.resolve(), origin)
+                return Found(_resolve(parent), origin)
     return None
-
-
-def _pwd_path(given: Path, environ) -> Path | None:
-    """``given`` rebuilt under ``$PWD`` (POSIX getcwd() is physical), or None."""
-    pwd = (environ.get("PWD") or "").strip()
-    try:
-        cwd = Path(os.getcwd())
-        relative = given.relative_to(cwd)
-        if not pwd or not os.path.isabs(pwd) or Path(pwd).resolve() != cwd.resolve():
-            return None
-    except (OSError, ValueError):
-        return None
-    return Path(os.path.abspath(pwd)) / relative
 
 
 def install(root: Path | None = None, environ=None) -> Found:
