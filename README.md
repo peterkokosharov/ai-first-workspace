@@ -150,7 +150,7 @@ AGENTS.md      the rules for every agent      CLAUDE.md / GEMINI.md  pointers to
 INSTALL.md     step-by-step install           kb/          the free model list
 tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
 data/          inventory schema and seed      doc/         architecture and accessibility pages
-docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub, orchestration
+docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub, orchestration, new project
 .claude/       Claude Code skills          .opencode/   opencode commands (both point to docs/procedures/)
 out/           reports and audits (not in git)
 projects/      your own projects, one folder each (not in this repo's git)
@@ -170,6 +170,26 @@ Local settings: copy `settings.json.example` to `settings.json` (not tracked by 
 `tools.opencode`. `git` holds `remote_url`, `remote_user` and `token_key` for the
 GitHub steps. An older `runtime` section is still read. Key names: see INSTALL.md,
 "Key names".
+
+## Projects
+
+Your own work goes in `projects/<name>/`, one folder per project, and each folder is its
+own git repository: root at that folder, its own `AGENTS.md`, its own `doc/`, `tools/` and
+its own history. `projects/` is gitignored here, so this repository never tracks client
+work and its history never carries another business's names.
+
+That is deliberate:
+
+- a project can be copied out, handed over or sold as a bundle — its rules, documents,
+  tools, tests and history travel with it;
+- it can be pushed to its own remote (a client's GitHub organisation) without touching this
+  repository, and this repository can be pushed without publishing the project;
+- this workspace still works if a project is deleted, and a project still works when this
+  folder is not there. When both are present, this folder is a helper, never a dependency.
+
+Record a project in the local list with `py tools/inventory.py add-project <name>`. The
+whole procedure, including what must be checked before a folder is handed over:
+[`docs/procedures/new-project.md`](docs/procedures/new-project.md).
 
 ## Optional example — local model proxy
 

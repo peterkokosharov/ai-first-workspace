@@ -54,7 +54,8 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - projects/<name>/ one folder per user project; it may be its own git repo.
   Everything for one project lives there: its own AGENTS.md, docs, tools and git
   history, so the folder can be handed over on its own. The root tools/ stays
-  generic; this core holds nothing project-specific.
+  generic; this core holds nothing project-specific. How to start one:
+  docs/procedures/new-project.md.
 
 ## What "agent" means
 - An agent is a role you play in this session (for example orc, coder, qa, reviewer),
@@ -72,4 +73,5 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - Writing HTML docs or diagrams -> docs/procedures/html-docs.md
 - Publishing to GitHub -> docs/procedures/github-deploy.md
 - Work split over several agents -> docs/procedures/orchestration.md
+- Starting a project under projects/ -> docs/procedures/new-project.md
 - New machine, missing tool or database -> INSTALL.md
