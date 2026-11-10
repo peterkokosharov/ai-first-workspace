@@ -190,6 +190,40 @@ def _tracked_files() -> list[tuple[str, str]]:
             if n and (root / n).is_file() and not (root / n).is_symlink()]
 
 
+def scan_tree(root: Path) -> list[tuple[str, int, str]]:
+    """Scan every text file below ``root`` (not ``.git``): (path, line, rule) per hit."""
+    root = Path(root)
+    hits: list[tuple[str, int, str]] = []
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root)
+        if ".git" in relative.parts or path.is_symlink() or not path.is_file():
+            continue
+        text = path.read_text("utf-8", "replace")
+        if "\0" in text[:8000]:
+            continue  # binary
+        for number, rule in find_secrets(text):
+            hits.append((relative.as_posix(), number, rule))
+    return hits
+
+
+def scan_history(repo: Path) -> list[tuple[str, str, int, str]]:
+    """Scan the lines added by every commit of every ref of ``repo``.
+
+    Returns (commit, path, line number, rule). Raises OSError or CalledProcessError
+    when git cannot list or read the commits.
+    """
+    def git(*args: str, data: bytes | None = None) -> bytes:
+        return subprocess.run(["git", "-C", str(repo), *args], input=data, check=True,
+                              capture_output=True).stdout
+
+    commits = git("rev-list", "--all").decode("ascii", "replace").split()
+    if not commits:
+        return []
+    diff = git("diff-tree", "--stdin", "-p", "--cc", "-U0", "--root", "--no-color",
+               "--no-ext-diff", "--no-textconv", data=("\n".join(commits) + "\n").encode("ascii"))
+    return find_secrets_in_diff(diff.decode("utf-8", "replace"))
+
+
 def main(argv: list[str]) -> int:
     if argv == ["--push"]:
         return scan_push(sys.stdin.read())
