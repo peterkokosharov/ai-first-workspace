@@ -9,8 +9,12 @@ __pycache__/
 *.pyc
 
 # Per-task project folders (each can be its own git repo); leading slash: the root folder
-# or a root link (projects -> ~/repos), not docs/projects
+# or a root link (projects -> ~/repos), not docs/projects.
+# Only the empty folder marker travels with the core; no project ever does.
 /projects
+!/projects/
+/projects/*
+!/projects/.gitkeep
 
 # Local settings: copy settings.json.example to settings.json and edit it
 settings.json
