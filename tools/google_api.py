@@ -146,10 +146,16 @@ def _error_detail(raw: bytes) -> str:
         data = json.loads(raw.decode("utf-8", "replace"))
     except (ValueError, UnicodeDecodeError):
         return raw.decode("utf-8", "replace").strip()[:400]
+    if not isinstance(data, dict):
+        return str(data)[:400]
     err = data.get("error")
     if isinstance(err, dict):
         message = err.get("message") or ""
-        reason = (err.get("errors") or [{}])[0].get("reason") or ""
+        errors = err.get("errors")
+        first = errors[0] if isinstance(errors, list) and errors else None
+        reason = ""
+        if isinstance(first, dict):
+            reason = first.get("reason") or ""
         return f"{message} {reason}".strip()
     if err:
         return str(err)
