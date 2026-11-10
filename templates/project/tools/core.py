@@ -12,7 +12,11 @@ Same file in every project; it holds no project code.  Copied from
 2. ``CORE``    -- the ``CORE`` environment variable;
 3. ``settings`` -- ``"core"`` in the project's ``settings.json`` (relative to the project);
 4. ``parent``  -- the first folder above the project that holds ``AGENTS.md`` and
-   ``tools/secret.py``.
+   ``tools/secret.py``, walking the path as given (absolute, links NOT resolved), so a
+   project reached through ``core/projects/X`` (a junction or symlink to a repo kept
+   elsewhere) finds the core;
+5. ``parent-real`` -- the same walk on the resolved path (a project that was started
+   from a link-free path but sits under a core through a link above it).
 
 A folder from 1-3 counts only if it holds ``tools/secret.py``.  That target is trusted
 code: ``install()`` executes it, so point ``CORE`` and ``"core"`` only at a core you trust.
@@ -42,7 +46,8 @@ def _is_core(path: Path) -> bool:
 
 def find(root: Path, environ=None) -> Found | None:
     """The core reached from the project folder ``root``, or None."""
-    root = Path(root).resolve()
+    given = Path(os.path.abspath(root))   # lexical: links stay as they were typed
+    root = given.resolve()
     environ = os.environ if environ is None else environ
     vendor = root / "vendor"
     if _is_core(vendor):
@@ -59,15 +64,16 @@ def find(root: Path, environ=None) -> Found | None:
         path = (root / Path(value).expanduser()).resolve()
         if _is_core(path):
             return Found(path, "settings")
-    for parent in root.parents:
-        if (parent / "AGENTS.md").is_file() and _is_core(parent):
-            return Found(parent, "parent")
+    for origin, start in (("parent", given), ("parent-real", root)):
+        for parent in start.parents:
+            if (parent / "AGENTS.md").is_file() and _is_core(parent):
+                return Found(parent, origin)
     return None
 
 
 def install(root: Path | None = None, environ=None) -> Found:
     """Make the core's tools importable; raise ImportError if no core is found."""
-    root = Path(__file__).resolve().parents[1] if root is None else Path(root)
+    root = Path(os.path.abspath(__file__)).parents[1] if root is None else Path(root)
     found = find(root, environ)
     if found is None:
         raise ImportError(

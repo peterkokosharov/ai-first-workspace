@@ -87,6 +87,101 @@ class TestFind(unittest.TestCase):
         self.assertEqual((found.path, found.origin), (ws, "parent"))
 
 
+def make_dir_link(link: Path, target: Path) -> bool:
+    """A real directory link (junction on Windows, symlink elsewhere); False if impossible."""
+    try:
+        if os.name == "nt":
+            import _winapi
+            _winapi.CreateJunction(str(target), str(link))
+        else:
+            os.symlink(target, link, target_is_directory=True)
+        return True
+    except (OSError, ImportError, AttributeError):
+        pass
+    if os.name == "nt":
+        done = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(target)],
+                              capture_output=True)
+        return done.returncode == 0
+    return False
+
+
+def remove_link(link: Path) -> None:
+    """Remove the link itself; never rmtree (that could delete the target's files)."""
+    if os.name == "nt":
+        os.rmdir(link)
+    else:
+        os.unlink(link)
+
+
+class TestLinkedProject(unittest.TestCase):
+    """core/projects/X is a real link to a repo kept elsewhere."""
+
+    def setUp(self):
+        self.core = load_core()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        base = Path(self._tmp.name).resolve()
+        self.ws = fake_core(base / "core", agents=True)
+        (self.ws / "projects").mkdir()
+        self.repo = base / "repos" / "X"
+        (self.repo / "tools").mkdir(parents=True)
+        (self.repo / "AGENTS.md").write_text("# project\n", encoding="utf-8")
+        (self.repo / "tools" / "secret.py").write_text("# glue\n", encoding="utf-8")
+        self.link = self.ws / "projects" / "X"
+        if not make_dir_link(self.link, self.repo):
+            self.skipTest("cannot create a junction or symlink on this machine")
+        self.addCleanup(self._unlink)
+
+    def _unlink(self):
+        if os.path.lexists(self.link):
+            remove_link(self.link)
+        self.assertTrue((self.repo / "AGENTS.md").is_file())  # the target survives
+
+    def test_from_the_link_the_core_is_found_by_parent(self):
+        found = self.core.find(self.link, {})
+        self.assertEqual((found.path, found.origin), (self.ws, "parent"))
+
+    def test_from_the_real_path_nothing_is_found(self):
+        self.assertIsNone(self.core.find(self.repo, {}))
+
+    def test_from_the_real_path_core_env_is_used(self):
+        found = self.core.find(self.repo, {"CORE": str(self.ws)})
+        self.assertEqual((found.path, found.origin), (self.ws, "CORE"))
+
+    def test_from_the_real_path_settings_core_is_used(self):
+        (self.repo / "settings.json").write_text(
+            '{"core": %s}' % __import__("json").dumps(str(self.ws)), encoding="utf-8")
+        found = self.core.find(self.repo, {})
+        self.assertEqual((found.path, found.origin), (self.ws, "settings"))
+
+    def test_install_from_the_link_uses_the_unresolved_path(self):
+        saved = (list(sys.path), sys.modules.get("secret"))
+        self.addCleanup(lambda: (sys.path.__setitem__(slice(None), saved[0]),
+                                 sys.modules.pop("secret", None),
+                                 saved[1] and sys.modules.__setitem__("secret", saved[1])))
+        found = self.core.install(self.link)
+        self.assertEqual((found.path, found.origin), (self.ws, "parent"))
+
+    def test_a_plain_folder_inside_the_core_is_found_by_parent(self):
+        plain = self.ws / "projects" / "plain"
+        plain.mkdir()
+        found = self.core.find(plain, {})
+        self.assertEqual((found.path, found.origin), (self.ws, "parent"))
+
+    def test_parent_real_when_only_the_resolved_path_leads_to_a_core(self):
+        # the lexical path has no core above it; the real one does
+        base = Path(self._tmp.name).resolve() / "elsewhere"
+        base.mkdir()
+        outer = base / "link"
+        inner = self.ws / "projects" / "real"
+        inner.mkdir()
+        if not make_dir_link(outer, inner):
+            self.skipTest("cannot create a second link")
+        self.addCleanup(remove_link, outer)
+        found = self.core.find(outer, {})
+        self.assertEqual((found.path, found.origin), (self.ws, "parent-real"))
+
+
 class TestInstall(unittest.TestCase):
     def test_a_project_from_the_template_reaches_the_real_core(self):
         with tempfile.TemporaryDirectory() as tmp:

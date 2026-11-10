@@ -60,8 +60,11 @@ enters the core's history.
 A project runs on the core. `tools/core.py` in the project finds it, and
 `tools/__init__.py` registers the core's secret store as the module `secret`, which
 `google_api.py` imports. Search order: `<project>/vendor/` first, then the `CORE`
-environment variable, then the project's `settings.json` (`"core"`), then upwards to the
-first folder that holds both `AGENTS.md` and `tools/secret.py`. The `vendor/` copy is
+environment variable, then the project's `settings.json` (`"core"`), then upwards
+(`parent`) from the path as given, links not resolved, to the first folder that holds both
+`AGENTS.md` and `tools/secret.py`, and last (`parent-real`) the same walk on the resolved
+path. So a repo kept outside and reached as `<core>/projects/X` (a junction or symlink)
+finds the core; started from its real path it needs `CORE` or `"core"`. The `vendor/` copy is
 optional, and `tools/bundle.py` does not make one: a bundle carries the whole core
 instead. Bundling a project that has its own `vendor/` core is refused.
 
