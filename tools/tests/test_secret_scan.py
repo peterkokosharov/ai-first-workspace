@@ -26,6 +26,16 @@ class TestFindSecrets(unittest.TestCase):
             "nvapi-" + FAKE,
             "token sk-" + FAKE,
             "ghp_" + FAKE,
+            "gho_" + FAKE,
+            "ghs_" + FAKE,
+            "ghu_" + FAKE,
+            "hf_" + FAKE,
+            "GOC" + "SPX-" + FAKE[:28],
+            "ya" + "29." + FAKE,
+            "1/" + "/0" + FAKE,
+            "-----BEGIN " + "RSA PRIVATE KEY-----",
+            "-----BEGIN " + "PRIVATE KEY-----",
+            "-----BEGIN " + "PGP PRIVATE KEY BLOCK-----",
             "github_pat_" + FAKE,
             "AKIA" + "ABCDEFGHIJKLMNOP",
             "GEMINI_API_KEY=" + "AI" + "za" + FAKE[:35],
@@ -46,6 +56,14 @@ class TestFindSecrets(unittest.TestCase):
             "Gemini keys start with AIza and are 39 characters long",
             "AI" + "za" + FAKE[:20],  # too short for a Google key
             "nvapi-" + FAKE + "  # secret-scan: allow",
+            "hf_" + FAKE[:10],  # too short
+            "gho_" + FAKE[:10],
+            "GOC" + "SPX-" + FAKE[:8],
+            "ya" + "29." + FAKE[:8],
+            "1/" + "/0" + FAKE[:8],
+            "path/1/" + "/0" + FAKE,  # inside a longer path
+            "-----BEGIN " + "CERTIFICATE-----",
+            "the hf_ prefix and ya29. tokens are scanned",
         ):
             with self.subTest(text=text):
                 self.assertEqual(self.hits(text), [])

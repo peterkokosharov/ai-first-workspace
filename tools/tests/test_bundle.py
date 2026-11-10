@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -17,6 +19,16 @@ def write(path: Path, text: str = "x") -> None:
     path.write_text(text, encoding="utf-8")
 
 
+def git(repo: Path, *args: str) -> None:
+    subprocess.run(["git", "-C", str(repo), "-c", "user.name=T", "-c", "user.email=t@example.com",
+                    "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", *args], check=True, capture_output=True)
+
+
+def commit_all(repo: Path, message: str = "m") -> None:
+    git(repo, "add", "-f", "-A")
+    git(repo, "commit", "-q", "-m", message)
+
+
 def make_core(root: Path) -> None:
     write(root / "AGENTS.md", "# rules\n")
     write(root / "tools" / "secret.py", "MARK = 'core'\n")
@@ -27,9 +39,14 @@ def make_core(root: Path) -> None:
     write(root / "settings.json", '{"git": {"token_key": "personal/x/github_token"}}\n')
     write(root / "settings.json.bak-20260101-000000-000000", "{}\n")
     write(root / "out" / "report.md", "private\n")
-    write(root / ".git" / "HEAD", "ref: refs/heads/main\n")
     write(root / "tools" / "__pycache__" / "x.pyc", "cache")
     write(root / "projects" / "other" / "AGENTS.md", "other project\n")
+    # the core is copied from `git ls-files`: track everything, then add untracked files
+    git(root, "init", "-q")
+    commit_all(root)
+    write(root / ".env", "TOKEN=local\n")
+    write(root / "scratch.db", "sqlite")
+    write(root / ".venv" / "pyvenv.cfg", "home = x\n")
 
 
 def make_project(root: Path, name: str = "demo") -> None:
@@ -131,6 +148,84 @@ class TestBuild(unittest.TestCase):
                 bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
 
 
+    def test_untracked_files_are_not_bundled(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            self.assertTrue((target / "tools" / "secret.py").is_file())
+            self.assertFalse((target / ".env").exists())
+            self.assertFalse((target / "scratch.db").exists())
+            self.assertFalse((target / ".venv").exists())
+
+    def test_refuses_a_target_that_contains_the_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # out/<name> == the workspace itself: --force would delete it
+            root = Path(tmp) / "demo"
+            make_core(root)
+            make_project(root)
+            with self.assertRaises(ValueError):
+                bundle.build(root, "demo", Path(tmp), force=True, run_tests=False)
+            with self.assertRaises(ValueError):
+                bundle.build(root, "demo", root, force=True, run_tests=False)
+            with self.assertRaises(ValueError):
+                bundle._check_out(root, Path(tmp))  # the workspace lies inside it
+            with self.assertRaises(ValueError):
+                bundle._check_out(root, root / "projects" / "demo")
+            self.assertTrue((root / "AGENTS.md").is_file())
+            self.assertTrue((root / "projects" / "demo" / "AGENTS.md").is_file())
+
+    def _link(self, link: Path, real: Path) -> bool:
+        """Make ``link`` point at ``real``; False when neither a symlink nor a junction works."""
+        try:
+            link.symlink_to(real, target_is_directory=True)
+            return True
+        except (OSError, NotImplementedError):
+            pass
+        if sys.platform == "win32":
+            done = subprocess.run(["cmd", "/c", "mklink", "/J", str(link), str(real)],
+                                  capture_output=True)
+            return done.returncode == 0 and link.exists()
+        return False
+
+    def test_refuses_an_out_under_a_linked_projects_real_folder(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            real = Path(tmp) / "real-demo"
+            write(real / "AGENTS.md", "# project rules\n")
+            if not self._link(root / "projects" / "demo", real):
+                self.skipTest("neither symlinks nor junctions can be made here")
+            try:
+                with self.assertRaises(ValueError):
+                    bundle.build(root, "demo", real / "out", force=True, run_tests=False)
+                self.assertTrue((real / "AGENTS.md").is_file())
+                self.assertFalse((real / "out").exists())
+            finally:
+                try:
+                    (root / "projects" / "demo").unlink()
+                except OSError:
+                    (root / "projects" / "demo").rmdir()  # junction
+
+    def test_a_gitfile_is_not_shipped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            git_entry = root / "projects" / "demo" / ".git"
+            _remove = [p for p in sorted(git_entry.rglob("*"), reverse=True)]
+            for p in _remove:
+                p.unlink() if p.is_file() else p.rmdir()
+            git_entry.rmdir()
+            write(git_entry, "gitdir: ../../elsewhere\n")
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            self.assertFalse((target / "projects" / "demo" / ".git").exists())
+            write(target / "projects" / "demo" / ".git", "gitdir: ../../elsewhere\n")
+            problems = bundle.check(target)
+            self.assertEqual(problems, ["projects/demo/.git is a link file"])
+
+
 class TestCheck(unittest.TestCase):
     def test_a_clean_bundle_has_no_problems(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -147,6 +242,92 @@ class TestCheck(unittest.TestCase):
             write(target / ".git" / "HEAD")
             problems = bundle.check(target)
             self.assertEqual(len(problems), 4)
+
+    def test_a_secret_in_the_bundled_core_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "b"
+            write(target / "tools" / "x.py", "key = '" + "ghp" + "_" + "A1b2C3d4E5" * 4 + "'\n")
+            problems = bundle.check(target)
+            self.assertEqual(len(problems), 1)
+            self.assertIn("tools/x.py:1", problems[0])
+            self.assertNotIn("A1b2C3d4E5", problems[0])
+
+    def test_a_secret_in_the_project_history_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            project = root / "projects" / "demo"
+            git(project, "init", "-q")
+            commit_all(project, "first")
+            write(project / "old.txt", "hf" + "_" + "A1b2C3d4E5" * 4 + "\n")
+            commit_all(project, "oops")
+            (project / "old.txt").unlink()
+            commit_all(project, "remove it")  # the working tree is clean, the history is not
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            problems = bundle.check(target)
+            self.assertEqual(len(problems), 1, problems)
+            self.assertIn("history", problems[0])
+            self.assertIn("old.txt", problems[0])
+            self.assertNotIn("A1b2C3d4E5", problems[0])
+
+    def test_an_amended_away_secret_does_not_travel(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            project = root / "projects" / "demo"
+            git(project, "init", "-q")
+            commit_all(project, "first")
+            fake = "hf" + "_" + "A1b2C3d4E5" * 4
+            write(project / "old.txt", fake + "\n")
+            commit_all(project, "oops")
+            (project / "old.txt").unlink()
+            git(project, "add", "-A")
+            git(project, "commit", "-q", "--amend", "--allow-empty", "-m", "oops, redone")
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            self.assertEqual(bundle.check(target), [])
+            # the source project keeps its reflog: it is never touched
+            log = subprocess.run(["git", "-C", str(project), "reflog"], capture_output=True,
+                                 text=True, check=True).stdout
+            self.assertIn("oops", log)
+            # no object of the bundled .git holds the value
+            needle = fake.encode()
+            for path in (target / "projects" / "demo" / ".git").rglob("*"):
+                if path.is_file() and path.suffix != ".pack":
+                    self.assertNotIn(needle, path.read_bytes())
+            blobs = subprocess.run(
+                ["git", "-C", str(target / "projects" / "demo"), "cat-file",
+                 "--batch-all-objects", "--batch"], capture_output=True, check=True).stdout
+            self.assertNotIn(needle, blobs)
+
+    def test_a_secret_reachable_from_a_branch_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            project = root / "projects" / "demo"
+            git(project, "init", "-q")
+            commit_all(project, "first")
+            git(project, "checkout", "-q", "-b", "side")
+            write(project / "k.txt", "hf" + "_" + "A1b2C3d4E5" * 4 + "\n")
+            commit_all(project, "side")
+            git(project, "checkout", "-q", "-")
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            problems = bundle.check(target)
+            self.assertEqual(len(problems), 1, problems)
+            self.assertIn("k.txt", problems[0])
+
+    def test_a_clean_project_history_passes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            project = root / "projects" / "demo"
+            git(project, "init", "-q")
+            commit_all(project, "first")
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            self.assertEqual(bundle.check(target), [])
 
 
 if __name__ == "__main__":

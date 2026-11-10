@@ -29,10 +29,15 @@ from pathlib import Path
 RULES: list[tuple[str, re.Pattern[str]]] = [
     ("NVIDIA API key", re.compile(r"nvapi-[A-Za-z0-9_-]{20,}")),
     ("OpenAI-style key", re.compile(r"\bsk-(?:proj-|ant-)?[A-Za-z0-9_-]{20,}")),
-    ("GitHub token", re.compile(r"\bghp_[A-Za-z0-9]{30,}")),
+    ("GitHub token", re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}")),
     ("GitHub fine-grained token", re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}")),
     ("AWS access key id", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
     ("Google / Gemini API key", re.compile(r"\bAIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])")),
+    ("Google OAuth client secret", re.compile(r"\bGOCSPX-[A-Za-z0-9_-]{20,}")),
+    ("Google OAuth access token", re.compile(r"\bya29\.[A-Za-z0-9_-]{30,}")),
+    ("Google OAuth refresh token", re.compile(r"(?<![A-Za-z0-9/])1//0[A-Za-z0-9_-]{30,}")),
+    ("Private key block", re.compile(r"-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----")),
+    ("Hugging Face token", re.compile(r"\bhf_[A-Za-z0-9]{30,}")),
     # api_key: <literal> / api_key = "<literal>" with 16+ key-like characters.
     # Values that start with $, <, {, or a name followed by ( or [ are skipped.
     ("api_key literal", re.compile(
@@ -183,6 +188,46 @@ def _tracked_files() -> list[tuple[str, str]]:
     names = _git("-C", str(root), "ls-files", "-z").decode("utf-8", "replace").split("\0")
     return [(n, (root / n).read_text("utf-8", "replace")) for n in names
             if n and (root / n).is_file() and not (root / n).is_symlink()]
+
+
+def scan_tree(root: Path) -> list[tuple[str, int, str]]:
+    """Scan every text file below ``root`` (not ``.git``): (path, line, rule) per hit."""
+    root = Path(root)
+    hits: list[tuple[str, int, str]] = []
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root)
+        if ".git" in relative.parts or path.is_symlink() or not path.is_file():
+            continue
+        try:
+            with path.open("rb") as handle:
+                head = handle.read(8000)
+                if b"\0" in head:
+                    continue  # binary
+                text = (head + handle.read()).decode("utf-8", "replace")
+        except OSError:
+            hits.append((relative.as_posix(), 0, "unreadable file"))
+            continue
+        for number, rule in find_secrets(text):
+            hits.append((relative.as_posix(), number, rule))
+    return hits
+
+
+def scan_history(repo: Path) -> list[tuple[str, str, int, str]]:
+    """Scan the lines added by every commit reachable from any ref or reflog of ``repo``.
+
+    Returns (commit, path, line number, rule). Raises OSError or CalledProcessError
+    when git cannot list or read the commits.
+    """
+    def git(*args: str, data: bytes | None = None) -> bytes:
+        return subprocess.run(["git", "-C", str(repo), *args], input=data, check=True,
+                              capture_output=True).stdout
+
+    commits = git("rev-list", "--all", "--reflog").decode("ascii", "replace").split()
+    if not commits:
+        return []
+    diff = git("diff-tree", "--stdin", "-p", "--cc", "-U0", "--root", "--no-color",
+               "--no-ext-diff", "--no-textconv", data=("\n".join(commits) + "\n").encode("ascii"))
+    return find_secrets_in_diff(diff.decode("utf-8", "replace"))
 
 
 def main(argv: list[str]) -> int:

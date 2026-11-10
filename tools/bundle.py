@@ -14,11 +14,19 @@ Usage:
 
 What is copied, and what never is:
 
-* the core -- without its git history, `out/`, `projects/`, `data/inventory.db`
+* the core -- only the files git tracks (so no untracked `.env`, `*.db`, `.venv` or
+  scratch file), without its git history, `out/`, `projects/`, `data/inventory.db`
   and `settings.json` (the last two are local: one holds the inventory, the other
   the key names and paths of this machine);
-* the project -- with its own `.git`, because the history belongs to it;
-* nothing else.  A bundle never carries a secret.
+* the project -- with its own `.git`, because the history belongs to it.  In the
+  bundled copy only (never in the source project) the reflog is expired, ORIG_HEAD-style
+  files are deleted and `git gc --prune=now` drops unreachable objects, so a key that
+  was committed and then amended away does not travel.  A project's submodule
+  repositories (under `.git/modules`) are cleaned and scanned too; the core's own
+  submodules are not bundled;
+* nothing else.  A bundle never carries a secret: check() runs the secret scan
+  (tools/secret_scan.py) over the bundled files and over the project's whole history,
+  and the bundle fails on any finding.
 
 Exit codes: 0 ok, 1 refused or failed.
 
@@ -33,6 +41,11 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+_TOOLS = str(Path(__file__).resolve().parent)
+if _TOOLS not in sys.path:
+    sys.path.insert(0, _TOOLS)
+import secret_scan  # noqa: E402  (tools/secret_scan.py: the one source of the rules)
 
 EXIT_OK = 0
 EXIT_FAIL = 1
@@ -77,16 +90,61 @@ out/
 """
 
 
-def _ignore_core(_directory: str, names: list[str]) -> set[str]:
-    return {
-        name
-        for name in names
-        if name in CORE_SKIP or name.startswith("settings.json.bak-") or name.endswith(".pyc")
-    }
+def _tracked_core_files(root: Path) -> list[str]:
+    """The core files to copy: what git tracks, minus the skip lists."""
+    out = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], check=True,
+                         capture_output=True).stdout
+    names = []
+    for name in out.decode("utf-8", "surrogateescape").split("\0"):
+        parts = name.split("/")
+        if (not name or name in CORE_SKIP_FILES
+                or any(part in CORE_SKIP for part in parts)
+                or parts[-1].startswith("settings.json.bak-") or name.endswith(".pyc")):
+            continue
+        names.append(name)
+    return names
 
 
-def _ignore_project(_directory: str, names: list[str]) -> set[str]:
-    return {name for name in names if name in PROJECT_SKIP or name.endswith(".pyc")}
+def _copy_core(root: Path, target: Path) -> None:
+    for name in _tracked_core_files(root):
+        source = root / name
+        if source.is_symlink() or not source.is_file():
+            continue
+        destination = target / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
+
+
+def _ignore_project(directory: str, names: list[str]) -> set[str]:
+    skip = {name for name in names if name in PROJECT_SKIP or name.endswith(".pyc")}
+    if ".git" in names and (Path(directory) / ".git").is_file():
+        skip.add(".git")  # a gitfile points outside the bundle: never ship it
+    return skip
+
+
+def _gitdirs(repo_git: Path) -> list[Path]:
+    """A project's git directory plus the git directories of its submodules."""
+    found = [repo_git]
+    modules = repo_git / "modules"
+    if modules.is_dir():
+        found += sorted(head.parent for head in modules.rglob("HEAD")
+                        if (head.parent / "objects").is_dir())
+    return found
+
+
+def _scrub_git(gitdir: Path) -> None:
+    """Drop what a history scan cannot see: reflog, old-ref files, unreachable objects."""
+    if not (gitdir / "objects").is_dir():
+        return  # not a real repository; check() reports it as unscannable
+    for name in ("ORIG_HEAD", "FETCH_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD"):
+        (gitdir / name).unlink(missing_ok=True)
+    original = gitdir / "refs" / "original"
+    if original.is_dir():
+        _remove_tree(original)
+    for args in (["reflog", "expire", "--expire=now", "--all"],
+                 ["gc", "-q", "--prune=now"]):
+        subprocess.run(["git", "--git-dir", str(gitdir), "-c", "core.hooksPath=", *args],
+                       check=True, capture_output=True)
 
 
 def _remove_tree(path: Path) -> None:
@@ -122,14 +180,20 @@ def _check_name(name: str) -> str:
     return name
 
 
-def _check_out(root: Path, target: Path) -> None:
+def _check_out(root: Path, target: Path, project: Path | None = None) -> None:
     """Refuse a target that the copy would run into."""
     if target == root:
         raise ValueError(f"--out must not be the workspace root itself: {target}")
     if _inside(target, root / "projects"):
         raise ValueError(f"--out must not be inside projects/: {target}")
+    if _inside(root, target):
+        raise ValueError(f"--out must not contain the workspace (--force would delete it): {target}")
     if _inside(target, root) and not _inside(target, root / "out"):
         raise ValueError(f"--out must be outside {root} or under its out/: {target}")
+    if project is not None:
+        real = Path(project).resolve()  # projects/<name> may be a link to a real repository
+        if _inside(target, real) or _inside(real, target):
+            raise ValueError(f"--out must not overlap the project's real folder {real}: {target}")
 
 
 def build(root: Path, name: str, out: Path, *, force: bool = False,
@@ -142,19 +206,19 @@ def build(root: Path, name: str, out: Path, *, force: bool = False,
         raise FileNotFoundError(f"no project folder: {project}")
 
     target = (Path(out).resolve() / name)
-    _check_out(root, target)
+    _check_out(root, target, project)
     if target.exists():
         if not force:
             raise FileExistsError(f"{target} exists; pass --force to replace it")
         _remove_tree(target)
 
     target.mkdir(parents=True)
-    shutil.copytree(root, target, dirs_exist_ok=True, ignore=_ignore_core)
-    for relative in CORE_SKIP_FILES:
-        stale = target / relative
-        if stale.exists():
-            stale.unlink()
+    _copy_core(root, target)
     shutil.copytree(project, target / "projects" / name, ignore=_ignore_project)
+    project_git = target / "projects" / name / ".git"
+    if project_git.is_dir():
+        for gitdir in _gitdirs(project_git):
+            _scrub_git(gitdir)
     (target / ".gitignore").write_text(BUNDLE_GITIGNORE, encoding="utf-8")
 
     bundled = target / "projects" / name
@@ -188,6 +252,27 @@ def check(target: Path) -> list[str]:
         problems.append(f"{settings.relative_to(target)} is in the bundle")
     if (target / ".git").exists():
         problems.append("the core's git history is in the bundle")
+    for path, number, rule in secret_scan.scan_tree(target):
+        if rule == "unreadable file":
+            problems.append(f"cannot read {path}")
+        else:
+            problems.append(f"{path}:{number}: possible {rule} (value hidden)")
+    for repo in sorted((target / "projects").glob("*/.git")):
+        if repo.is_file():
+            problems.append(f"{repo.relative_to(target).as_posix()} is a link file")
+            continue
+        if not repo.is_dir():
+            continue
+        for gitdir in _gitdirs(repo):
+            name = gitdir.relative_to(target).as_posix()
+            try:
+                hits = secret_scan.scan_history(gitdir)
+            except (OSError, subprocess.CalledProcessError) as exc:
+                problems.append(f"{name}: cannot scan the git history ({exc})")
+                continue
+            for commit, path, number, rule in hits:
+                problems.append(f"{name} history {commit[:12]} {path}:{number}: "
+                                f"possible {rule} (value hidden)")
     return problems
 
 
@@ -205,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         target, result = build(root, args.name, out, force=args.force,
                                run_tests=not args.no_test)
-    except (FileNotFoundError, FileExistsError, ValueError) as exc:
+    except (FileNotFoundError, FileExistsError, ValueError, subprocess.CalledProcessError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return EXIT_FAIL
 
