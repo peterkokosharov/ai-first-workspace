@@ -14,6 +14,10 @@
 -- harmless leftover and may be dropped by hand.  v3 also adds machines.ram_mb and
 -- machines.updated_at (filled by "autodiscovery.py --save"); "inventory.py init"
 -- adds them to an older database.
+--
+-- v4: new projects table.  One row per user project; every project folder lives under
+-- projects/ and is normally its own git repository.  The table records the folder, the
+-- business it serves and its status; documents and code stay in the folder, not here.
 
 PRAGMA foreign_keys = ON;
 
@@ -96,7 +100,23 @@ CREATE TABLE IF NOT EXISTS tools (
     UNIQUE (name, machine_id)
 );
 
+-- One row per user project.  The folder itself (documents, code, its own git history)
+-- lives under projects/ and is not tracked by this repository.
+CREATE TABLE IF NOT EXISTS projects (
+    id     INTEGER PRIMARY KEY,
+    name   TEXT NOT NULL UNIQUE,          -- folder name under projects/, e.g. example-project
+    title  TEXT,                          -- human name of the business
+    kind   TEXT,                          -- consulting, facebook trading, wordpress shop, ...
+    path   TEXT NOT NULL UNIQUE,          -- folder path, always projects/<name>
+    repo   INTEGER NOT NULL DEFAULT 0     -- 1: the folder is its own git repository
+           CHECK (repo IN (0, 1)),
+    status TEXT NOT NULL DEFAULT 'active'
+           CHECK (status IN ('active', 'planned', 'broken', 'retired', 'unknown')),
+    notes  TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_keys_service ON keys(service_id);
 CREATE INDEX IF NOT EXISTS idx_keys_provider ON keys(provider_id);
 CREATE INDEX IF NOT EXISTS idx_models_provider ON models(provider_id);
 CREATE INDEX IF NOT EXISTS idx_models_tier ON models(tier);
+CREATE INDEX IF NOT EXISTS idx_projects_status ON projects(status);

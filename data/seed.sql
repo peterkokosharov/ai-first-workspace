@@ -8,7 +8,15 @@
 -- (e.g. personal/my-project/github_token). Model provider keys keep their names
 -- (e.g. nvidia/personal/api_key).
 
-INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '3');
+INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('schema_version', '4');
+
+INSERT OR IGNORE INTO projects (id, name, title, kind, path, repo, status, notes) VALUES
+    (1, 'example-project', 'Example project', 'consulting', 'projects/example-project', 1, 'active',
+        'sample row; rename it when you start your own project'),
+    (2, 'second-project', 'Second project', 'facebook trading', 'projects/second-project', 0, 'planned',
+        'sample row; no folder or git repo yet'),
+    (3, 'third-project', 'Third project', 'wordpress shop', 'projects/third-project', 0, 'planned',
+        'sample row; no folder or git repo yet');
 
 INSERT OR IGNORE INTO services (id, name, kind, account, status, notes) VALUES
     (1, 'github', 'code hosting', 'personal', 'active', NULL),

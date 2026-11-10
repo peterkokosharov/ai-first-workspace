@@ -21,11 +21,12 @@ import unittest
 from pathlib import Path
 
 SUT = Path(__file__).resolve().parents[1] / "inventory.py"  # tools/inventory.py
-ROOT = Path(__file__).resolve().parents[1]                  # project root
+ROOT = Path(__file__).resolve().parents[2]                  # project root
 DATA = ROOT / "data"
 SCHEMA = DATA / "schema.sql"
 SEED = DATA / "seed.sql"
 REAL_DB = DATA / "inventory.db"
+PROJECTS_DIR = ROOT / "projects"
 
 
 def _run(args):
@@ -54,7 +55,7 @@ class TestInventory(unittest.TestCase):
             return {
                 t: conn.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
                 for t in ("machines", "services", "providers", "keys",
-                          "models", "tools")
+                          "models", "tools", "projects")
             }
         finally:
             conn.close()
@@ -66,22 +67,24 @@ class TestInventory(unittest.TestCase):
         counts = self._counts(self.db)
         expected = {
             "machines": 0, "services": 2, "providers": 8, "keys": 9,
-            "models": 40, "tools": 1,
+            "models": 40, "tools": 1, "projects": 3,
         }
         self.assertEqual(counts, expected)
 
     def test_init_is_idempotent(self):
         first = _run(["init"])
         self.assertEqual(first.returncode, 0, first.stderr)
+        before = self._counts(self.db)
         second = _run(["init"])
         self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(self._counts(self.db), before)
 
     def test_tables(self):
         _run(["init"])
         result = _run(["tables"])
         self.assertEqual(result.returncode, 0)
         for t in ("machines", "services", "providers", "keys", "models",
-                  "tools", "schema_meta"):
+                  "tools", "schema_meta", "projects"):
             self.assertIn(t, result.stdout)
 
     def test_list(self):
@@ -106,6 +109,167 @@ class TestInventory(unittest.TestCase):
     def test_seed_has_no_settings_table(self):
         _run(["init"])
         self.assertNotIn("settings", _run(["tables"]).stdout.split())
+
+    def test_seed_projects(self):
+        _run(["init"])
+        result = _run(["list", "projects"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        for name in ("example-project", "second-project", "third-project"):
+            self.assertIn(name, result.stdout)
+        self.assertIn("consulting", result.stdout)
+
+    def test_seed_projects_live_under_projects_folder(self):
+        _run(["init"])
+        conn = sqlite3.connect(str(self.db))
+        try:
+            rows = conn.execute("SELECT name, path FROM projects").fetchall()
+        finally:
+            conn.close()
+        self.assertTrue(rows)
+        for name, path in rows:
+            self.assertEqual(path, f"projects/{name}")
+
+    def test_add_project(self):
+        _run(["init"])
+        result = _run(["add-project", "acme", "--title", "Acme Ltd",
+                       "--kind", "manufacturing", "--notes", "pilot"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            self._project_row("acme"),
+            ("projects/acme", 0, "active", "Acme Ltd", "manufacturing", "pilot"),
+        )
+
+    def test_add_project_repo_state_follows_the_folder(self):
+        _run(["init"])
+        result = _run(["add-project", "no_folder_yet"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._project_row("no_folder_yet")[1], 0)  # no .git: no claim
+        module = self._module()
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "projects" / "with_repo" / ".git").mkdir(parents=True)
+            module.ROOT = Path(tmp)
+            self.assertEqual(module._project_repo_state("with_repo"), 1)  # a real repo
+            self.assertEqual(module._project_repo_state("never_created"), 0)
+
+    def test_add_project_repo_flags_override_detection(self):
+        _run(["init"])
+        self.assertEqual(_run(["add-project", "forced", "--repo"]).returncode, 0)
+        self.assertEqual(self._project_row("forced")[1], 1)
+        self.assertEqual(_run(["add-project", "denied", "--no-repo"]).returncode, 0)
+        self.assertEqual(self._project_row("denied")[1], 0)
+
+    def test_add_project_no_repo_and_planned(self):
+        _run(["init"])
+        result = _run(["add-project", "scratch", "--no-repo", "--status", "planned"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        row = self._project_row("scratch")
+        self.assertEqual(row[1], 0)
+        self.assertEqual(row[2], "planned")
+
+    def test_add_project_custom_path_must_stay_under_projects(self):
+        _run(["init"])
+        result = _run(["add-project", "paperwork", "--path", "doc/paperwork"])
+        self.assertEqual(result.returncode, 3)
+        self.assertIn("projects/", result.stderr)
+        result = _run(["add-project", "paperwork", "--path", "projects/paperwork"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self._project_row("paperwork")[0], "projects/paperwork")
+
+    def test_add_project_path_cannot_escape_projects(self):
+        _run(["init"])
+        for bad in ("projects/../escape", "projects/../../etc", "projects/x/..",
+                    "projects/..", "projects//x", "projects/./x",
+                    "projects\\..\\escape", "projects/", "Projects/x", "projects/x/../y",
+                    "projects/x.", "projects/x ", "projects/x/"):
+            result = _run(["add-project", "probe", "--path", bad])
+            self.assertEqual(result.returncode, 3, bad)
+        self.assertIsNone(self._project_row("probe"))
+
+    def test_add_project_path_is_exactly_projects_name(self):
+        _run(["init"])
+        for name, path in (("foo", "projects/bar"),
+                           ("foo", "projects/foo/bar"),
+                           ("foo", "projects/a/b")):
+            result = _run(["add-project", name, "--path", path])
+            self.assertEqual(result.returncode, 3, path)
+        self.assertIsNone(self._project_row("foo"))
+
+    def test_add_project_rejects_bad_names(self):
+        _run(["init"])
+        for bad in ("Upper", "two words", "../etc", "a/b", "", " con", "con", "com1",
+                    "con.txt", "com1.bak", "aux.ini", "-x", ".x", "x."):
+            result = _run(["add-project", bad])
+            self.assertEqual(result.returncode, 3, bad)
+
+    def test_add_project_duplicate_is_refused(self):
+        _run(["init"])
+        result = _run(["add-project", "example-project"])
+        self.assertEqual(result.returncode, 3)
+        self.assertIn("example-project", result.stderr)
+
+    def test_add_project_creates_no_folder(self):
+        _run(["init"])
+        if not PROJECTS_DIR.is_dir():
+            self.skipTest("no projects/ folder in this checkout")
+        before = sorted(p.name for p in PROJECTS_DIR.iterdir())
+        result = _run(["add-project", "probe_only_db"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(sorted(p.name for p in PROJECTS_DIR.iterdir()), before)
+
+    def test_add_project_without_database_creates_nothing(self):
+        result = _run(["add-project", "x"])
+        self.assertEqual(result.returncode, 2)
+        self.assertFalse(self.db.exists())
+
+    def test_init_adds_projects_to_an_older_database(self):
+        conn = sqlite3.connect(str(self.db))
+        try:
+            conn.executescript(
+                "CREATE TABLE schema_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);"
+                "CREATE TABLE services ("
+                " id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, kind TEXT,"
+                " account TEXT, status TEXT NOT NULL DEFAULT 'active', notes TEXT);"
+                "INSERT INTO schema_meta VALUES ('schema_version', '3');"
+                "INSERT INTO services (id, name, kind) VALUES (42, 'legacy', 'test');"
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        result = _run(["init"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        conn = sqlite3.connect(str(self.db))
+        try:
+            tables = {row[0] for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'")}
+            legacy = conn.execute("SELECT name FROM services WHERE id = 42").fetchone()
+            version = conn.execute(
+                "SELECT value FROM schema_meta WHERE key = 'schema_version'").fetchone()
+            projects = conn.execute("SELECT count(*) FROM projects").fetchone()[0]
+        finally:
+            conn.close()
+        self.assertIn("projects", tables)
+        self.assertEqual(legacy, ("legacy",))
+        self.assertEqual(version, ("4",))
+        self.assertEqual(projects, 3)
+
+    def _module(self):
+        """Import tools/inventory.py in-process, for the pure helpers."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("inventory_sut", SUT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def _project_row(self, name):
+        """(path, repo, status, title, kind, notes) for one project, or None."""
+        conn = sqlite3.connect(str(self.db))
+        try:
+            return conn.execute(
+                "SELECT path, repo, status, title, kind, notes FROM projects WHERE name = ?",
+                (name,),
+            ).fetchone()
+        finally:
+            conn.close()
 
     def test_show(self):
         _run(["init"])

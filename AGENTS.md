@@ -52,6 +52,9 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
   Missing database: python3 tools/inventory.py init
 - kb/ free model list. doc/ architecture pages. out/ reports (not in git).
 - projects/<name>/ one folder per user project; it may be its own git repo.
+  Everything for one project lives there: its own AGENTS.md, docs, tools and git
+  history, so the folder can be handed over on its own. The root tools/ stays
+  generic; this core holds nothing project-specific.
 
 ## What "agent" means
 - An agent is a role you play in this session (for example orc, coder, qa, reviewer),

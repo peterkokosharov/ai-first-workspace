@@ -10,8 +10,9 @@ data are ``data/schema.sql`` and ``data/seed.sql`` and are committed.
 
 Standard library only, no venv, no pip.
 
-Tables: machines, services, providers, keys, models, tools.
+Tables: machines, services, providers, keys, models, tools, projects.
 A key belongs either to a service or to a provider, never both.
+A project is one business of the user; its folder lives under projects/.
 
 Usage:
     python3 tools/inventory.py init         # create schema, load seed (re-runnable)
@@ -24,12 +25,14 @@ Usage:
     python3 tools/inventory.py add-service NAME KIND [--account A] [--notes N]
     python3 tools/inventory.py add-key PATH (--service NAME | --provider NAME) [--kind K]
                                        [--status S] [--notes N]
+    python3 tools/inventory.py add-project NAME [--title T] [--kind K] [--path P]
+                                       [--no-repo] [--status S] [--notes N]
 
 Key paths follow the rules of tools/secret.py: lowercase segments separated by "/",
 at least two segments, no leading "/". Per-project tokens: scope/project/kind,
 scope = personal | company, e.g. personal/my-project/github_token.
-add-service and add-key write only to the local database (INVENTORY_DB if set);
-data/seed.sql is never changed.
+add-service, add-key and add-project write only to the local database (INVENTORY_DB
+if set); data/seed.sql is never changed.
 
 Exit codes: 0 ok, 1 not found, 2 database error, 3 usage error.
 """
@@ -424,6 +427,89 @@ def cmd_add_key(args) -> int:
     return EXIT_OK
 
 
+#: Folder names Windows refuses to create, whatever the extension follows.
+RESERVED_WINDOWS_NAMES = frozenset(
+    {"con", "prn", "aux", "nul"}
+    | {f"com{i}" for i in range(1, 10)}
+    | {f"lpt{i}" for i in range(1, 10)}
+)
+
+#: One segment of a project path: lowercase, starts with a letter or digit.
+PROJECT_SEGMENT_RE = re.compile(r"[a-z0-9][a-z0-9._-]*")
+
+
+def _validate_project_segment(segment: str, where: str) -> str:
+    if not PROJECT_SEGMENT_RE.fullmatch(segment):
+        raise UsageError(
+            f"invalid {where} {segment!r}: use lowercase letters, digits, '.', '_' "
+            "and '-'; the first character must be a letter or digit (e.g. example-project)"
+        )
+    if segment.rstrip(" .") != segment:
+        raise UsageError(
+            f"invalid {where} {segment!r}: Windows drops trailing dots and spaces, "
+            "so it would name the same folder as the trimmed one"
+        )
+    if segment.split(".", 1)[0] in RESERVED_WINDOWS_NAMES:
+        raise UsageError(f"invalid {where} {segment!r}: reserved name on Windows")
+    return segment
+
+
+def _validate_project_path(value: str | None, name: str) -> str:
+    """Return ``projects/<name>`` built from safe segments only.
+
+    ``projects/../x``, ``projects//x``, ``projects/./x``, a deeper path and a last
+    segment that differs from the project name are all refused, so the row can only
+    describe the folder the rules allow.
+    """
+    path = (value or f"projects/{name}").replace("\\", "/").rstrip("/")
+    segments = path.split("/")
+    if len(segments) != 2 or segments[0] != "projects":
+        raise UsageError(
+            f"a project folder is projects/<name>, nothing deeper; got: {path}"
+        )
+    for segment in segments[1:]:
+        _validate_project_segment(segment, "folder segment")
+    if segments[1] != name:
+        raise UsageError(
+            f"folder {segments[1]!r} does not match the project name {name!r}"
+        )
+    return path
+
+
+def _project_repo_state(name: str) -> int:
+    """1 only when projects/<name> is already a git repository; never a guess."""
+    return 1 if (ROOT / "projects" / name / ".git").exists() else 0
+
+
+def cmd_add_project(args) -> int:
+    """Add one project row.  The folder itself is created separately, under projects/."""
+    name = _validate_project_segment(args.name, "project name")
+    path = _validate_project_path(args.path, name)
+    if args.repo:
+        repo = 1
+    elif args.no_repo:
+        repo = 0
+    else:
+        repo = _project_repo_state(name)
+    conn = _connect_existing()
+    try:
+        conn.execute(
+            "INSERT INTO projects (name, title, kind, path, repo, status, notes) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (name, args.title, args.kind, path, repo, args.status, args.notes),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError as exc:
+        raise UsageError(f"cannot add project {name!r}: {exc}") from exc
+    except sqlite3.Error as exc:
+        raise InventoryError(f"SQL error: {exc}") from exc
+    finally:
+        conn.close()
+    print(f"added project {name!r} at {path} to {DB} "
+          f"(repo: {'own git repository' if repo else 'none yet'})")
+    return EXIT_OK
+
+
 # -------------------------------------------------------------------------------------- command line
 
 
@@ -488,6 +574,21 @@ def build_parser() -> argparse.ArgumentParser:
                    choices=["active", "planned", "broken", "retired", "unknown"])
     p.add_argument("--notes")
     p.set_defaults(func=cmd_add_key)
+
+    p = sub.add_parser("add-project", help="add a project folder to the local database")
+    p.add_argument("name", help="folder name under projects/, e.g. example-project")
+    p.add_argument("--title", help="human name of the business")
+    p.add_argument("--kind", help="e.g. consulting, facebook trading, wordpress shop")
+    p.add_argument("--path", help="default: projects/<name>")
+    repo = p.add_mutually_exclusive_group()
+    repo.add_argument("--repo", action="store_true",
+                      help="the folder is its own git repository")
+    repo.add_argument("--no-repo", action="store_true",
+                      help="the folder is not a git repository")
+    p.add_argument("--status", default="active",
+                   choices=["active", "planned", "broken", "retired", "unknown"])
+    p.add_argument("--notes")
+    p.set_defaults(func=cmd_add_project)
 
     return parser
 
