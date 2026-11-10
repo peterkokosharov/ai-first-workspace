@@ -15,8 +15,14 @@ Same file in every project; it holds no project code.  Copied from
    ``tools/secret.py``, walking the path as given (absolute, links NOT resolved), so a
    project reached through ``core/projects/X`` (a junction or symlink to a repo kept
    elsewhere) finds the core;
-5. ``parent-real`` -- the same walk on the resolved path (a project that was started
-   from a link-free path but sits under a core through a link above it).
+   On POSIX the current folder is physical, so for a relative path the walk is also made
+   under ``$PWD`` when ``$PWD`` is the same folder as the current one;
+5. ``parent-real`` -- the same walk on the resolved path: the given path goes through a
+   link and the core is above the link's target.
+
+The link's own location wins: a workspace above the link is trusted as the core, even if
+the repo behind the link has another one above it.  ``CORE`` must be an absolute path
+(a relative one is taken relative to the current folder).
 
 A folder from 1-3 counts only if it holds ``tools/secret.py``.  That target is trusted
 code: ``install()`` executes it, so point ``CORE`` and ``"core"`` only at a core you trust.
@@ -64,11 +70,29 @@ def find(root: Path, environ=None) -> Found | None:
         path = (root / Path(value).expanduser()).resolve()
         if _is_core(path):
             return Found(path, "settings")
-    for origin, start in (("parent", given), ("parent-real", root)):
+    starts = [("parent", given)]
+    pwd = _pwd_path(given, environ)
+    if pwd is not None:
+        starts.append(("parent", pwd))
+    starts.append(("parent-real", root))
+    for origin, start in starts:
         for parent in start.parents:
             if (parent / "AGENTS.md").is_file() and _is_core(parent):
-                return Found(parent, origin)
+                return Found(parent.resolve(), origin)
     return None
+
+
+def _pwd_path(given: Path, environ) -> Path | None:
+    """``given`` rebuilt under ``$PWD`` (POSIX getcwd() is physical), or None."""
+    pwd = (environ.get("PWD") or "").strip()
+    try:
+        cwd = Path(os.getcwd())
+        relative = given.relative_to(cwd)
+        if not pwd or not os.path.isabs(pwd) or Path(pwd).resolve() != cwd.resolve():
+            return None
+    except (OSError, ValueError):
+        return None
+    return Path(os.path.abspath(pwd)) / relative
 
 
 def install(root: Path | None = None, environ=None) -> Found:

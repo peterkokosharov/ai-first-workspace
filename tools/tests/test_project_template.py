@@ -162,6 +162,19 @@ class TestLinkedProject(unittest.TestCase):
         found = self.core.install(self.link)
         self.assertEqual((found.path, found.origin), (self.ws, "parent"))
 
+    def test_relative_launch_with_pwd_keeps_the_link(self):
+        # POSIX getcwd() is physical; $PWD still names the link. On Windows no PWD logic is needed.
+        code = ("import importlib.util as u, pathlib; "
+                "s = u.spec_from_file_location('c', %r); m = u.module_from_spec(s); "
+                "s.loader.exec_module(m); f = m.find(pathlib.Path('.'), {'PWD': %r}); "
+                "print(f.origin, f.path)") % (str(TEMPLATE / "core.py"), str(self.link))
+        done = subprocess.run([sys.executable, "-I", "-c", code], cwd=self.link,
+                              env=dict(os.environ, PWD=str(self.link)),
+                              capture_output=True, text=True)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertEqual(done.stdout.split(" ", 1)[0], "parent")
+        self.assertEqual(Path(done.stdout.split(" ", 1)[1].strip()), self.ws)
+
     def test_a_plain_folder_inside_the_core_is_found_by_parent(self):
         plain = self.ws / "projects" / "plain"
         plain.mkdir()
