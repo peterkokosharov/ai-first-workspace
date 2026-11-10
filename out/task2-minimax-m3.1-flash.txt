@@ -1,1 +1,0 @@
-ping_direct: unexpected error: The read operation timed out

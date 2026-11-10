@@ -1,92 +1,72 @@
-# Project Rules
-
-This folder is self-contained and portable: archive it, move it, unpack it, work continues.
-Nothing belongs outside except the coding agent program, `~/SECRETS`, and session history.
+# Rules for every agent in this folder
+Read this whole file. A line "Doing X -> file" means: read that file before you do X.
 
 ## Language
+- The user may write Bulgarian in Latin letters. Do not correct or comment on it.
+- Reply in Bulgarian, Cyrillic letters. (Other users: put your own language here.)
+- Every file, code comment and commit message is in English.
 
-- User writes in Bulgarian phonetic Latin ("pinyin BG") — do not correct or comment.
-- Assistant replies in literary Bulgarian, Cyrillic alphabet.
-- All repo files (Markdown, Python, SQL, config, comments, commits) are in English.
-
-## No initiative
-
-Wait for an explicit order before running commands, reading/writing files, or changing
-configuration. A sentence containing an action and "да" is the order and confirmation.
-Irreversible actions (deleting files/data, overwriting, `git push`, dropping a database)
-need a separate confirmation.
-
-## First commands on a new machine
-
-```bash
-python3 tools/autodiscovery.py
-python3 tools/inventory.py init
-python3 -m unittest discover -s tools/tests -t . -v
-```
-
-- `autodiscovery.py` exit codes: 0 OK, 1 minimum not met (git + bash missing),
-  2 database missing, 3 database empty.
-- Tests: 116 total. On Windows several fail because optional tools are absent
-  (docker, node, npm, opencode, native secret stores) — that is expected, not a bug.
-  One test is skipped unless `SECRET_LIVE_TESTS=1` (live DCOP write/read/delete on Q4OS).
-
-## Inventory database (local, gitignored — recreate if missing)
-
-```bash
-python3 tools/inventory.py init
-python3 tools/inventory.py tables
-python3 tools/inventory.py list machines
-```
-
-`data/inventory.db` is never committed. Rebuild from `data/schema.sql` + `data/seed.sql`.
+## Orders and confirmation
+- Do only what the user asked. Start no other work on your own.
+- You may always read files in this folder. Running commands or writing files needs an order.
+- An order is a user message that names the action.
+- Inside an order you may run these without asking again: tools/inventory.py tables,
+  list and key, git status/diff/log, the test command, tools/secret_scan.py, and the
+  step-review and commit procedures.
+- Confirmation: when you ask "Shall I <action>?", only a reply that starts with
+  "да", "da" or "yes" as its own word confirms it.
+- Ask first, one action at a time: deleting or overwriting files, dropping data,
+  git revert, git push, anything outside this folder.
+- Unsure? Ask one yes/no question. Never guess.
 
 ## Secrets
-
-Secret values never enter git or the archive. Primary store is the OS native credential
-store (WCM, Keychain, secret-tool, KWallet, TDE DCOP). Key path scheme:
-`provider/scope/kind` (e.g. `github/personal/token`).
-
-```bash
-python3 tools/secret.py setup
-python3 tools/secret.py probe
-python3 tools/secret.py --backend auto set provider/scope/kind   # read value from prompt/stdin
-python3 tools/secret.py get provider/scope/kind
-python3 tools/secret.py list
-```
-
-Exit codes: 0 OK, 1 not found, 2 backend error, 3 usage error. `auto` never falls back
-to plaintext — use `--backend file` explicitly. `~/SECRETS` is a temporary export file
-outside the project — delete after import.
-
-## Inventory first
-
-Before asking about machines, services, providers, models, keys or tools, check
-`data/inventory.db` with `python3 tools/inventory.py`.
+- Never write a key, token or password into a file, commit, chat or log. Never print one.
+- Keys live only in the OS secret store, through tools/secret.py.
+- Key names: scope/project/kind, e.g. personal/my-project/github_token; model provider
+  keys keep their names (nvidia/personal/api_key). Details: INSTALL.md "Key names".
+- List key names (never values): python3 tools/secret.py list
+- Key name of a service or provider (never a value): python3 tools/inventory.py key <name>
+  Need the key for gmail? python3 tools/inventory.py key gmail prints its name; only if the
+  user ordered the work, pass it on with python3 tools/secret.py run <name> -- <command>.
+- Record a service: python3 tools/inventory.py add-service NAME KIND
+- Record a key name: python3 tools/inventory.py add-key NAME --service S | --provider P
+- Never use "--backend file" unless the user orders exactly that.
 
 ## Git
+- Local commit: make it yourself at each milestone (see procedure). Do not ask:
+  the order for the work includes its milestone commits.
+- Push: only by docs/procedures/github-deploy.md, after a confirmation.
+  Never use --force or --force-with-lease.
+- Never commit data/inventory.db, settings.json, out/ or projects/.
+- If pre-commit blocks, remove the key. Never use --no-verify.
+- If pre-push blocks, stop: a commit to be pushed holds a key. Tell the user the history
+  must be cleaned first (only on the user's order) and the key must be replaced.
 
-- `git commit` / `git push` locally: perform without discussion.
-- `git push remote`: clarify remote and branch first, then ask for explicit confirmation ("да").
-- `data/inventory.db` is gitignored — never commit it.
+## Where things are
+- On Windows type "py" instead of "python3".
+- tools/  Python tools, standard library only. Help: read the text at the top of
+  tools/<name>.py. Do not run a tool only to see its help.
+- Tests: python3 -m unittest discover -s tools/tests -t . -v
+- Machines, providers, models, key names: python3 tools/inventory.py tables, then
+  python3 tools/inventory.py list <table>. Check there before asking the user.
+  Missing database: python3 tools/inventory.py init
+- kb/ free model list. doc/ architecture pages. out/ reports (not in git).
+- projects/<name>/ one folder per user project; it may be its own git repo.
 
-## Available tools
+## What "agent" means
+- An agent is a role you play in this session (for example orc, coder, qa, reviewer),
+  or an opencode subagent. Nothing else.
+- Never start claude, gemini, goose, codex or another opencode process unless the
+  user names it in an order.
+- UNVERIFIED: that opencode subagents work in this setup, and that an opencode
+  permission rule can deny shell commands that start with those names. Until it is
+  tested on the installed opencode version, this is a rule only, not enforced.
 
-- `tools/secret.py` — secret tool over native credential stores.
-- `tools/inventory.py` — SQLite inventory manager (init, tables, list, show, search, sql read-only, setting).
-- `tools/autodiscovery.py` — machine discovery (OS, RAM, CPU, Python, git, bash, inventory db).
-- `tools/ping.py` — ping a model via OpenCode and verify against inventory.
-- `tools/ping_direct.py` — direct HTTP ping to providers (gemini, nvidia, deepseek, mistral).
-- `tools/setup_providers.py` — configure OpenCode providers from KWallet keys.
-- `tools/robota.py` — scrape build.nvidia.com/models into `kb/md/` and `kb/html/`.
-- `tools/gen_models_xml.py` — generate `kb/models.xml` from the scraped index.
-
-## Requirements
-
-- Python 3.x (stdlib only; no venv, no pip)
-- git
-- node.js + npm — only for `mermaid-cli` diagrams (`npx -y @mermaid-js/mermaid-cli`)
-- One supported agent harness (OpenCode primary; Claude Code, Codex CLI, Gemini CLI, Rex secondary)
-
-## Output
-
-Write audit reports and test artifacts to `out/` (gitignored, not committed).
+## Procedures
+- Finished a step -> docs/procedures/step-review.md
+- Reached a milestone -> docs/procedures/commit.md
+- Before a release or tag -> docs/procedures/release-audit.md
+- Writing HTML docs or diagrams -> docs/procedures/html-docs.md
+- Publishing to GitHub -> docs/procedures/github-deploy.md
+- Work split over several agents -> docs/procedures/orchestration.md
+- New machine, missing tool or database -> INSTALL.md

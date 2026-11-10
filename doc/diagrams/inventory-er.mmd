@@ -1,0 +1,75 @@
+erDiagram
+    schema_meta {
+        TEXT key PK
+        TEXT value
+    }
+
+    machines {
+        INTEGER id PK
+        TEXT name UK
+        TEXT os
+        TEXT arch
+        TEXT python
+        TEXT user_name
+        TEXT role
+        TEXT status
+        TEXT notes
+        INTEGER ram_mb
+        TEXT updated_at
+    }
+
+    services {
+        INTEGER id PK
+        TEXT name UK
+        TEXT kind
+        TEXT account
+        TEXT status
+        TEXT notes
+    }
+
+    providers {
+        INTEGER id PK
+        TEXT name UK
+        TEXT kind
+        TEXT base_url
+        INTEGER free_tier
+        TEXT status
+        TEXT notes
+    }
+
+    keys {
+        INTEGER id PK
+        TEXT path UK
+        INTEGER service_id FK
+        INTEGER provider_id FK
+        TEXT kind
+        TEXT status
+        TEXT notes
+    }
+
+    models {
+        INTEGER id PK
+        TEXT alias UK
+        TEXT model_id
+        INTEGER provider_id FK
+        INTEGER key_id FK
+        TEXT tier
+        INTEGER context_window
+        REAL cost_per_1k
+        TEXT status
+        TEXT notes
+    }
+
+    tools {
+        INTEGER id PK
+        TEXT name
+        INTEGER machine_id FK
+        TEXT status
+        TEXT notes
+    }
+
+    services ||--o{ keys : "service_id"
+    providers ||--o{ keys : "provider_id"
+    providers ||--o{ models : "provider_id"
+    keys ||--o{ models : "key_id"
+    machines ||--o{ tools : "machine_id"

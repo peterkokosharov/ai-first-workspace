@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Portable secret tool: one interface over native credential stores.
 
-The tool stores secrets under stable key paths: ``provider/scope/kind``.
+The tool stores secrets under stable key paths: ``<name>/<name>/kind`` (e.g. ``nvidia/personal/api_key`` or ``personal/my-project/github_token``).
 The native store of the operating system is primary.  A plain ``KEY_PATH | value``
 export file is supported, but it is a temporary transfer/backup file, not a second
 source of truth.
@@ -111,7 +114,7 @@ class ExportFormatError(BackendError):
 # --------------------------------------------------------------------------------------
 
 def validate_path(path: str) -> str:
-    """Validate and return a key path (``provider/scope/kind``)."""
+    """Validate and return a key path (two or more parts, e.g. ``nvidia/personal/api_key``)."""
     if not isinstance(path, str) or not path:
         raise UsageError("key path is empty")
     if len(path) > MAX_PATH:
@@ -520,10 +523,12 @@ class SecretToolBackend(Backend):
         if result.returncode != 0:
             raise BackendError(f"secret-tool search failed: {_detail(result)}")
         found = set()
+        # secret-tool prints "attribute.kiko-identity = X" (older builds: no prefix).
         for line in (result.stdout or "").splitlines():
-            if not line.startswith("kiko-identity = "):
+            key, sep, rest = line.partition(" = ")
+            if not sep or key.strip().removeprefix("attribute.") != "kiko-identity":
                 continue
-            candidate = line.split("=", 1)[1].strip().lower()
+            candidate = rest.strip().lower()
             try:
                 found.add(validate_path(candidate))
             except UsageError:

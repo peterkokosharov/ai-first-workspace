@@ -8,6 +8,12 @@
 --   * cost_per_1k  -- indicative cost per 1000 tokens (optional)
 --   * provider    -- denormalised provider name for quick filtering
 -- A model belongs to exactly one provider.  Providers may be free-tier or paid.
+--
+-- v3: the settings table is gone (nothing read it; tool paths and git settings live in
+-- settings.json).  An older data/inventory.db keeps its settings table; that is a
+-- harmless leftover and may be dropped by hand.  v3 also adds machines.ram_mb and
+-- machines.updated_at (filled by "autodiscovery.py --save"); "inventory.py init"
+-- adds them to an older database.
 
 PRAGMA foreign_keys = ON;
 
@@ -26,7 +32,9 @@ CREATE TABLE IF NOT EXISTS machines (
     role      TEXT,
     status    TEXT NOT NULL DEFAULT 'active'
               CHECK (status IN ('active', 'planned', 'broken', 'retired', 'unknown')),
-    notes     TEXT
+    notes     TEXT,
+    ram_mb    INTEGER,
+    updated_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS services (
@@ -86,12 +94,6 @@ CREATE TABLE IF NOT EXISTS tools (
                CHECK (status IN ('active', 'planned', 'broken', 'retired', 'unknown')),
     notes      TEXT,
     UNIQUE (name, machine_id)
-);
-
-CREATE TABLE IF NOT EXISTS settings (
-    key        TEXT PRIMARY KEY,
-    value      TEXT,
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_keys_service ON keys(service_id);

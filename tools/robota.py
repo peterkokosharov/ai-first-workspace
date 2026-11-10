@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Scrape build.nvidia.com/models for models with free endpoints.
 
 Walks the listing pages (?page=1..N), finds model cards that advertise a
@@ -113,7 +116,10 @@ _MODEL_URL_RE = re.compile(r"^/(?:models/)?(?!explore|models)([A-Za-z0-9_.-]+)/(
 def extract_model_links(listing_html: str) -> list[tuple[str, str]]:
     """Return [(slug, absolute_url)] of model detail links on the listing page."""
     parser = LinkExtractor()
-    parser.feed(listing_html)
+    try:
+        parser.feed(listing_html)
+    except Exception:
+        return []
     found: dict[str, str] = {}
     for text, href in parser.links:
         m = _MODEL_URL_RE.match(href)
@@ -224,10 +230,14 @@ def scrape_page(page: int) -> list[tuple[str, str]]:
             print(f"[robota]     skip {slug}: not an LLM")
             continue
 
-        title = extract_title(detail_html)
-        endpoint = extract_endpoint(detail_html)
-        specs = extract_specs(detail_html)
-        tags = extract_tags(detail_html)
+        try:
+            title = extract_title(detail_html)
+            endpoint = extract_endpoint(detail_html)
+            specs = extract_specs(detail_html)
+            tags = extract_tags(detail_html)
+        except Exception as exc:
+            print(f"[robota]     skip {slug}: parse error: {exc}")
+            continue
         entry = {
             "slug": slug,
             "title": title,

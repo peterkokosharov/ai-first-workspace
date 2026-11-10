@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Peter Kokosharov
+# SPDX-License-Identifier: MIT
+# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Ping a model via OpenCode and verify it against the inventory database.
 
 Usage:
     python3 tools/ping.py <model_alias> [--message "hi"]
 
 The script:
-1. Looks up the model alias in data/inventory.db (models table).
+1. Looks up the model alias in data/inventory.db (or $INVENTORY_DB), models table.
 2. Checks OpenCode's model catalog for the provider to determine the tier.
 3. Pings the model via `opencode run -m <provider>/<model> --format json <message>`.
 4. Reports OK if the model answers, NOT OK on HTTP error / non-200 / no response.
@@ -17,14 +20,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sqlite3
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "tools") not in sys.path:
+    sys.path.insert(0, str(ROOT / "tools"))
+import workspace_settings  # noqa: E402  (shared helper next to this file)
+
 DATA = ROOT / "data"
-INVENTORY_DB = DATA / "inventory.db"
+INVENTORY_DB = Path(os.environ.get("INVENTORY_DB", str(DATA / "inventory.db")))  # as in inventory.py
 
 EXIT_OK = 0
 EXIT_NOT_FOUND = 1
@@ -75,11 +83,17 @@ def lookup_model(alias: str) -> dict | None:
 # -------------------------------------------------------------------------------------- opencode tier
 
 
+def opencode_command() -> str:
+    """``tools.opencode`` from settings.json (path or name), else ``opencode``."""
+    return workspace_settings.tool_command("opencode")
+
+
+
 def opencode_models_for_provider(provider_name: str) -> tuple[list[str], str | None]:
     """Return the list of models OpenCode knows for a provider, or an error."""
     try:
         result = subprocess.run(
-            ["opencode", "models", provider_name],
+            [opencode_command(), "models", provider_name],
             capture_output=True,
             text=True,
             timeout=15,
@@ -116,7 +130,7 @@ def ping_model(model_ref: str, message: str) -> tuple[int, str, str]:
     """
     try:
         result = subprocess.run(
-            ["opencode", "run", "-m", model_ref, "--format", "json", message],
+            [opencode_command(), "run", "-m", model_ref, "--format", "json", message],
             capture_output=True,
             text=True,
             timeout=60,

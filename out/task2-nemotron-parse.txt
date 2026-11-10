@@ -1,2 +1,0 @@
-ping_direct: HTTP 400 from nvidia
-      body: {"object":"error","message":"Content cannot be a plain string. The model does not support text input. Content cannot be a plain string. The model does not support text input.","type":"BadRequestError","param":null,"code":400}

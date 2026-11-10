@@ -1,270 +1,190 @@
-# Portable Development Workspace
+# AI-first workspace
 
-A self-contained, portable folder for AI-assisted software development. The folder
-itself is the product: rules, inventory, tooling and configuration live here.
-It can be archived, moved to another machine, unpacked and continued without missing
-pieces.
+**What it is:** a ready-made folder for writing a program (or a book) together with an
+AI agent, for **$0**. Download the folder, open it with **opencode** and its free
+models, and the agent finds its rules, tools and model list inside. Copy the folder to
+another computer and work continues there.
 
-Status: **v5 — tooling implemented and tested; auto-discovery added**.
+**Who it is for:** anyone, including beginners, with a cheap laptop (4-8 GB RAM,
+Windows 10/11 or Linux Mint). Nothing runs a model locally, so little RAM is enough;
+the models run in the cloud on free tiers.
 
-## Goals
+**What you get:**
 
-The workspace answers three questions at any time:
+- Rules the agent follows (`AGENTS.md`), so every agent behaves the same way.
+- A safe place for API keys: the key stays in the operating system's own secret store
+  (Windows Credential Manager, KWallet, GNOME Keyring), never in a file in this folder.
+- A list of free models you can use (`kb/`), plus small tools to check your machine,
+  store keys and connect opencode to the models.
+- A secret check that stops you from committing a key by accident (a git hook; it
+  needs Python: without Python it only warns and lets the commit through).
 
-1. **What do we have?** — machines, services, model providers, models, keys, tools.
-2. **How do we use it safely?** — where secrets live, what may read them, what is
-   forbidden.
-3. **How do we continue on another machine?** — what travels in the archive, what is
-   recreated, what is verified afterwards.
+Models, all free: opencode's own free models (no key needed), about 20 **free NVIDIA
+models** (build.nvidia.com, free account and key), and optionally the free plans of
+Gemini and ChatGPT (they have tight daily limits). No paid provider is needed. The
+model list lives in [`kb/`](kb/README.md); it was collected from build.nvidia.com with
+`tools/robota.py` on 2026-11-08, so it ages: models come and go.
 
-Success criterion: archive the folder → move it to another machine → unpack it → open
-it with a coding agent → work continues, with no file left behind on the old machine.
+## Start on Windows (3 steps)
 
-## Repository layout
+What to install first: [`INSTALL.md`](INSTALL.md), "What the machine needs".
 
-```text
-./
-├── AGENTS.md              # the project rules (English)
-├── README.md              # this file
-├── lib/                   # vendored libraries (kikolib from upstream)
-│   └── kikolib/           # standard-library keystore and factory
-├── data/
-│   ├── schema.sql         # committed SQLite schema
-│   ├── seed.sql           # committed initial inventory data
-│   └── inventory.db       # local only, never committed (gitignored)
-├── proc/
-│   └── autodiscovery.md   # auto-discovery procedure (Rule 7 detail)
-├── tools/
-│   ├── __init__.py
-│   ├── secret.py          # portable secret tool over native stores
-│   ├── inventory.py       # SQLite inventory manager
-│   ├── autodiscovery.py   # machine discovery: OS, RAM, Python, git, bash, db
-│   └── tests/             # functional tests
-│       ├── __init__.py
-│       ├── secret.py      # tests for tools/secret.py
-│       ├── inventory.py   # tests for tools/inventory.py
-│       ├── autodiscovery.py # tests for tools/autodiscovery.py
-│       ├── test_secret.py # unittest shim for discover
-│       ├── test_inventory.py # unittest shim for discover
-│       └── test_autodiscovery.py # unittest shim for discover
-├── .gitignore
-├── settings.json          # runtime paths for autodiscovery (git-tracked)
-└── .tmp/                  # temporary files, not versioned
+1. Install **Python 3.10 or newer** from python.org (it brings the `py` launcher) and **Git for
+   Windows** (it brings Git Bash). Install **opencode** (https://opencode.ai).
+2. Get this folder (`git clone https://github.com/peterkokosharov/ai-first-workspace.git`
+   or unzip it), open **Git Bash** in it and run:
+   ```bash
+   py tools/autodiscovery.py      # checks your machine
+   py tools/inventory.py init     # creates the local list of tools and models
+   git config core.hooksPath .githooks   # turns on the secret check
+   ```
+3. Start opencode in the folder; its free models work without a key. Optional: store a
+   free NVIDIA key (it goes into Windows Credential Manager; you type it, it is never
+   shown) for more models:
+   ```bash
+   opencode
+   py tools/secret.py set nvidia/personal/api_key     # optional
+   ```
+
+## Start on Linux (3 steps)
+
+What to install first: [`INSTALL.md`](INSTALL.md), "What the machine needs".
+
+Target: Linux Mint (Cinnamon), which keeps keys in GNOME Keyring through `secret-tool`
+(package `libsecret-tools`, usually already there). Tested so far on Q4OS (TDE, KWallet).
+
+1. Make sure `python3` (3.10 or newer) and `git` are installed (`python3 --version`, `git --version`).
+   Install **opencode** (https://opencode.ai).
+2. Get this folder and run in it:
+   ```bash
+   python3 tools/autodiscovery.py
+   python3 tools/inventory.py init
+   git config core.hooksPath .githooks
+   ```
+3. Start opencode in the folder; its free models work without a key. Optional: store a
+   free NVIDIA key (the desktop's keyring is picked automatically) for more models:
+   ```bash
+   opencode
+   python3 tools/secret.py set nvidia/personal/api_key     # optional
+   ```
+
+More detail: [`INSTALL.md`](INSTALL.md).
+
+## Agents
+
+opencode is the default because it is free. The others also work with this folder.
+
+| Agent | Status | Reads the rules from |
+|-------|--------|----------------------|
+| opencode | tested (default, free models) | `AGENTS.md` |
+| Gemini CLI | tested (free plan with limits) | `GEMINI.md` (which points to `AGENTS.md`) |
+| goose | tested | `AGENTS.md` |
+| Claude Code | tested (needs a paid plan) | `CLAUDE.md` (which points to `AGENTS.md`) |
+| Codex CLI | not tested | `AGENTS.md` |
+
+## Connect opencode to the NVIDIA models (optional)
+
+```bash
+python3 tools/setup_nvidia.py --dry-run   # shows what would change, writes nothing
+python3 tools/setup_nvidia.py             # adds the NVIDIA models to opencode's config
+python3 tools/run_opencode.py             # start opencode WITH your stored keys
 ```
 
-## Current components
+(`py` instead of `python3` on Windows.) The key is **never written to opencode's
+config**: the config only names the variable `NVIDIA_API_KEY`. Start opencode through
+`tools/run_opencode.py`: it reads your keys from the OS secret store and hands them to
+the opencode process only (not to your shell, not to a file). All arguments go on to
+opencode, e.g. `python3 tools/run_opencode.py run -m nvidia/<model> 'hi'`. Plain
+`opencode` still works for opencode's own free models. Other providers (Gemini,
+DeepSeek, Groq, Mistral, OpenRouter): `python3 tools/setup_providers.py <name>`.
 
-- `AGENTS.md` — the single source of project rules: language, records,
-  self-containment, technical requirements, working habits, no action without
-  explicit confirmation, and git operation rules. Project records are in English;
-  chat with the assistant is in Bulgarian Cyrillic.
-- `lib/kikolib` — vendored copy of `~/kiko/packages/kikolib/kikolib` (MIT), providing
-  `kikolib.factory` (backend registry/selection) and `kikolib.keystore` (native
-  credential-store calls: WCM, Keychain, `secret-tool`, KWallet, TDE DCOP).
-- `tools/secret.py` — portable secret tool over native credential stores. Backends:
-  `memory`, `file`, `wcm`, `keychain`, `secret-tool`, `kwallet`, `dcop`. Commands:
-  `get`, `set`, `del`, `list`, `export`, `import`, `probe`, `setup`, `run`, `exec`.
-  Default key path scheme: `provider/scope/kind` (e.g. `github/personal/token`).
-  `auto` never falls back to plaintext; use `--backend file` explicitly.
-- `tools/inventory.py` — manages the local SQLite inventory (`data/inventory.db`):
-  `init`, `tables`, `list`, `show`, `search`, `sql` (read-only), `setting`.
-- `tools/autodiscovery.py` — discovers the local environment before running:
-  OS, processor, RAM, Python version, git, bash, python, node, docker,
-  npm, docker-compose, opencode, merman, presence of tools, and inventory db.
-  Reads runtime paths from `settings.json`. Exit codes: 0 OK, 1 minimum not met,
-  2 database missing, 3 database empty.
-- `tools/ping.py` — pings models via OpenCode and verifies against inventory
-  database. Looks up model alias, checks OpenCode tier, and pings via `opencode run`.
-- `tools/ping_direct.py` — pings LLM providers directly via HTTP (gemini, nvidia,
-  deepseek, mistral) using keys from KWallet.
-- `tools/setup_providers.py` — configures OpenCode providers from KWallet keys.
-- `tools/robota.py` — scrapes build.nvidia.com/models for free-endpoint models
-  into `kb/md/` and `kb/html/`.
-- `tools/gen_models_xml.py` — generates `kb/models.xml` from the scraped index.
-- `tools/tests/` — functional tests (not `assertEquals(1,1)`). Run:
-  `python3 -m unittest discover -s tools/tests -t . -v`.
-  Live DCOP write/read/delete runs only with `SECRET_LIVE_TESTS=1`.
-- `proc/autodiscovery.md` — expanded form of Rule 7 in `AGENTS.md`; describes the
-  terminal procedure when `secret.py` or `inventory.db` are missing or unusable.
+If an old config (or one of its `.bak-*` copies, or `./opencode.json` in the current
+folder) still contains a key in plain text, the tools warn and show where, never the
+value. The setup tools remove the entries that older versions wrote (one per model) and
+literal keys of the providers they manage, but only once that key is in the OS secret
+store; until then the key stays and the tool prints the command that stores it
+(`python3 tools/secret.py set <path>`, which asks for the value). Keys of other providers
+are only reported; `--redact-foreign` replaces them with a placeholder. Old `.bak-*`
+files you delete by hand.
 
-## Running Services — Model Providers
+The keys live in opencode's environment, so programs that opencode starts (shell
+commands, agent tools) can read them too. An agent must never print environment
+variables (`env`, `set`, `printenv`, `echo $NVIDIA_API_KEY`).
 
-| Service | Port | Description | Models |
-|---------|------|-------------|--------|
-| `kiko-proxy` | `4000` | Anthropic-compatible proxy (kiko-lite) | Anthropic-compatible |
-| `litellm` | `8000` | LiteLLM proxy over multiple providers | nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder |
+The setup tools are safe to re-run: they need no admin rights (no sudo), change nothing
+outside your user folder, and copy the old config unchanged to
+`<file>.bak-YYYYMMDD-HHMMSS-ffffff` before writing (readable only by you on Linux/macOS;
+default permissions on Windows). If that copy holds a plain-text key, the tool says so:
+delete the copy once the key is in the OS secret store. opencode's documentation names
+`~/.config/opencode/opencode.json` as the global config; the tools use that folder on
+Linux and on Windows (`%USERPROFILE%\.config\opencode`). **Unverified on Windows:**
+the docs give no Windows-specific path and this was not tested with a real opencode
+install on Windows; if your opencode reads another folder, set `OPENCODE_CONFIG` to that
+file so the tools write there (the config page does not document this variable). Also `$XDG_CONFIG_HOME/opencode` if that is set, and `~/.configtde/opencode` only
+inside a TDE session.
 
-Systemd user services:
-- `kiko-proxy.service` — `systemctl --user status kiko-proxy`
-- `litellm.service` — `systemctl --user status litellm`
+## If the model loops
 
-API keys are stored in `~/.litellm/env` (never in git) and loaded from `~/.kiko/.env` / KWallet via `tools/secret.py`.
+Free models such as **Big Pickle** (opencode) or **Nemotron Super** sometimes think for
+a very long time or repeat themselves. Then:
+
+1. Press **Stop** (Esc in most terminal agents).
+2. Type `/init` and send it.
+3. Continue with your task.
 
 ## Secrets
 
-- Secret values never enter git, the archive, or any project file.
-- The primary store is the operating system's native credential store: Windows
-  Credential Manager, macOS Keychain, GNOME Keyring/`secret-tool`, KWallet, or TDE
-  DCOP on Q4OS.
-- `~/SECRETS` is a temporary export/transfer file outside the project. It is created
-  only for transfer, backup, or a machine without a working store, and is deleted
-  after a successful import.
-- `data/inventory.db` is local and is never committed. It is rebuilt from
-  `data/schema.sql` and `data/seed.sql` with `python3 tools/inventory.py init`.
+- Key values never enter git, the archive or any project file.
+- The store is the operating system's own: Windows Credential Manager, macOS Keychain,
+  GNOME Keyring (`secret-tool`), KWallet, or the TDE wallet (DCOP) on Q4OS.
+  `tools/secret.py` picks it automatically and never falls back to a plain file.
+- `~/SECRETS` is the deliberate backup made by `secret.py export` (key values in plain
+  text, outside the project). Move it to a flash drive; never put it into git.
+- On Q4OS/TDE the wallet must be enabled and opened once by hand before `secret.py` can
+  use it (`dcop` lives in `/opt/trinity/bin`; `secret.py` finds it).
 
-## KWallet / TDE DCOP (Q4OS)
-
-On Q4OS/TDE the wallet daemon lives inside `kded`, so it is reached with
-`dcop kded tdewalletd`. The `dcop` binary is at `/opt/trinity/bin` and may not be on
-`PATH`; `secret.py` prepends it automatically. The wallet must be enabled
-(`Enabled=true` in `~/.trinity/share/config/tdewalletrc`) and opened once
-manually (`isOpen kdewallet` must return `true`). Live DCOP tests are skipped unless
-`SECRET_LIVE_TESTS=1`.
-
-## Developed and tested on OpenCode
-
-This project is developed and tested on **OpenCode**. All commands, tests, and
-workflows in this README are verified on OpenCode first:
-
-- `python3 -m unittest discover -s tools/tests -t . -v` — all 69 tests pass
-- `python3 tools/secret.py` — secret tool over native stores
-- `python3 tools/inventory.py` — SQLite inventory manager
-- `python3 tools/autodiscovery.py` — machine discovery
-
-OpenCode is the primary harness for this project. Other harnesses (Claude Code,
-Codex CLI, Gemini CLI, Rex) are supported but secondary.
-
-## Claude Code
-
-Claude Code works with this workspace via `~/test-env/run-claude.sh`, which routes
-through `litellm` on `http://127.0.0.1:8000/v1` using the `nvidia/nemotron-ultra`
-model.
-
-To use:
-
-```bash
-cd ~/test-env
-./run-claude.sh
-```
-
-Claude Code reads `AGENTS.md` from the working directory automatically and follows
-the project rules (language, no-initiative, secrets, git).
-
-## Harness independence
-
-The same project must work with different agent harnesses. Fallback order:
-
-1. OpenCode
-2. Claude Code
-3. Codex CLI
-4. Gemini CLI
-5. Rex
-
-If none is available, install OpenCode. If that is not possible, install Rex. Work
-continues either way.
-
-No local LLM is used: on the available hardware it is too slow to be practical.
-
-## How to continue on another machine
-
-1. Clone the repository.
-2. Make sure Python 3 and git are available.
-3. Run `python3 tools/autodiscovery.py` to verify the environment.
-4. Run `python3 tools/inventory.py init` to create `data/inventory.db`
-   (from `data/schema.sql` + `data/seed.sql`).
-5. Populate the native credential store with the key paths from the inventory
-   (`provider/scope/kind`).
-6. Verify: `python3 tools/secret.py setup` and `python3 tools/secret.py probe`.
-7. Run tests: `python3 -m unittest discover -s tools/tests -t . -v`.
-8. Start a session with any available harness.
-
-## Running Services — Model Providers
-
-| Service | Port | Description | Models |
-|---------|------|-------------|--------|
-| `kiko-proxy` | `4000` | Anthropic-compatible proxy (kiko-lite) | Anthropic-compatible |
-| `litellm` | `8000` | LiteLLM proxy over multiple providers | nemotron-ultra, nemotron-super, gemini-flash, gemini-flash-lite, claude-sonnet, groq/llama, qwen/qwen-coder |
-
-Systemd user services:
-- `kiko-proxy.service` — `systemctl --user status kiko-proxy`
-- `litellm.service` — `systemctl --user status litellm`
-
-API keys are stored in `~/.litellm/env` (never in git) and loaded from `~/.kiko/.env` / KWallet via `tools/secret.py`.
-
-## AI Agent Clients — Goose CLI
-
-| Tool | Path | Description | Configured With |
-|------|------|-------------|-----------------|
-| `goose` | `/home/petark/test-env/bin/goose` | Open-source AI agent CLI | Litellm → NVIDIA nemotron-ultra |
-
-Config file: `~/.configtde/goose/secrets.yaml`
-
-Test session:
-```bash
-echo "каков е planos-a?" | /home/petark/test-env/bin/goose run --text -
-```
-
-Goose reads `AGENTS.md` from the working directory automatically.
-
-## Service Status Example
+## What is in the folder
 
 ```text
-systemctl --user status kiko-proxy.service litellm.service
-
-● kiko-proxy.service — kiko-proxy: Anthropic API proxy server (kiko-lite)
-     Active: active (running) — http://127.0.0.1:4000
-
-● litellm.service — LiteLLM Proxy
-     Active: active (running) — http://127.0.0.1:8000
+AGENTS.md      the rules for every agent      CLAUDE.md / GEMINI.md  pointers to AGENTS.md
+INSTALL.md     step-by-step install           kb/          the free model list
+tools/         small Python tools (stdlib)    lib/kikolib/ vendored secret-store library
+data/          inventory schema and seed      doc/         architecture and accessibility pages
+docs/procedures/  steps for step-review, commit, release audit, HTML docs, GitHub, orchestration
+.claude/       Claude Code skills          .opencode/   opencode commands (both point to docs/procedures/)
+out/           reports and audits (not in git)
+projects/      your own projects, one folder each (not in this repo's git)
 ```
 
-```text
-curl -s http://127.0.0.1:8000/v1/models
-{"data":[
-  {"id":"nvidia/nemotron-ultra","object":"model"},
-  {"id":"nvidia/nemotron-super","object":"model"},
-  {"id":"gemini/gemini-flash","object":"model"},
-  {"id":"gemini/gemini-flash-lite","object":"model"},
-  {"id":"anthropic/claude-sonnet","object":"model"},
-  {"id":"groq/llama","object":"model"},
-  {"id":"qwen/qwen-coder","object":"model"}
-]}
-```
+Tools: `secret.py` (keys), `inventory.py` (local SQLite list of machines, providers,
+models), `autodiscovery.py` (machine check), `ping.py` / `ping_direct.py` (test a model),
+`setup_nvidia.py` / `setup_providers.py` / `opencode_config.py` (connect opencode to providers),
+`run_opencode.py` (start opencode with the keys from the OS store),
+`robota.py` + `gen_models_xml.py` (refresh `kb/`), `secret_scan.py` (the commit and push check).
 
-## Language
+Run the tests: `python3 -m unittest discover -s tools/tests -t . -v` (`py` on Windows).
 
-Project records are written in English, as required by `AGENTS.md`. This README is in
-English. Communication with the assistant is in Bulgarian Cyrillic (chat language).
+Local settings: copy `settings.json.example` to `settings.json` (not tracked by git).
+`tools` holds a full path or command per program (empty = found on PATH;
+`autodiscovery.py --save` fills it in); `run_opencode.py` and `ping.py` use
+`tools.opencode`. `git` holds `remote_url`, `remote_user` and `token_key` for the
+GitHub steps. An older `runtime` section is still read. Key names: see INSTALL.md,
+"Key names".
 
-## Requirements
+## Optional example — local model proxy
 
-- Python 3.x (stdlib only; no venv, no pip)
-- git
-- node.js + npm — for `mermaid-cli` (`npx -y @mermaid-js/mermaid-cli`) used to render `.mmd` diagrams to SVG
-- One supported agent harness, or the ability to install one
-- A native credential store, or the temporary export file as a fallback
+Not needed to start. One test machine ran a local OpenAI-compatible proxy (for example
+LiteLLM on `http://127.0.0.1:8000/v1`) as a user service in front of the free NVIDIA
+models. The workspace does not install or require it. If you run one, keep its keys in
+the OS secret store (`tools/secret.py`), never in a file inside this folder.
 
-## Install
+## Move to another machine
 
-**The easiest install:**
-
-```bash
-git clone https://github.com/peterkokosharov/ai-first-workspace.git
-cd ai-first-workspace
-python3 tools/autodiscovery.py
-python3 tools/inventory.py init
-python3 tools/secret.py --backend auto set nvidia/personal/api_key
-python3 -m unittest discover -s tools/tests -t . -v
-opencode run -m nemotron-ultra --format json "hi"
-```
-
-Full install instructions: [`INSTALL.md`](INSTALL.md) — covers Windows 10 and
-Linux (Debian/Ubuntu/Mint/Q4OS) step by step.
+1. Copy or clone the folder.
+2. Run `autodiscovery.py` and `inventory.py init` as in the start steps.
+3. Store the keys again with `secret.py set ...` (or import `~/SECRETS`, then delete it).
+4. Start your agent.
 
 ## License
 
-`LICENSE` — MIT License, copyright 2026 Peter Kokosharov. Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software.
-
-The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-The software is provided "as is", without warranty of any kind.
+MIT — see [`LICENSE`](LICENSE).

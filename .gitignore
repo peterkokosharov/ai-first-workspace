@@ -7,4 +7,15 @@ data/inventory.db
 # Python cache
 __pycache__/
 *.pyc
-in/task.md
+
+# Per-task project folders (each can be its own git repo); leading slash: the root folder
+# or a root link (projects -> ~/repos), not docs/projects
+/projects
+
+# Local settings: copy settings.json.example to settings.json and edit it
+settings.json
+# Backups written by tools/autodiscovery.py --save (may hold personal paths)
+settings.json.bak-*
+
+# Reports and test output (audits, reviews) — not in git
+out/
