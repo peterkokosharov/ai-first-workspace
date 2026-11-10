@@ -153,6 +153,8 @@ def _check_out(root: Path, target: Path) -> None:
         raise ValueError(f"--out must not be the workspace root itself: {target}")
     if _inside(target, root / "projects"):
         raise ValueError(f"--out must not be inside projects/: {target}")
+    if _inside(root, target):
+        raise ValueError(f"--out must not contain the workspace (--force would delete it): {target}")
     if _inside(target, root) and not _inside(target, root / "out"):
         raise ValueError(f"--out must be outside {root} or under its out/: {target}")
 

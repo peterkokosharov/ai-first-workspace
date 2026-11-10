@@ -158,6 +158,23 @@ class TestBuild(unittest.TestCase):
             self.assertFalse((target / "scratch.db").exists())
             self.assertFalse((target / ".venv").exists())
 
+    def test_refuses_a_target_that_contains_the_workspace(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            # out/<name> == the workspace itself: --force would delete it
+            root = Path(tmp) / "demo"
+            make_core(root)
+            make_project(root)
+            with self.assertRaises(ValueError):
+                bundle.build(root, "demo", Path(tmp), force=True, run_tests=False)
+            with self.assertRaises(ValueError):
+                bundle.build(root, "demo", root, force=True, run_tests=False)
+            with self.assertRaises(ValueError):
+                bundle._check_out(root, Path(tmp))  # the workspace lies inside it
+            with self.assertRaises(ValueError):
+                bundle._check_out(root, root / "projects" / "demo")
+            self.assertTrue((root / "AGENTS.md").is_file())
+            self.assertTrue((root / "projects" / "demo" / "AGENTS.md").is_file())
+
 
 class TestCheck(unittest.TestCase):
     def test_a_clean_bundle_has_no_problems(self):
