@@ -243,6 +243,13 @@ class TestCheck(unittest.TestCase):
             problems = bundle.check(target)
             self.assertEqual(len(problems), 4)
 
+    def test_a_nested_git_repository_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "b"
+            write(target / "projects" / "demo" / "sub" / ".git" / "HEAD")
+            self.assertEqual(bundle.check(target),
+                             ["nested git repository: projects/demo/sub/.git"])
+
     def test_a_secret_in_the_bundled_core_is_reported(self):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "b"

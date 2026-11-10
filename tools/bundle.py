@@ -23,7 +23,9 @@ What is copied, and what never is:
   files are deleted and `git gc --prune=now` drops unreachable objects, so a key that
   was committed and then amended away does not travel.  A project's submodule
   repositories (under `.git/modules`) are cleaned and scanned too; the core's own
-  submodules are not bundled;
+  submodules are not bundled.  A project whose `.git` is a gitfile (a worktree or a
+  separate git directory) is bundled without history, because the file points outside
+  the bundle and is never shipped;
 * nothing else.  A bundle never carries a secret: check() runs the secret scan
   (tools/secret_scan.py) over the bundled files and over the project's whole history,
   and the bundle fails on any finding.
@@ -273,6 +275,18 @@ def check(target: Path) -> list[str]:
             for commit, path, number, rule in hits:
                 problems.append(f"{name} history {commit[:12]} {path}:{number}: "
                                 f"possible {rule} (value hidden)")
+    for project in sorted((target / "projects").glob("*")):
+        if not project.is_dir():
+            continue
+        for current, dirs, files in os.walk(project):
+            here = Path(current)
+            if here == project:
+                dirs[:] = [d for d in dirs if d != ".git"]  # the top-level repo is checked above
+                files = [f for f in files if f != ".git"]
+            for entry in [d for d in dirs if d == ".git"] + [f for f in files if f == ".git"]:
+                problems.append(f"nested git repository: "
+                                f"{(here / entry).relative_to(target).as_posix()}")
+            dirs[:] = [d for d in dirs if d != ".git"]
     return problems
 
 

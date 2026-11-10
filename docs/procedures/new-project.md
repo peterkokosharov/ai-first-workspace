@@ -63,7 +63,7 @@ A project runs on the core. `tools/core.py` in the project finds it, and
 environment variable, then the project's `settings.json` (`"core"`), then upwards to the
 first folder that holds both `AGENTS.md` and `tools/secret.py`. The `vendor/` copy is
 optional, and `tools/bundle.py` does not make one: a bundle carries the whole core
-instead.
+instead. Bundling a project that has its own `vendor/` core is refused.
 
 Three rules follow:
 
