@@ -7,8 +7,6 @@ modules. OS facilities are reached through ctypes or subprocess. Each pluggable
 part has an interface plus a factory (see factory.py) that picks an implementation.
 """
 
-import sys
-
 __all__ = [
     "factory",
     "keystore",

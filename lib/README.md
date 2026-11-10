@@ -19,5 +19,3 @@ travels with the archive, so the tools do not depend on a system-wide installati
 - `kikolib.keystore` — the native credential-store calls (WCM, Keychain,
   `secret-tool`, KWallet, TDE DCOP).
 
-The upstream README links to `docs/kikolib/INVENTORY.md`, which belongs to the kiko
-repository and is not part of this project.

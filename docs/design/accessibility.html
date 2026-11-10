@@ -138,11 +138,10 @@ cd Default Project</pre>
   <tr><td><code>tools/secret.py</code></td><td>Portable secret tool over native OS credential stores.</td></tr>
   <tr><td><code>tools/inventory.py</code></td><td>SQLite inventory manager for machines, services, providers, models, keys, projects.</td></tr>
   <tr><td><code>tools/autodiscovery.py</code></td><td>Check OS, RAM, git, bash, inventory DB before starting.</td></tr>
-  <tr><td><code>kb/</code></td><td>Knowledge base: 100+ model HTML pages + Markdown summaries + XML index.</td></tr>
   <tr><td><code>data/schema.sql</code> + <code>data/seed.sql</code></td><td>Committed SQLite schema and seed data.</td></tr>
   <tr><td><code>data/inventory.db</code></td><td>Local database — <strong>never committed to git</strong>.</td></tr>
   <tr><td><code>lib/kikolib/</code></td><td>Vendored standard-library keystore + factory library.</td></tr>
-  <tr><td><code>tools/tests/</code></td><td>57 functional tests — all pass.</td></tr>
+  <tr><td><code>tools/tests/</code></td><td>317 functional tests — all pass.</td></tr>
 </table>
 
 <h2>7. Security rules</h2>
@@ -156,12 +155,11 @@ cd Default Project</pre>
 
 <h2>8. Tests</h2>
 <pre>python3 -m unittest discover -s tools/tests -t . -v</pre>
-<p>Result: <strong>57 tests, all pass (1 skipped — live DCOP needs <code>SECRET_LIVE_TESTS=1</code>).</strong></p>
+<p>Result: <strong>317 tests, all pass (5 skipped — live-backend tests need their environment opt-in, e.g. <code>SECRET_LIVE_TESTS=1</code>).</strong></p>
 
 <h2>9. What is missing</h2>
 <ul>
   <li>One-command bootstrap script (<code>bootstrap.sh</code>)</li>
-  <li>RAG index over <code>kb/</code> so the agent can answer "which model is best for Rust?"</li>
   <li>Goose recipe <code>starter-kit</code> (one-command project scaffolding)</li>
   <li>TUI for model/agent selection</li>
 </ul>

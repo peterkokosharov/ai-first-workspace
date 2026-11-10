@@ -73,17 +73,8 @@
 │   ├── README.md              # vendored kikolib provenance & license
 │   └── kikolib/               # vendored stdlib keystore + factory (MIT)
 │       ├── __init__.py
-│       ├── dotenv.py
 │       ├── factory.py
-│       ├── http_client.py
-│       ├── keystore.py
-│       ├── native_utils.py
-│       ├── posix_utils.py
-│       ├── retry.py
-│       ├── server.py
-│       ├── sse.py
-│       ├── tokens.py
-│       └── yaml_lite.py
+│       └── keystore.py
 ├── data/
 │   ├── schema.sql         # committed SQLite schema
 │   ├── seed.sql           # committed initial inventory data
@@ -158,8 +149,8 @@
         data/inventory.db: exists<br>
         <br>
         <span class="cmd-prompt">&gt; python3 -m unittest discover -s tools/tests -t . -v</span><br>
-        Ran NN tests in N.Ns<br>
-        <span class="ok-text">OK (skipped=1)</span> — All functional tests pass<br>
+        Ran 317 tests<br>
+        <span class="ok-text">OK (skipped=5)</span> — All functional tests pass<br>
         <br>
         <span class="cmd-prompt">&gt; python3 tools/secret.py --backend dcop list</span><br>
         gemini/personal/api_key<br>

@@ -23,17 +23,8 @@ Self-contained, portable folder for AI-assisted software development.
 │   ├── README.md              # vendored kikolib provenance & license
 │   └── kikolib/               # vendored stdlib keystore + factory (MIT)
 │       ├── __init__.py
-│       ├── dotenv.py
 │       ├── factory.py
-│       ├── http_client.py
-│       ├── keystore.py
-│       ├── native_utils.py
-│       ├── posix_utils.py
-│       ├── retry.py
-│       ├── server.py
-│       ├── sse.py
-│       ├── tokens.py
-│       └── yaml_lite.py
+│       └── keystore.py
 ├── data/
 │   ├── schema.sql         # committed SQLite schema
 │   ├── seed.sql           # committed initial inventory data
@@ -263,8 +254,8 @@ konsole — user@host: ~/ai-first-workspace
  ─────────────────────────────────────────────────────────────────────
  > python3 -m unittest discover -s tools/tests -t . -v
 
- █  Ran NN tests in N.Ns
- █  OK (skipped=1)
+ █  Ran 317 tests
+ █  OK (skipped=5)
  █  ✓ All functional tests pass
 
  ─────────────────────────────────────────────────────────────────────
