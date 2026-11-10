@@ -24,18 +24,19 @@ Read this whole file first. A line "Doing X -> file" means: read that file befor
 
 ## Commands
 - On Windows type `py`, not `python3`.
-- The shell is PowerShell. A `|` inside a quoted pattern (grep, findstr) is parsed by
-  PowerShell and the command arrives broken. Use the grep tool, or run bash explicitly:
-  `& "C:\Program Files\Git\bin\bash.exe" -c 'cd /c/... && <one line>'`.
-- Core tests (about 50 s): `py -m unittest discover -s tools/tests -t . -v`
+- On Windows the shell may be PowerShell, which parses a `|` inside a quoted pattern
+  (grep, findstr) and breaks the command. Check which shell you have; use the grep tool,
+  or run bash explicitly (`bash -c '<one line>'` from Git for Windows).
+- Core tests (a minute or two): `py -m unittest discover -s tools/tests -t . -v`
 - One core test: `py -m unittest tools.tests.test_bundle -v`
 - A project's tests: the same discover command, run from `projects/<name>/`.
 - Run the suites one at a time. Two runs at once make `test_secret` fail and skip tests:
   it uses the machine's one OS secret store. A failure there is the environment, not the code.
-- Secret check: `py tools/secret_scan.py` scans staged files. The hooks are NOT enabled
-  in this clone (`git config core.hooksPath` is empty), so run the scan yourself after
-  `git add`; without it nothing checks the commit.
-- Handover bundle: `py tools/bundle.py <name>` (about a minute). It writes
+- Secret check: `py tools/secret_scan.py` scans staged files. The commit hooks run it
+  only after `tools/bootstrap.sh` has set `core.hooksPath`. Check:
+  `git config core.hooksPath` (expected `.githooks`). If it is empty, run the scan
+  yourself after `git add`; without it nothing checks the commit.
+- Handover bundle: `py tools/bundle.py <name>` (slow: it runs the project's tests). It writes
   `out/bundles/<name>/` with the core and the project, clears `CORE`, proves the bundled
   project reaches the bundled core, and runs the project's tests inside it. `--force` rebuilds.
 
@@ -87,8 +88,9 @@ Read this whole file first. A line "Doing X -> file" means: read that file befor
   an opencode subagent. Nothing else.
 - Never start claude, gemini, goose, codex or another opencode process unless the user
   names it in an order.
-- Subagents are verified working on this install (2026-11-10). That an opencode permission
-  rule can deny shell commands starting with those names is still UNVERIFIED: a rule only.
+- Whether subagents work, and whether an opencode permission rule can deny shell commands
+  starting with those names, depends on the installed opencode. Treat the rule as a
+  request, not a guarantee; machine-specific results belong in the local inventory DB.
 
 ## Procedures
 - Finished a step -> docs/procedures/step-review.md
