@@ -33,7 +33,7 @@ NVIDIA_STORED = {"nvidia/personal/api_key"}
 
 class TestNvidiaConfigStructure(unittest.TestCase):
     def setUp(self):
-        self.models = setup_nvidia.parse_models(setup_nvidia.KB_XML)
+        self.models = setup_nvidia.parse_models(setup_nvidia.workspace_settings.models_xml())
 
     def test_parse_models_reads_api_ids(self):
         self.assertGreater(len(self.models), 0)
@@ -76,7 +76,7 @@ def old_nvidia_config(aliases, key=FAKE_KEY):
 
 class TestLegacyCleanup(unittest.TestCase):
     def setUp(self):
-        self.models = setup_nvidia.parse_models(setup_nvidia.KB_XML)
+        self.models = setup_nvidia.parse_models(setup_nvidia.workspace_settings.models_xml())
         self.aliases = [m["alias"] for m in self.models]
 
     def test_old_per_alias_entries_removed(self):
