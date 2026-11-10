@@ -94,7 +94,11 @@ class TestShippedModelList(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             config = Path(tmp) / "opencode.json"
             out = io.StringIO()
-            with mock.patch.object(ws, "load", return_value={}),                     mock.patch.object(setup_nvidia, "CONFIG_FILE", config),                     mock.patch.object(opencode_config, "stored_key_paths", return_value=set()),                     redirect_stdout(out):
+            with (mock.patch.object(ws, "load", return_value={}),
+                  mock.patch.object(setup_nvidia, "CONFIG_FILE", config),
+                  mock.patch.object(opencode_config, "stored_key_paths",
+                                    return_value=set()),
+                  redirect_stdout(out)):
                 code = setup_nvidia.main(["--dry-run"])
             self.assertEqual(code, 0, out.getvalue())
             self.assertIn("model(s) under providers.nvidia", out.getvalue())

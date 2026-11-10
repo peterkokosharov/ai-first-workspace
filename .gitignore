@@ -16,6 +16,9 @@ __pycache__/
 /projects/*
 !/projects/.gitkeep
 
+# Scraped model pages: robota.py / gen_models_xml.py write them here on a fresh clone
+/kb/
+
 # Local settings: copy settings.json.example to settings.json and edit it
 settings.json
 # Backups written by tools/autodiscovery.py --save (may hold personal paths)

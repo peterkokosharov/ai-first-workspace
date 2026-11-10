@@ -14,7 +14,8 @@ Same file in every project; it holds no project code.  Copied from
 4. ``parent``  -- the first folder above the project that holds ``AGENTS.md`` and
    ``tools/secret.py``.
 
-A folder from 1-3 counts only if it holds ``tools/secret.py``.
+A folder from 1-3 counts only if it holds ``tools/secret.py``.  That target is trusted
+code: ``install()`` executes it, so point ``CORE`` and ``"core"`` only at a core you trust.
 
 ``install()`` puts the core's ``tools/`` at the end of ``sys.path`` and registers the
 core's secret tool as the module ``secret``.
