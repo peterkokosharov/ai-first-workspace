@@ -18,7 +18,12 @@ What is copied, and what never is:
   scratch file), without its git history, `out/`, `projects/`, `data/inventory.db`
   and `settings.json` (the last two are local: one holds the inventory, the other
   the key names and paths of this machine);
-* the project -- with its own `.git`, because the history belongs to it;
+* the project -- with its own `.git`, because the history belongs to it.  In the
+  bundled copy only (never in the source project) the reflog is expired, ORIG_HEAD-style
+  files are deleted and `git gc --prune=now` drops unreachable objects, so a key that
+  was committed and then amended away does not travel.  A project's submodule
+  repositories (under `.git/modules`) are cleaned and scanned too; the core's own
+  submodules are not bundled;
 * nothing else.  A bundle never carries a secret: check() runs the secret scan
   (tools/secret_scan.py) over the bundled files and over the project's whole history,
   and the bundle fails on any finding.
@@ -114,6 +119,31 @@ def _ignore_project(_directory: str, names: list[str]) -> set[str]:
     return {name for name in names if name in PROJECT_SKIP or name.endswith(".pyc")}
 
 
+def _gitdirs(repo_git: Path) -> list[Path]:
+    """A project's git directory plus the git directories of its submodules."""
+    found = [repo_git]
+    modules = repo_git / "modules"
+    if modules.is_dir():
+        found += sorted(head.parent for head in modules.rglob("HEAD")
+                        if (head.parent / "objects").is_dir())
+    return found
+
+
+def _scrub_git(gitdir: Path) -> None:
+    """Drop what a history scan cannot see: reflog, old-ref files, unreachable objects."""
+    if not (gitdir / "objects").is_dir():
+        return  # not a real repository; check() reports it as unscannable
+    for name in ("ORIG_HEAD", "FETCH_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD"):
+        (gitdir / name).unlink(missing_ok=True)
+    original = gitdir / "refs" / "original"
+    if original.is_dir():
+        _remove_tree(original)
+    for args in (["reflog", "expire", "--expire=now", "--all"],
+                 ["gc", "-q", "--prune=now"]):
+        subprocess.run(["git", "--git-dir", str(gitdir), "-c", "core.hooksPath=", *args],
+                       check=True, capture_output=True)
+
+
 def _remove_tree(path: Path) -> None:
     """Delete a tree, resetting permissions first (git objects are read-only)."""
     path = Path(path)
@@ -178,6 +208,10 @@ def build(root: Path, name: str, out: Path, *, force: bool = False,
     target.mkdir(parents=True)
     _copy_core(root, target)
     shutil.copytree(project, target / "projects" / name, ignore=_ignore_project)
+    project_git = target / "projects" / name / ".git"
+    if project_git.is_dir():
+        for gitdir in _gitdirs(project_git):
+            _scrub_git(gitdir)
     (target / ".gitignore").write_text(BUNDLE_GITIGNORE, encoding="utf-8")
 
     bundled = target / "projects" / name
@@ -212,17 +246,23 @@ def check(target: Path) -> list[str]:
     if (target / ".git").exists():
         problems.append("the core's git history is in the bundle")
     for path, number, rule in secret_scan.scan_tree(target):
-        problems.append(f"{path}:{number}: possible {rule} (value hidden)")
+        if rule == "unreadable file":
+            problems.append(f"cannot read {path}")
+        else:
+            problems.append(f"{path}:{number}: possible {rule} (value hidden)")
     for repo in sorted((target / "projects").glob("*/.git")):
-        name = repo.parent.relative_to(target).as_posix()
-        try:
-            hits = secret_scan.scan_history(repo.parent)
-        except (OSError, subprocess.CalledProcessError) as exc:
-            problems.append(f"{name}: cannot scan the git history ({exc})")
+        if not repo.is_dir():
             continue
-        for commit, path, number, rule in hits:
-            problems.append(f"{name} history {commit[:12]} {path}:{number}: "
-                            f"possible {rule} (value hidden)")
+        for gitdir in _gitdirs(repo):
+            name = gitdir.relative_to(target).as_posix()
+            try:
+                hits = secret_scan.scan_history(gitdir)
+            except (OSError, subprocess.CalledProcessError) as exc:
+                problems.append(f"{name}: cannot scan the git history ({exc})")
+                continue
+            for commit, path, number, rule in hits:
+                problems.append(f"{name} history {commit[:12]} {path}:{number}: "
+                                f"possible {rule} (value hidden)")
     return problems
 
 

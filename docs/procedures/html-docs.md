@@ -52,7 +52,7 @@ Mermaid source plus a committed SVG. On Windows type `py` instead of `python3`.
 ## View
 - Open the `.html` file in your browser (double-click it in the file manager).
 - Or serve the folder: `python3 -m http.server 8080 --bind 127.0.0.1 -d doc`,
-  then open http://localhost:8080/architecture.html. Stop it with Ctrl+C.
+  then open http://127.0.0.1:8080/architecture.html. Stop it with Ctrl+C.
 
 ## Commit
 - Commit the `.md`, `.html`, `.mmd` and `.svg` of one change together

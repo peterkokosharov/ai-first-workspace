@@ -35,6 +35,7 @@ class TestFindSecrets(unittest.TestCase):
             "1/" + "/0" + FAKE,
             "-----BEGIN " + "RSA PRIVATE KEY-----",
             "-----BEGIN " + "PRIVATE KEY-----",
+            "-----BEGIN " + "PGP PRIVATE KEY BLOCK-----",
             "github_pat_" + FAKE,
             "AKIA" + "ABCDEFGHIJKLMNOP",
             "GEMINI_API_KEY=" + "AI" + "za" + FAKE[:35],

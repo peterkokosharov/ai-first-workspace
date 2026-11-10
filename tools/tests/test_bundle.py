@@ -20,7 +20,7 @@ def write(path: Path, text: str = "x") -> None:
 
 def git(repo: Path, *args: str) -> None:
     subprocess.run(["git", "-C", str(repo), "-c", "user.name=T", "-c", "user.email=t@example.com",
-                    "-c", "commit.gpgsign=false", *args], check=True, capture_output=True)
+                    "-c", "commit.gpgsign=false", "-c", "core.hooksPath=", *args], check=True, capture_output=True)
 
 
 def commit_all(repo: Path, message: str = "m") -> None:
@@ -220,6 +220,53 @@ class TestCheck(unittest.TestCase):
             self.assertIn("history", problems[0])
             self.assertIn("old.txt", problems[0])
             self.assertNotIn("A1b2C3d4E5", problems[0])
+
+    def test_an_amended_away_secret_does_not_travel(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            project = root / "projects" / "demo"
+            git(project, "init", "-q")
+            commit_all(project, "first")
+            fake = "hf" + "_" + "A1b2C3d4E5" * 4
+            write(project / "old.txt", fake + "\n")
+            commit_all(project, "oops")
+            (project / "old.txt").unlink()
+            git(project, "add", "-A")
+            git(project, "commit", "-q", "--amend", "--allow-empty", "-m", "oops, redone")
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            self.assertEqual(bundle.check(target), [])
+            # the source project keeps its reflog: it is never touched
+            log = subprocess.run(["git", "-C", str(project), "reflog"], capture_output=True,
+                                 text=True, check=True).stdout
+            self.assertIn("oops", log)
+            # no object of the bundled .git holds the value
+            needle = fake.encode()
+            for path in (target / "projects" / "demo" / ".git").rglob("*"):
+                if path.is_file() and path.suffix != ".pack":
+                    self.assertNotIn(needle, path.read_bytes())
+            blobs = subprocess.run(
+                ["git", "-C", str(target / "projects" / "demo"), "cat-file",
+                 "--batch-all-objects", "--batch"], capture_output=True, check=True).stdout
+            self.assertNotIn(needle, blobs)
+
+    def test_a_secret_reachable_from_a_branch_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "workspace"
+            make_core(root)
+            make_project(root)
+            project = root / "projects" / "demo"
+            git(project, "init", "-q")
+            commit_all(project, "first")
+            git(project, "checkout", "-q", "-b", "side")
+            write(project / "k.txt", "hf" + "_" + "A1b2C3d4E5" * 4 + "\n")
+            commit_all(project, "side")
+            git(project, "checkout", "-q", "-")
+            target, _ = bundle.build(root, "demo", Path(tmp) / "bundles", run_tests=False)
+            problems = bundle.check(target)
+            self.assertEqual(len(problems), 1, problems)
+            self.assertIn("k.txt", problems[0])
 
     def test_a_clean_project_history_passes(self):
         with tempfile.TemporaryDirectory() as tmp:
