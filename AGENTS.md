@@ -1,5 +1,6 @@
 # Rules for every agent in this folder
-Read this whole file. A line "Doing X -> file" means: read that file before you do X.
+
+Read this whole file first. A line "Doing X -> file" means: read that file before you do X.
 
 ## Language
 - The user may write Bulgarian in Latin letters. Do not correct or comment on it.
@@ -11,61 +12,81 @@ Read this whole file. A line "Doing X -> file" means: read that file before you 
 - Do only what the user asked. Start no other work on your own.
 - You may always read files in this folder. Running commands or writing files needs an order.
 - An order is a user message that names the action.
-- Inside an order you may run these without asking again: tools/inventory.py tables,
-  list and key, git status/diff/log, the test command, tools/secret_scan.py, and the
+- Inside an order you may run these without asking again: `tools/inventory.py` tables,
+  list and key, `git status/diff/log`, the test command, `tools/secret_scan.py`, and the
   step-review and commit procedures.
+- Ask first, one action at a time: deleting or overwriting files, dropping data,
+  git revert, rewriting history (`rebase`, `amend` on a pushed commit, `filter-branch`),
+  git push, anything outside this folder.
 - Confirmation: when you ask "Shall I <action>?", only a reply that starts with
   "да", "da" or "yes" as its own word confirms it.
-- Ask first, one action at a time: deleting or overwriting files, dropping data,
-  git revert, git push, anything outside this folder.
 - Unsure? Ask one yes/no question. Never guess.
+
+## Commands
+- On Windows type `py`, not `python3`.
+- The shell is PowerShell. A `|` inside a quoted pattern (grep, findstr) is parsed by
+  PowerShell and the command arrives broken. Use the grep tool, or run bash explicitly:
+  `& "C:\Program Files\Git\bin\bash.exe" -c 'cd /c/... && <one line>'`.
+- Core tests (about 50 s): `py -m unittest discover -s tools/tests -t . -v`
+- One core test: `py -m unittest tools.tests.test_bundle -v`
+- A project's tests: the same discover command, run from `projects/<name>/`.
+- Run the suites one at a time. Two runs at once make `test_secret` fail and skip tests:
+  it uses the machine's one OS secret store. A failure there is the environment, not the code.
+- Secret check: `py tools/secret_scan.py` scans staged files. The hooks are NOT enabled
+  in this clone (`git config core.hooksPath` is empty), so run the scan yourself after
+  `git add`; without it nothing checks the commit.
+- Handover bundle: `py tools/bundle.py <name>` (about a minute). It writes
+  `out/bundles/<name>/` with the core and the project, clears `CORE`, proves the bundled
+  project reaches the bundled core, and runs the project's tests inside it. `--force` rebuilds.
 
 ## Secrets
 - Never write a key, token or password into a file, commit, chat or log. Never print one.
-- Keys live only in the OS secret store, through tools/secret.py.
+  Do not run `env`, `set` or `printenv` when opencode's keys may be in the environment.
+- Keys live only in the OS secret store, through `tools/secret.py`.
 - Key names: scope/project/kind, e.g. personal/my-project/github_token; model provider
   keys keep their names (nvidia/personal/api_key). Details: INSTALL.md "Key names".
-- List key names (never values): python3 tools/secret.py list
-- Key name of a service or provider (never a value): python3 tools/inventory.py key <name>
-  Need the key for gmail? python3 tools/inventory.py key gmail prints its name; only if the
-  user ordered the work, pass it on with python3 tools/secret.py run <name> -- <command>.
-- Record a service: python3 tools/inventory.py add-service NAME KIND
-- Record a key name: python3 tools/inventory.py add-key NAME --service S | --provider P
-- Never use "--backend file" unless the user orders exactly that.
+- List key names (never values): `py tools/secret.py list`
+- Key name of a service or provider: `py tools/inventory.py key <name>`. Only if the user
+  ordered the work, pass it on with `py tools/secret.py run <name> -- <command>`.
+- Record a service: `add-service NAME KIND`; a key name: `add-key NAME --service S | --provider P`.
+- Never use `--backend file` unless the user orders exactly that.
 
 ## Git
-- Local commit: make it yourself at each milestone (see procedure). Do not ask:
-  the order for the work includes its milestone commits.
+- Local commit: make it yourself at each milestone (docs/procedures/commit.md); the order
+  for the work includes its commits. Add files by name, never `git add .` or `git add -A`.
 - Push: only by docs/procedures/github-deploy.md, after a confirmation.
-  Never use --force or --force-with-lease.
-- Never commit data/inventory.db, settings.json, out/ or projects/.
-- If pre-commit blocks, remove the key. Never use --no-verify.
-- If pre-push blocks, stop: a commit to be pushed holds a key. Tell the user the history
-  must be cleaned first (only on the user's order) and the key must be replaced.
+  Never use `--force` or `--force-with-lease`.
+- Never commit `data/inventory.db`, `settings.json`, `out/` or `projects/`.
+- If the secret scan blocks, remove the key. Never use `--no-verify`.
+- If a pre-push check blocks, stop: the history to be pushed holds a key. Say so and wait
+  for an order to clean it; the key itself must be replaced too.
+- This repository is public and generic. Never put a project or client name in it -- not
+  in `data/seed.sql`, tests, docs or examples. Seed rows are `example-project`,
+  `second-project`, `third-project`. A name in a pushed commit cannot be removed without
+  rewriting history.
+- `git` on Windows rewrites LF to CRLF (`core.autocrlf=true`). A test that compares two
+  copies of a file must compare lines, not bytes, or it fails only inside a bundle.
 
 ## Where things are
-- On Windows type "py" instead of "python3".
-- tools/  Python tools, standard library only. Help: read the text at the top of
-  tools/<name>.py. Do not run a tool only to see its help.
-- Tests: python3 -m unittest discover -s tools/tests -t . -v
-- Machines, providers, models, key names: python3 tools/inventory.py tables, then
-  python3 tools/inventory.py list <table>. Check there before asking the user.
-  Missing database: python3 tools/inventory.py init
-- kb/ free model list. doc/ architecture pages. out/ reports (not in git).
-- projects/<name>/ one folder per user project; it may be its own git repo.
-  Everything for one project lives there: its own AGENTS.md, docs, tools and git
-  history, so the folder can be handed over on its own. The root tools/ stays
-  generic; this core holds nothing project-specific. How to start one:
-  docs/procedures/new-project.md.
+- `tools/` Python tools, standard library only. Help: read the text at the top of
+  `tools/<name>.py`; do not run a tool only to see its help.
+- Machines, providers, models, key names: `py tools/inventory.py tables`, then
+  `list <table>`. Check there before asking the user. Missing database: `inventory.py init`.
+- `kb/` free model list. `doc/` architecture pages. `out/` reports and audits (not in git).
+- `projects/<name>/` one folder per user project, its own git repository and its own
+  `AGENTS.md`. It runs on this core: `tools/core.py`, `tools/secret.py` and
+  `tools/__init__.py` are the glue, and `google_api.py` is a copy of the core's original
+  (change the core, copy it over, never the reverse). Read the project's rules before
+  touching it; this file does not govern it. New project: docs/procedures/new-project.md.
+- Only free-tier models. No paid provider and no paid key without an explicit order.
 
 ## What "agent" means
-- An agent is a role you play in this session (for example orc, coder, qa, reviewer),
-  or an opencode subagent. Nothing else.
-- Never start claude, gemini, goose, codex or another opencode process unless the
-  user names it in an order.
-- UNVERIFIED: that opencode subagents work in this setup, and that an opencode
-  permission rule can deny shell commands that start with those names. Until it is
-  tested on the installed opencode version, this is a rule only, not enforced.
+- An agent is a role you play in this session (for example orc, coder, qa, reviewer), or
+  an opencode subagent. Nothing else.
+- Never start claude, gemini, goose, codex or another opencode process unless the user
+  names it in an order.
+- Subagents are verified working on this install (2026-11-10). That an opencode permission
+  rule can deny shell commands starting with those names is still UNVERIFIED: a rule only.
 
 ## Procedures
 - Finished a step -> docs/procedures/step-review.md
