@@ -86,6 +86,19 @@ class TestParseIndex(unittest.TestCase):
         shutil.rmtree(self.tmp, ignore_errors=True)
 
 
+class TestMainWithoutKb(unittest.TestCase):
+    """No paths.kb: the tool stops with a clear message instead of using a kb/ folder."""
+
+    def test_main_refuses_when_kb_is_not_set(self):
+        import io
+        from contextlib import redirect_stderr
+        from unittest import mock
+        err = io.StringIO()
+        with mock.patch.object(gmx, "KB", None), redirect_stderr(err):
+            self.assertEqual(gmx.main(), 2)
+        self.assertIn("paths.kb", err.getvalue())
+
+
 class TestPythonCodeFor(unittest.TestCase):
     """Python code snippet generation."""
 

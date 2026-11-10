@@ -55,11 +55,11 @@ class TestWorkspaceSettings(unittest.TestCase):
             self.assertEqual(ws.git_settings({}),
                              {"remote_url": "", "remote_user": "", "token_key": ""})
 
-    def test_kb_dir_defaults_to_kb_next_to_tools(self):
-        self.assertEqual(ws.kb_dir({}), ws.ROOT / "kb")
-        self.assertEqual(ws.kb_dir({"paths": {"kb": "   "}}), ws.ROOT / "kb")
-        self.assertEqual(ws.kb_dir({"paths": {"kb": None}}), ws.ROOT / "kb")
-        self.assertEqual(ws.kb_dir({"paths": "nonsense"}), ws.ROOT / "kb")
+    def test_kb_dir_is_none_when_not_set(self):
+        self.assertIsNone(ws.kb_dir({}))
+        self.assertIsNone(ws.kb_dir({"paths": {"kb": "   "}}))
+        self.assertIsNone(ws.kb_dir({"paths": {"kb": None}}))
+        self.assertIsNone(ws.kb_dir({"paths": "nonsense"}))
 
     def test_kb_dir_reads_relative_and_absolute_paths(self):
         self.assertEqual(ws.kb_dir({"paths": {"kb": "projects/models/kb"}}),

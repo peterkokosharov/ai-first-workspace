@@ -16,7 +16,7 @@ __pycache__/
 /projects/*
 !/projects/.gitkeep
 
-# Scraped model pages: gen_models_xml.py writes them here on a fresh clone
+# A model lab's pages live in its own folder (paths.kb in settings.json), not here
 /kb/
 
 # Local settings: copy settings.json.example to settings.json and edit it

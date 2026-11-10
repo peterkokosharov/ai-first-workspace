@@ -14,7 +14,7 @@ template and is read when ``settings.json`` is missing. Sections:
   token itself is kept by git's credential helper, not by tools/secret.py).
 * ``runtime``: older name of ``tools``; still read. A non-empty ``tools`` value wins.
 * ``paths``: folders that are not part of the core's code. ``kb`` is the folder with
-  the model pages and ``models.xml``; empty means ``kb/`` next to ``tools/``. A model
+  the model pages and ``models.xml``; empty means none (the core ships no ``kb/``). A model
   lab may keep a fresher ``models.xml`` there; without one the core's ``data/models.xml``
   is used.
 
@@ -88,16 +88,16 @@ def all_commands(data: dict | None = None) -> dict:
     return {name: tool_command(name, data) for name in names}
 
 
-def kb_dir(data: dict | None = None) -> Path:
+def kb_dir(data: dict | None = None) -> Path | None:
     """Folder that holds the model pages, the endpoint index and ``models.xml``.
 
     ``paths.kb`` from the settings file, relative to the workspace root; empty or
-    missing means ``kb/`` next to ``tools/``.  The folder is not created here.
+    missing means None (no model lab).  The folder is not created here.
     """
     data = load() if data is None else data
     value = _section(data, "paths").get("kb")
     if not isinstance(value, str) or not value.strip():
-        return ROOT / "kb"
+        return None
     path = Path(value.strip()).expanduser()
     return path if path.is_absolute() else ROOT / path
 
@@ -109,8 +109,9 @@ def models_xml(data: dict | None = None) -> Path:
     ``paths.kb``) when that file exists; otherwise the small list shipped in the
     core, ``data/models.xml``.
     """
-    own = kb_dir(data) / "models.xml"
-    return own if own.is_file() else ROOT / "data" / "models.xml"
+    kb = kb_dir(data)
+    own = None if kb is None else kb / "models.xml"
+    return own if own is not None and own.is_file() else ROOT / "data" / "models.xml"
 
 
 def git_settings(data: dict | None = None) -> dict:

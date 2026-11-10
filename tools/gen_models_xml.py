@@ -4,7 +4,7 @@
 # Author: Peter Kokosharov <peter.kokosharov@gmail.com>
 """Generate models.xml from free_endpoints_index.md in the model list folder.
 
-The folder is ``paths.kb`` from settings.json (empty = ``kb/`` next to this file).
+The folder is ``paths.kb`` from settings.json; it must be set (the core has no ``kb/``).
 
 Each <model> element contains:
   id        - model alias
@@ -24,9 +24,9 @@ if str(ROOT / "tools") not in sys.path:
     sys.path.insert(0, str(ROOT / "tools"))
 import workspace_settings  # noqa: E402  (shared helper next to this file)
 
-KB = workspace_settings.kb_dir()
-INDEX = KB / "free_endpoints_index.md"
-OUT = KB / "models.xml"
+KB = workspace_settings.kb_dir()  # None when paths.kb is not set
+INDEX = None if KB is None else KB / "free_endpoints_index.md"
+OUT = None if KB is None else KB / "models.xml"
 
 ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 
@@ -132,6 +132,10 @@ def build_xml(models: list[dict[str, str]]) -> str:
 
 
 def main() -> int:
+    if KB is None:
+        print("[gen_models_xml] set paths.kb in settings.json to the model list folder",
+              file=sys.stderr)
+        return 2
     models = parse_index(INDEX)
     xml = build_xml(models)
     OUT.write_text(xml, encoding="utf-8")
