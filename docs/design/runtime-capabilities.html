@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runtime capabilities</title>
+<style>
+  body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.5; color: #333; max-width: 1200px; margin: 0 auto; padding: 20px; }
+  h1, h2 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 8px; }
+  code { background: #f4f4f4; padding: 1px 5px; border-radius: 4px; font-family: monospace; font-size: 0.92em; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.9em; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #3498db; color: white; }
+  a { color: #1f6fb2; word-break: break-all; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #1e1e1e; color: #eee; }
+    h1, h2 { color: #9cc9ef; }
+    code { background: #333; }
+    th, td { border-color: #444; }
+    a { color: #7db7ea; }
+  }
+</style>
+</head>
+<body>
+
+<h1>Runtime capabilities</h1>
+
+<p>Status: design note, 2026-11-23. Companion to <code>docs/procedures/RUNTIME-ADAPTERS.md</code>.</p>
+
+<p>Goal: know, per agent runtime, which parts of this workspace work natively and where the adapter has to fill a gap. Every cell carries a source tag (see "Sources" at the end). <code>mem</code> means from memory, not checked against a document on 2026-11-23. <code>n/d</code> means the fetched official page does not document it.</p>
+
+<h2>Owner test, 2026-11-22</h2>
+
+<p>Observed by the owner on 2026-11-22, running this workspace on each runtime:</p>
+
+<ul><li>The base works on every runtime tested.</li><li>rex works partially.</li><li>Subagents were broken on about half of the runtimes.</li></ul>
+
+<p>Which runtimes had broken subagents, and which rex parts failed, is not recorded in this note. Put machine results in the local inventory DB (AGENTS.md) and add a per-runtime "observed" column to the overview once they are written down.</p>
+
+<h2>Overview</h2>
+
+<table>
+<tr><th>Runtime</th><th>Rules file</th><th>Skills / commands</th><th>Native subagents</th><th>Pre-tool hook can block</th><th>MCP client</th><th>One-shot mode</th></tr>
+<tr><td>Claude Code</td><td><code>CLAUDE.md</code> (here: <code>@AGENTS.md</code>) [S4]</td><td>skills <code>.claude/skills/&lt;n&gt;/SKILL.md</code> [mem; S4 layout]</td><td>yes, <code>.claude/agents/*.md</code>, nest up to 3 [C3]</td><td>yes, <code>PreToolUse</code> exit 2 or <code>deny</code>; fires in subagents [C1]</td><td>yes, <code>.mcp.json</code>, <code>--mcp-config</code> [C2]</td><td><code>claude -p &quot;...&quot;</code> [C2]</td></tr>
+<tr><td>rex</td><td><code>AGENTS.md</code> (project file only with <code>workspace.trust: true</code>) [S3]</td><td>skills <code>.rex/skills/&lt;n&gt;/SKILL.md</code> (project skills need trust) [S3]</td><td>no, by design ("the orchestrator above rex does that") [S3]</td><td>yes, <code>hooks.pre_tool</code> command, user config only [S3]</td><td>yes, stdio [S3]</td><td><code>python3 -m runtime &quot;...&quot;</code> [S3]</td></tr>
+<tr><td>opencode</td><td><code>AGENTS.md</code>, falls back to <code>CLAUDE.md</code> [O6]</td><td>commands <code>.opencode/commands/*.md</code> [O4]; skills <code>.opencode/skills</code>, <code>.claude/skills</code>, <code>.agents/skills</code> [O5]</td><td>yes, <code>.opencode/agents/*.md</code>, <code>subagent</code> tool [O1]</td><td>partly: plugin <code>execute.before</code> can change input; permission <code>evaluate</code> hook can return deny [O2]</td><td>yes, local + remote [O8]</td><td><code>opencode run &quot;...&quot;</code> [O3]</td></tr>
+<tr><td>goose</td><td><code>AGENTS.md</code>, <code>.goosehints</code> [G6]</td><td>recipes as slash commands [G4]; skills <code>.claude/skills</code>, <code>.goose/skills</code>, <code>.agents/skills</code> [G5]</td><td>yes, internal; only in autonomous mode; no nesting [G1]</td><td>n/d (no hook found) [G1, G6]</td><td>yes, extensions are MCP servers [mem]</td><td><code>goose run --no-session -q -t &quot;...&quot;</code> [G3]</td></tr>
+<tr><td>codex CLI</td><td><code>AGENTS.md</code> [mem]</td><td>skills <code>.agents/skills</code> [X4]</td><td>yes, <code>.codex/agents/*.toml</code> [X2]</td><td>yes, <code>PreToolUse</code> exit 2 or <code>deny</code>; project hooks need trust [X1]</td><td>yes [mem; X2 mentions MCP]</td><td><code>codex exec &quot;...&quot;</code> [X3]</td></tr>
+<tr><td>aider</td><td>none automatic; <code>--read AGENTS.md</code> or <code>read:</code> in <code>.aider.conf.yml</code> [A1]</td><td>none [mem]</td><td>none [mem]</td><td>none [mem]</td><td>none [mem]</td><td><code>aider --message &quot;...&quot; &lt;files&gt;</code> [A2]</td></tr>
+<tr><td>gemini CLI</td><td><code>GEMINI.md</code> (here: points to <code>AGENTS.md</code>); <code>context.fileName</code> can list more [M6]</td><td>commands <code>.gemini/commands/*.toml</code> [M4]; skills <code>.gemini/skills</code>, <code>.agents/skills</code> [M5]</td><td>yes, <code>.gemini/agents/*.md</code>, on by default, no nesting [M2]</td><td>yes, <code>BeforeTool</code> exit 2 or <code>deny</code> [M1]</td><td>yes [mem]</td><td><code>gemini -p &quot;...&quot;</code> [M3]</td></tr>
+</table>
+
+<h2>Permissions and model endpoint</h2>
+
+<table>
+<tr><th>Runtime</th><th>Permission / approval model</th><th>Custom endpoint (for kiko)</th></tr>
+<tr><td>Claude Code</td><td>allow/ask/deny rules, modes (<code>dontAsk</code>, <code>acceptEdits</code>, <code>auto</code>); in <code>-p</code> an unanswered ask is denied [C2]</td><td>Anthropic format only, <code>ANTHROPIC_BASE_URL</code> [C4]. kiko serves this (<code>/v1/messages</code>, <code>127.0.0.1:4000</code>), tested 2026-11-22 [S1, S2]</td></tr>
+<tr><td>rex</td><td>deny &gt; ask &gt; allow &gt; mode default; bash allow is a strict whitelist; one-shot with <code>--json</code> or redirected stdio denies every ask [S3]</td><td>OpenAI-compatible, <code>RUNTIME_LITELLM__BASE_URL</code> [S3]</td></tr>
+<tr><td>opencode</td><td>ordered allow/ask/deny rules per action + pattern, last match wins, default ask; <code>run</code> handling of ask n/d [O9]</td><td>OpenAI-compatible provider, <code>settings.baseURL</code> [O7]</td></tr>
+<tr><td>goose</td><td>modes: autonomous, manual approval, smart approval, chat only [G2]</td><td><code>OPENAI_HOST</code> / <code>OPENAI_BASE_PATH</code> [G6]</td></tr>
+<tr><td>codex CLI</td><td>sandbox (<code>read-only</code> default in exec, <code>workspace-write</code>, <code>danger-full-access</code>) + approval policy [X3]</td><td><code>model_providers.&lt;id&gt;.base_url</code>, <code>wire_api = &quot;responses&quot;</code> (user config only) [X5]</td></tr>
+<tr><td>aider</td><td>confirm prompts; <code>--yes</code> answers all of them [A2]</td><td><code>OPENAI_API_BASE</code> + model <code>openai/&lt;name&gt;</code> [A3]</td></tr>
+<tr><td>gemini CLI</td><td><code>default</code>, <code>auto_edit</code>, <code>plan</code>; <code>yolo</code> only from the command line [M6]</td><td>Gemini API format only, <code>GOOGLE_GEMINI_BASE_URL</code> [M6]; OpenAI-compatible n/d</td></tr>
+</table>
+
+<p>kiko note: the owner's kiko repository documents an Anthropic <code>/v1/messages</code> gateway on <code>127.0.0.1:4000</code> and does not state an OpenAI <code>/v1/chat/completions</code> endpoint [S1]. rex's README uses an OpenAI-compatible "kiko-lite" endpoint on <code>127.0.0.1:5000</code> [S3]. So Claude Code talks to kiko; opencode, goose, aider and rex need the OpenAI-compatible endpoint; codex needs the Responses API; gemini CLI needs the Gemini API format.</p>
+
+<h2>Subagent fallback: launch command per runtime</h2>
+
+<p>The fallback runs one role as a separate one-shot process of the same runtime, in the project folder, and reads its final answer from stdout. Tags as above.</p>
+
+<table>
+<tr><th>Runtime</th><th>Fallback command (brief on the command line or stdin)</th><th>Notes</th></tr>
+<tr><td>Claude Code</td><td><code>claude -p &quot;&lt;brief&gt;&quot; --output-format json --permission-mode dontAsk --allowedTools &quot;&lt;list&gt;&quot;</code> [C2]</td><td>needed only if native subagents fail on the machine; they are documented and hooks fire inside them [C1, C3]</td></tr>
+<tr><td>rex</td><td><code>python3 -m runtime --json &quot;&lt;brief&gt;&quot;</code> [S3]</td><td>the only way: no subagents by design; asks are denied, so the role's allow rules must be set</td></tr>
+<tr><td>opencode</td><td><code>opencode run -m &lt;provider/model&gt; &quot;&lt;brief&gt;&quot;</code> [O3, S4]; <code>--agent &lt;role&gt;</code> [mem]</td><td>ask handling in <code>run</code> n/d: test before relying</td></tr>
+<tr><td>goose</td><td><code>goose run --no-session -q -t &quot;&lt;brief&gt;&quot;</code>, role as <code>--recipe &lt;file&gt;</code> [G3]</td><td>native subagents only in autonomous mode [G1]</td></tr>
+<tr><td>codex CLI</td><td><code>codex exec --json --sandbox workspace-write &quot;&lt;brief&gt;&quot;</code> [X3]</td><td></td></tr>
+<tr><td>aider</td><td><code>aider --message &quot;&lt;brief&gt;&quot; --read AGENTS.md --no-auto-commits &lt;files&gt;</code> [A1, A2]</td><td>edits only the listed files; no guard (see gaps)</td></tr>
+<tr><td>gemini CLI</td><td><code>gemini -p &quot;&lt;brief&gt;&quot; --output-format json</code> [M3]</td><td>approval handling in headless mode n/d</td></tr>
+</table>
+
+<h2>Gaps and the adapter fix</h2>
+
+<ol><li><strong>Subagents.</strong> Native subagents exist in Claude Code, opencode, goose, codex and gemini CLI, but with different rules: goose only in autonomous mode, gemini and goose without nesting, rex none by design, aider none. The owner saw subagents fail on about half of the runtimes (2026-11-22). Fix: the adapter declares a <code>subagents</code> capability only where a smoke test proves it; elsewhere <code>spawn_role()</code> falls back to the one-shot process above. When even that is not wanted, <code>docs/procedures/orchestration.md</code> "No subagents" (one agent plays the roles in turn) stays the last fallback.</li><li><strong>The fallback conflicts with two current rules.</strong> AGENTS.md says never start claude, gemini, goose, codex or another opencode process unless the user names it in an order, and RUNTIME-ADAPTERS.md Rule 4 says one runtime process per session. The fallback needs both rules amended: the adapter (not the model) may start one child of the same runtime per role, only when the user ordered orchestrated work, and the child gets the same rules file and the same deny list. Until that is decided and written, the fallback is design only.</li><li><strong>Guards are not equal.</strong> A blocking pre-tool hook is documented for Claude Code, codex, gemini CLI and rex. opencode has a permission <code>evaluate</code> hook that can deny, but whether <code>execute.before</code> can block is not documented. goose has no documented hook; aider has none. On those runtimes the push guard (<code>confirm_push()</code>) and the secret rules are instructions plus permission settings, not enforcement. Say so in each adapter's capability set; do not claim a guard that is not there.</li><li><strong>Hooks in a child process.</strong> A separate process loads its own config: Claude <code>-p</code> runs the project hooks without a trust dialog [C2]; codex runs project hooks only after they are trusted [X1]; rex reads hooks and permissions only from the user config [S3]. The adapter must check, per runtime, that the guard is active in the child before it starts one.</li><li><strong>Skills reach.</strong> <code>.claude/skills</code> is read by Claude Code, opencode and goose; <code>.opencode/commands</code> only by opencode. codex reads only <code>.agents/skills</code>, gemini CLI <code>.gemini/skills</code> or <code>.agents/skills</code>, rex <code>.rex/skills</code>. A shared <code>.agents/skills</code> folder (same thin pointers to <code>docs/procedures/</code>) would cover codex, gemini CLI, opencode and goose; rex needs its own folder or a <code>skills.paths</code> entry, plus trust.</li><li><strong>Rules reach.</strong> rex reads the project <code>AGENTS.md</code> only with <code>workspace.trust: true</code>; aider reads nothing by itself and needs <code>--read AGENTS.md</code>. Without these the agent runs without the workspace rules. Whether this explains "rex partially" on 2026-11-22 is not verified.</li><li><strong>Endpoint formats.</strong> One kiko endpoint does not serve all runtimes: Anthropic format (Claude Code), OpenAI chat format (rex, opencode, goose, aider), Responses API (codex), Gemini format (gemini CLI). The adapter records which format each runtime needs.</li></ol>
+
+<h2>Not verified</h2>
+
+<ul><li><code>mem</code> cells, the opencode <code>--agent</code> flag, and approval handling in <code>opencode run</code> and <code>gemini -p</code>.</li><li>goose pages were read from the <code>goose-docs.pages.dev</code> mirror of the goose docs; the context-file and endpoint facts [G6] come from search-result summaries of goose-docs.ai, whose pages did not render for the fetcher.</li><li>No row was re-tested for this note; only the owner's 2026-11-22 run is observed data.</li></ul>
+
+<h2>Sources</h2>
+
+<p>All web pages were read on 2026-11-23 unless a date says otherwise.</p>
+
+<ul><li>[S1] kiko / ai_runtime repository README, <a href="https://github.com/peterkokosharov/ai_runtime">https://github.com/peterkokosharov/ai_runtime</a> (branch <code>master</code>), read 2026-11-23. It holds no per-runtime table; Claude Code is the only agent runtime it describes.</li><li>[S2] ai_runtime <code>KIKO.md</code>, <a href="https://github.com/peterkokosharov/ai_runtime/blob/master/KIKO.md">https://github.com/peterkokosharov/ai_runtime/blob/master/KIKO.md</a>, Claude Code run against kiko verified 2026-11-22; read 2026-11-23.</li><li>[S3] rex repository (local): <code>README.md</code> and <code>docs/plans/2026-11-23-rex-gaps.md</code>, commit <code>4a57eec</code> of 2026-11-23.</li><li>[S4] this repository: <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>GEMINI.md</code>, <code>README.md</code>, <code>docs/procedures/RUNTIME-ADAPTERS.md</code>, <code>docs/procedures/orchestration.md</code>, <code>.claude/skills/</code>, <code>.opencode/commands/</code>, commit <code>23fd896</code> of 2026-11-23.</li><li>[C1] <a href="https://code.claude.com/docs/en/hooks">https://code.claude.com/docs/en/hooks</a></li><li>[C2] <a href="https://code.claude.com/docs/en/headless">https://code.claude.com/docs/en/headless</a></li><li>[C3] <a href="https://code.claude.com/docs/en/sub-agents">https://code.claude.com/docs/en/sub-agents</a></li><li>[C4] <a href="https://code.claude.com/docs/en/llm-gateway">https://code.claude.com/docs/en/llm-gateway</a></li><li>[O1] <a href="https://opencode.ai/docs/agents/">https://opencode.ai/docs/agents/</a></li><li>[O2] <a href="https://opencode.ai/docs/build/plugins/server">https://opencode.ai/docs/build/plugins/server</a></li><li>[O3] <a href="https://opencode.ai/docs/cli/">https://opencode.ai/docs/cli/</a></li><li>[O4] <a href="https://opencode.ai/docs/commands/">https://opencode.ai/docs/commands/</a></li><li>[O5] <a href="https://opencode.ai/docs/skills/">https://opencode.ai/docs/skills/</a></li><li>[O6] <a href="https://opencode.ai/docs/rules/">https://opencode.ai/docs/rules/</a></li><li>[O7] <a href="https://opencode.ai/docs/providers/">https://opencode.ai/docs/providers/</a></li><li>[O8] <a href="https://opencode.ai/docs/mcp-servers/">https://opencode.ai/docs/mcp-servers/</a></li><li>[O9] <a href="https://opencode.ai/docs/permissions/">https://opencode.ai/docs/permissions/</a></li><li>[G1] <a href="https://goose-docs.pages.dev/docs/guides/subagents">https://goose-docs.pages.dev/docs/guides/subagents</a></li><li>[G2] <a href="https://goose-docs.pages.dev/docs/guides/goose-permissions">https://goose-docs.pages.dev/docs/guides/goose-permissions</a></li><li>[G3] goose-run(1) man page, <a href="https://www.mankier.com/1/goose-run">https://www.mankier.com/1/goose-run</a></li><li>[G4] <a href="https://goose-docs.pages.dev/docs/guides/context-engineering/slash-commands">https://goose-docs.pages.dev/docs/guides/context-engineering/slash-commands</a></li><li>[G5] <a href="https://goose-docs.pages.dev/docs/guides/context-engineering/using-skills">https://goose-docs.pages.dev/docs/guides/context-engineering/using-skills</a></li><li>[G6] search-result summaries of <a href="https://goose-docs.ai/docs/guides/context-engineering/using-goosehints">https://goose-docs.ai/docs/guides/context-engineering/using-goosehints</a> and <a href="https://goose-docs.ai/docs/guides/environment-variables">https://goose-docs.ai/docs/guides/environment-variables</a> (pages not rendered)</li><li>[X1] <a href="https://learn.chatgpt.com/docs/hooks">https://learn.chatgpt.com/docs/hooks</a> (redirect from developers.openai.com/codex/hooks)</li><li>[X2] <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents">https://learn.chatgpt.com/docs/agent-configuration/subagents</a></li><li>[X3] <a href="https://learn.chatgpt.com/docs/non-interactive-mode">https://learn.chatgpt.com/docs/non-interactive-mode</a></li><li>[X4] <a href="https://learn.chatgpt.com/docs/build-skills">https://learn.chatgpt.com/docs/build-skills</a></li><li>[X5] <a href="https://learn.chatgpt.com/docs/enterprise/connect-to-a-gateway">https://learn.chatgpt.com/docs/enterprise/connect-to-a-gateway</a></li><li>[A1] <a href="https://aider.chat/docs/usage/conventions.html">https://aider.chat/docs/usage/conventions.html</a></li><li>[A2] <a href="https://aider.chat/docs/scripting.html">https://aider.chat/docs/scripting.html</a></li><li>[A3] <a href="https://aider.chat/docs/llms/openai-compat.html">https://aider.chat/docs/llms/openai-compat.html</a></li><li>[M1] <a href="https://geminicli.com/docs/hooks/">https://geminicli.com/docs/hooks/</a></li><li>[M2] <a href="https://geminicli.com/docs/core/subagents/">https://geminicli.com/docs/core/subagents/</a></li><li>[M3] <a href="https://geminicli.com/docs/cli/headless/">https://geminicli.com/docs/cli/headless/</a></li><li>[M4] <a href="https://geminicli.com/docs/cli/custom-commands/">https://geminicli.com/docs/cli/custom-commands/</a></li><li>[M5] <a href="https://geminicli.com/docs/cli/skills/">https://geminicli.com/docs/cli/skills/</a></li><li>[M6] <a href="https://geminicli.com/docs/reference/configuration/">https://geminicli.com/docs/reference/configuration/</a></li><li>Owner test run of this workspace on all runtimes: observed by the owner, 2026-11-22.</li></ul>
+
+</body>
+</html>
