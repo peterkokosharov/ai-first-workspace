@@ -1,14 +1,14 @@
-# Runtime adapters for Roni
+# Runtime adapters
 
-Status: design note. Roni today has one file, `roni_claude`, holding hooks and
+Status: design note. The host today has one file, `host_claude`, holding hooks and
 other Claude-specific wiring. The goal is to run the same workspace on rex,
 codex, goose, opencode and Claude, then let each user pick a favourite. rex is
 the reference runtime: if the contract passes on rex, it is ready to be ported.
 
-## Rule 1: the factory returns capabilities, not a copy of `roni_claude`
+## Rule 1: the factory returns capabilities, not a copy of `host_claude`
 
 Claude hooks have no equivalent in rex, goose, codex or opencode. Do not copy
-`roni_claude` into `roni_codex`, `roni_rex`, etc. Define one interface and keep
+`host_claude` into `host_codex`, `host_rex`, etc. Define one interface and keep
 every runtime's quirks inside its own adapter:
 
 ```python
@@ -39,12 +39,12 @@ ADAPTERS = {
 }
 
 def make_runtime(name: str | None = None) -> RuntimeAdapter:
-    name = name or os.environ.get("RONI_RUNTIME") or detect_single()
+    name = name or os.environ.get("AIFW_RUNTIME") or detect_single()
     return ADAPTERS[name]()
 ```
 
 `detect_single()` returns a result only when exactly one runtime is found.
-Otherwise require `RONI_RUNTIME`. Never silently take the first CLI on `PATH`.
+Otherwise require `AIFW_RUNTIME`. Never silently take the first CLI on `PATH`.
 
 ## Rule 3: add a runtime as one file plus one matrix row
 
@@ -53,7 +53,7 @@ Suggested order:
 1. **rex first** (the reference). `rex --jsonl` is one persistent process;
    events are `token`, `tool_start`, `tool_end`, `ready`, `error`; cwd is
    passed to the child. This is the smallest, cleanest adapter.
-2. **Claude second** — move the contents of `roni_claude` into
+2. **Claude second** — move the contents of `host_claude` into
    `adapters/claude.py` without duplicating it elsewhere.
 3. codex, goose, opencode — each becomes one adapter module and one row in the
    smoke matrix. Core stays unchanged.
