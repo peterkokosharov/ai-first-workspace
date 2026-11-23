@@ -92,6 +92,10 @@ opencode е по подразбиране, защото е безплатен. �
 | goose | тестван | `AGENTS.md` |
 | Claude Code | тестван (иска платен план) | `CLAUDE.md` (сочи към `AGENTS.md`) |
 | Codex CLI | не е тестван | `AGENTS.md` |
+| [rex](https://github.com/peterkokosharov/rex) | частично тестван (без subagents по дизайн) | `AGENTS.md`, чете се само когато проектът е trusted (`workspace.trust: true`) |
+| [aider](https://aider.chat) | не е тестван | `aider --read AGENTS.md` (не чете `AGENTS.md` автоматично; без subagents) |
+
+Какво поддържа всеки runtime (subagents, hooks, skills, MCP): [`docs/design/runtime-capabilities.md`](docs/design/runtime-capabilities.md).
 
 ## Свързване на opencode с моделите на NVIDIA (по избор)
 

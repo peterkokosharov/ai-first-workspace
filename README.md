@@ -88,6 +88,10 @@ opencode is the default because it is free. The others also work with this folde
 | goose | tested | `AGENTS.md` |
 | Claude Code | tested (needs a paid plan) | `CLAUDE.md` (which points to `AGENTS.md`) |
 | Codex CLI | not tested | `AGENTS.md` |
+| [rex](https://github.com/peterkokosharov/rex) | partly tested (no subagents by design) | `AGENTS.md`, read only when the project is trusted (`workspace.trust: true`) |
+| [aider](https://aider.chat) | not tested | `aider --read AGENTS.md` (no automatic `AGENTS.md`; no subagents) |
+
+What each runtime supports (subagents, hooks, skills, MCP): [`docs/design/runtime-capabilities.md`](docs/design/runtime-capabilities.md).
 
 ## Connect opencode to the NVIDIA models (optional)
 
