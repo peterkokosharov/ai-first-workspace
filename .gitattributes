@@ -1,3 +1,5 @@
 # Shell scripts and git hooks must keep LF line endings (also on Windows).
 *.sh text eol=lf
 .githooks/* text eol=lf
+
+lib/kikolib/** text eol=lf

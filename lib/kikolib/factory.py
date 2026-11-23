@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: MIT
-# Author: Peter Kokosharov <peter.kokosharov@gmail.com>
+# Copyright (c) 2026 Peter Kokosharov <peter.kokosharov@gmail.com>
+# LLM: Anthropic Opus
 """Thread-safe registry of pluggable implementations.
 
 Each kind (e.g. "keystore") has several named implementations. ``register`` adds one
@@ -12,8 +13,7 @@ from __future__ import annotations
 
 import os
 import threading
-from collections.abc import Callable
-from typing import Any
+from typing import Any, Callable
 
 _lock = threading.RLock()
 _impls: dict[str, dict[str, dict[str, Any]]] = {}

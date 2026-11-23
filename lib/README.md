@@ -5,13 +5,13 @@ travels with the archive, so the tools do not depend on a system-wide installati
 
 ## kikolib
 
-- Source: vendored from kikolib (the author's own MIT library)
-- Copied: 2026-11-07
-- License: MIT (the SPDX headers and author lines are kept in every file)
-- Author: Peter Kokosharov
-- Included: only the modules `tools/secret.py` uses (`factory.py`, `keystore.py`, `__init__.py`).
-- Excluded: every other upstream module, `__pycache__`, `.pyc`, packaging and build artifacts.
-- Status: temporary copy; will be replaced by the installed kikolib package.
+- Source: kikolib 0.2.0, release tag `kikolib-v0.2.0` of the author's own kiko repository (MIT; kikolib has one home there).
+- Content: the complete, unmodified, pinned copy of the release folder, including its `SHA256SUMS`. Never edit it here.
+- `.gitattributes` forces LF endings for `lib/kikolib/**` so the hashes stay valid on Windows.
+- Check: `tools/tests/test_vendor_kikolib.py` verifies every file against `SHA256SUMS`, rejects extra files and asserts `__version__ == "0.2.0"`.
+- Update: fix it in the kiko repo, release a new tag, replace the whole folder with that release (keep `SHA256SUMS`),
+  change the pinned version in the test, run the tests.
+- aifw does not use the HTTP client, so no HTTP backend is pinned.
 
 `tools/secret.py` imports two modules from this copy:
 
