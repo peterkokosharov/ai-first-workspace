@@ -87,7 +87,7 @@ opencode is the default because it is free. The others also work with this folde
 | Gemini CLI | tested (free plan with limits) | `GEMINI.md` (which points to `AGENTS.md`) |
 | goose | tested | `AGENTS.md` |
 | Claude Code | tested (needs a paid plan) | `CLAUDE.md` (which points to `AGENTS.md`) |
-| Codex CLI | not tested | `AGENTS.md` |
+| Codex CLI | tested (with kiko) | `AGENTS.md` |
 | [rex](https://github.com/peterkokosharov/rex) | partly tested (no subagents by design) | `AGENTS.md`, read only when the project is trusted (`workspace.trust: true`) |
 | [aider](https://aider.chat) | not tested | `aider --read AGENTS.md` (no automatic `AGENTS.md`; no subagents) |
 

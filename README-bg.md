@@ -91,7 +91,7 @@ opencode е по подразбиране, защото е безплатен. �
 | Gemini CLI | тестван (безплатен план с лимити) | `GEMINI.md` (сочи към `AGENTS.md`) |
 | goose | тестван | `AGENTS.md` |
 | Claude Code | тестван (иска платен план) | `CLAUDE.md` (сочи към `AGENTS.md`) |
-| Codex CLI | не е тестван | `AGENTS.md` |
+| Codex CLI | тестван (с kiko) | `AGENTS.md` |
 | [rex](https://github.com/peterkokosharov/rex) | частично тестван (без subagents по дизайн) | `AGENTS.md`, чете се само когато проектът е trusted (`workspace.trust: true`) |
 | [aider](https://aider.chat) | не е тестван | `aider --read AGENTS.md` (не чете `AGENTS.md` автоматично; без subagents) |
 
